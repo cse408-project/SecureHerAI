@@ -1,0 +1,1557 @@
+[
+  {
+    "usecase": {
+        "name": "User Login",
+        "scenario": "Users can log into their Women Security app account using their credentials.",
+        "actors": "User",
+        "preconditions": "User has installed the Women Security app and has a valid account.",
+        "steps": [
+        "User opens the Women Security app.",
+        "User navigates to the login screen.",
+        "User enters her registered phone number.",
+        "User enters her password.",
+        "User clicks on the 'Login' button.",
+        "System verifies the credentials.",
+        "User is redirected to the home screen if credentials are valid.",
+        "Error message is displayed if credentials are invalid."
+        ]
+    },
+    "testCases": [
+        {
+        "name": "Login - Valid Credentials",
+        "description": "Verify that the user can successfully log in with valid credentials.",
+        "input": {
+            "phone": "+8801234567890",
+            "password": "validPassword123"
+        },
+        "expected": "User is redirected to the home screen."
+        },
+        {
+        "name": "Login - Invalid Phone Number",
+        "description": "Verify that the user cannot log in with an unregistered phone number.",
+        "input": {
+            "phone": "+8800234567890",
+            "password": "validPassword123"
+        },
+        "expected": "Error message displayed: 'Phone number not found.'"
+        },
+        {
+        "name": "Login - Invalid Password",
+        "description": "Verify that the user cannot log in with a registered phone number but incorrect password.",
+        "input": {
+            "phone": "+8801234567890",
+            "password": "wrongPassword"
+        },
+        "expected": "Error message displayed: 'Incorrect password.'"
+        },
+        {
+        "name": "Login - Empty Phone Number",
+        "description": "Verify that the user cannot log in with an empty phone number field.",
+        "input": {
+            "phone": "",
+            "password": "validPassword123"
+        },
+        "expected": "Error message displayed: 'Phone number cannot be empty.'"
+        },
+        {
+        "name": "Login - Empty Password",
+        "description": "Verify that the user cannot log in with an empty password field.",
+        "input": {
+            "phone": "+8801234567890",
+            "password": ""
+        },
+        "expected": "Error message displayed: 'Password cannot be empty.'"
+        },
+        {
+        "name": "Login - Invalid Phone Format",
+        "description": "Verify that the user cannot log in with an improperly formatted phone number.",
+        "input": {
+            "phone": "12345",
+            "password": "validPassword123"
+        },
+        "expected": "Error message displayed: 'Invalid phone number format.'"
+        }
+    ]
+    },
+    {
+        "usecase": {
+          "name": "Police or NGO Login",
+          "scenario": "Registered responders (Police or NGO workers) log in to the app using their email and password to access responder-specific functionalities.",
+          "actors": "Police or NGO (Police or NGO Worker)",
+          "preconditions": "Police or NGO has a valid account and is on the Police or NGO login screen.",
+          "steps": [
+            "Police or NGO opens the Women Security app.",
+            "Police or NGO navigates to the 'Police or NGO Login' option.",
+            "Police or NGO enters their registered email address.",
+            "Police or NGO enters their password.",
+            "Police or NGO clicks 'Login'.",
+            "System verifies the credentials.",
+            "Police or NGO is redirected to the Police or NGO dashboard if credentials are valid, or an error message is displayed if invalid."
+          ]
+        },
+        "testCases": [
+          {
+            "name": "Police or NGO Login - Valid Credentials",
+            "description": "Verify that a registered Police or NGO can log in with a valid email and password.",
+            "input": {
+              "email": "responder@example.com",
+              "password": "CorrectPass123"
+            },
+            "expected": "Police or NGO is redirected to the Police or NGO dashboard."
+          },
+          {
+            "name": "Police or NGO Login - Incorrect Password",
+            "description": "Verify that login fails with an incorrect password for a responder.",
+            "input": {
+              "email": "responder@example.com",
+              "password": "WrongPass123"
+            },
+            "expected": "Error: 'Incorrect password.'"
+          },
+          {
+            "name": "Police or NGO Login - Nonexistent Email",
+            "description": "Verify that login fails with an unregistered email for a responder.",
+            "input": {
+              "email": "nonexistent@example.com",
+              "password": "AnyPass"
+            },
+            "expected": "Error: 'Email not found.'"
+          },
+          {
+            "name": "Police or NGO Login - Empty Password",
+            "description": "Verify that login fails if the password is empty for a responder.",
+            "input": {
+              "email": "responder@example.com",
+              "password": ""
+            },
+            "expected": "Error: 'Password cannot be empty.'"
+          }
+        ]
+    },
+    {
+        "usecase": {
+        "name": "User Signup",
+        "scenario": "New users can create an account in the Women Security app by providing necessary details.",
+        "actors": "User",
+        "preconditions": "User has installed the Women Security app.",
+        "steps": [
+          "User opens the Women Security app.",
+          "User navigates to the signup screen.",
+          "User enters their full name.",
+          "User enters their phone number.",
+          "User sets a password.",
+          "User confirms the password.",
+          "User provides their email address (optional).",
+          "User provides their current address.",
+          "User enters their age.",
+          "User enters their National ID (NID) if 18 years or older, or birth registration number if younger.",
+          "User selects their profession.",
+          "User clicks on the 'Signup' button.",
+          "System validates the information and creates a new account.",
+          "User is redirected to the home screen if signup is successful.",
+          "Error message is displayed if signup information is invalid."
+        ]
+      },
+      "testCases": [
+        {
+          "name": "Signup - Valid Details for Adult",
+          "description": "Verify that a new user over 18 years old can successfully sign up with valid details.",
+          "input": {
+            "name": "Anika Rahman",
+            "phone": "+8801234567890",
+            "password": "securePassword123",
+            "confirmPassword": "securePassword123",
+            "email": "anikarahman@example.com",
+            "address": "123 Main St, Cityville",
+            "age": 25,
+            "nid": "1234567890123",
+            "profession": "Teacher"
+          },
+          "expected": "User is redirected to the home screen and account is created."
+        },
+        {
+          "name": "Signup - Valid Details for Minor",
+          "description": "Verify that a new user under 18 years old can successfully sign up with a birth registration number.",
+          "input": {
+            "name": "Meera Islam",
+            "phone": "+8801987654321",
+            "password": "securePassword123",
+            "confirmPassword": "securePassword123",
+            "email": "meeraislam@example.com",
+            "address": "456 Elm St, Townsville",
+            "age": 16,
+            "birthRegistrationNumber": "BR12345678",
+            "profession": "Student"
+          },
+          "expected": "User is redirected to the home screen and account is created."
+        },
+        {
+          "name": "Signup - Missing Address",
+          "description": "Verify that a user cannot sign up without providing an address.",
+          "input": {
+            "name": "Sumaya Hossain",
+            "phone": "+8801122334455",
+            "password": "securePassword123",
+            "confirmPassword": "securePassword123",
+            "email": "sumayahossain@example.com",
+            "address": "",
+            "age": 30,
+            "nid": "9876543210987",
+            "profession": "Engineer"
+          },
+          "expected": "Error message displayed: 'Address is required.'"
+        },
+        {
+          "name": "Signup - Password Mismatch",
+          "description": "Verify that a user cannot sign up if the password and confirm password do not match.",
+          "input": {
+            "name": "Fatema Chowdhury",
+            "phone": "+8801233445566",
+            "password": "securePassword123",
+            "confirmPassword": "differentPassword123",
+            "email": "fatemachowdhury@example.com",
+            "address": "789 Pine St, Cityville",
+            "age": 28,
+            "nid": "2345678901234",
+            "profession": "Doctor"
+          },
+          "expected": "Error message displayed: 'Passwords do not match.'"
+        },
+        {
+          "name": "Signup - Invalid NID Format",
+          "description": "Verify that a user cannot sign up with an incorrectly formatted NID.",
+          "input": {
+            "name": "Raisa Khan",
+            "phone": "+8801344556677",
+            "password": "securePassword123",
+            "confirmPassword": "securePassword123",
+            "email": "raisakhan@example.com",
+            "address": "321 Maple Ave, Villageville",
+            "age": 35,
+            "nid": "1234",
+            "profession": "Lawyer"
+          },
+          "expected": "Error message displayed: 'Invalid NID format.'"
+        },
+        {
+          "name": "Signup - Missing Birth Registration for Minor",
+          "description": "Verify that a user under 18 cannot sign up without providing a birth registration number.",
+          "input": {
+            "name": "Alia Karim",
+            "phone": "+8801455667788",
+            "password": "securePassword123",
+            "confirmPassword": "securePassword123",
+            "email": "aliakarim@example.com",
+            "address": "111 Oak St, Suburbia",
+            "age": 17,
+            "birthRegistrationNumber": "",
+            "profession": "Student"
+          },
+          "expected": "Error message displayed: 'Birth registration number is required for users under 18.'"
+        },
+        {
+          "name": "Signup - Invalid Email Format",
+          "description": "Verify that a user cannot sign up with an improperly formatted email address.",
+          "input": {
+            "name": "Nadia Alam",
+            "phone": "+8801566778899",
+            "password": "securePassword123",
+            "confirmPassword": "securePassword123",
+            "email": "invalid-email-format",
+            "address": "222 Birch St, Downtown",
+            "age": 29,
+            "nid": "3456789012345",
+            "profession": "Architect"
+          },
+          "expected": "Error message displayed: 'Invalid email format.'"
+        },
+        {
+          "name": "Signup - Missing Profession",
+          "description": "Verify that a user cannot sign up without selecting a profession.",
+          "input": {
+            "name": "Lima Akter",
+            "phone": "+8801677889900",
+            "password": "securePassword123",
+            "confirmPassword": "securePassword123",
+            "email": "limaakter@example.com",
+            "address": "333 Cedar St, Uptown",
+            "age": 22,
+            "nid": "4567890123456",
+            "profession": ""
+          },
+          "expected": "Error message displayed: 'Profession is required.'"
+        }
+      ]
+    },
+    {
+        "usecase": {
+          "name": "Police or NGO Signup",
+          "scenario": "Police or NGO workers register for the Women Security app to provide emergency response assistance to victims.",
+          "actors": "Police or NGO Worker",
+          "preconditions": "User is on the Women Security app signup page.",
+          "steps": [
+            "User navigates to the Women Security app signup page.",
+            "User selects the 'Responder Signup' option.",
+            "User chooses their role: 'Police' or 'NGO Worker'.",
+            "For 'Police' role, user enters police registration number, department details, and personal details including phone number.",
+            "For 'NGO Worker' role, user enters NGO registration number, NGO license number, organization name, and personal details including phone number.",
+            "User completes personal information fields (name, email, phone number, address, etc.).",
+            "User sets a password for their account.",
+            "User submits the signup form.",
+            "System verifies the registration details (e.g., police registration or NGO license).",
+            "System confirms registration and grants access to responder functionalities if verification is successful.",
+            "System displays an error message if any verification fails."
+          ]
+        },
+        "testCases": [
+          {
+            "name": "Signup - Police Role with Valid Registration",
+            "description": "Verify that a police user can successfully sign up with a valid registration number.",
+            "input": {
+              "role": "Police",
+              "policeRegistrationNumber": "123456",
+              "department": "Dhaka Metropolitan Police",
+              "personalInfo": {
+                "name": "Officer Ayesha",
+                "email": "ayesha.police@example.com",
+                "phone": "+8801234567890",
+                "address": "Dhaka, BD",
+                "password": "StrongPass123"
+              }
+            },
+            "expected": "System confirms registration and grants responder access."
+          },
+          {
+            "name": "Signup - NGO Worker Role with Valid Registration",
+            "description": "Verify that an NGO worker can sign up with valid NGO registration details.",
+            "input": {
+              "role": "NGO Worker",
+              "ngoRegistrationNumber": "NGO-987654",
+              "ngoLicenseNumber": "LIC-321098",
+              "ngoName": "Women's Aid Bangladesh",
+              "personalInfo": {
+                "name": "Worker Razia",
+                "email": "razia.ngo@example.com",
+                "phone": "+8801987654321",
+                "address": "Chittagong, BD",
+                "password": "SecurePass456"
+              }
+            },
+            "expected": "System confirms registration and grants responder access."
+          },
+          {
+            "name": "Signup - Police Role with Invalid Registration",
+            "description": "Verify that a police user with an invalid registration number is not allowed to sign up.",
+            "input": {
+              "role": "Police",
+              "policeRegistrationNumber": "999999",
+              "department": "Dhaka Metropolitan Police",
+              "personalInfo": {
+                "name": "Officer Naima",
+                "email": "naima.police@example.com",
+                "phone": "+8801234500000",
+                "address": "Dhaka, BD",
+                "password": "PassInvalid123"
+              }
+            },
+            "expected": "Error message displayed: 'Invalid registration number. Please contact support.'"
+          },
+          {
+            "name": "Signup - NGO Worker with Missing NGO License",
+            "description": "Verify that an NGO worker cannot sign up without entering the NGO license number.",
+            "input": {
+              "role": "NGO Worker",
+              "ngoRegistrationNumber": "NGO-456789",
+              "ngoName": "Care Bangladesh",
+              "personalInfo": {
+                "name": "Worker Salma",
+                "email": "salma.ngo@example.com",
+                "phone": "+8801987654322",
+                "address": "Sylhet, BD",
+                "password": "MissingLicense456"
+              }
+            },
+            "expected": "Error message displayed: 'NGO license number is required.'"
+          },
+          {
+            "name": "Signup - Police Role with Valid Details and Duplicate Email",
+            "description": "Verify that duplicate email addresses are not allowed for police registration.",
+            "input": {
+              "role": "Police",
+              "policeRegistrationNumber": "123457",
+              "department": "Chittagong Metropolitan Police",
+              "personalInfo": {
+                "name": "Officer Karim",
+                "email": "ayesha.police@example.com",
+                "phone": "+8801234567000",
+                "address": "Chittagong, BD",
+                "password": "DuplicateEmail123"
+              }
+            },
+            "expected": "Error message displayed: 'Email is already in use.'"
+          },
+          {
+            "name": "Signup - Phone Number Format Validation",
+            "description": "Verify that the phone number format is validated for responders during signup.",
+            "input": {
+              "role": "NGO Worker",
+              "ngoRegistrationNumber": "NGO-987655",
+              "ngoLicenseNumber": "LIC-321099",
+              "ngoName": "Human Aid",
+              "personalInfo": {
+                "name": "Worker Munira",
+                "email": "munira.ngo@example.com",
+                "phone": "01987654321",
+                "address": "Rajshahi, BD",
+                "password": "FormatTest789"
+              }
+            },
+            "expected": "Error message displayed: 'Phone number format is incorrect. Use +880 followed by 10 digits.'"
+          }
+        ]
+    },        
+    {
+        "usecase": {
+          "name": "Request Emergency Help",
+          "scenario": "User initiates a request for emergency help.",
+          "actors": "User",
+          "preconditions": "User is logged into the Women Security app and on the home page.",
+          "steps": [
+            "User selects the 'Ask for Emergency Help' option.",
+            "System redirects the user to the emergency help page.",
+            "System displays an option to upload evidence for the request."
+          ]
+        },
+        "testCases": [
+          {
+            "name": "Request Emergency Help - Valid Request",
+            "description": "Verify that the user can successfully initiate an emergency help request.",
+            "input": {
+              "action": "Ask for Emergency Help"
+            },
+            "expected": "System redirects the user to the emergency help page and displays the option to upload evidence."
+          },
+          {
+            "name": "Request Emergency Help - Network Unavailable",
+            "description": "Verify that the user receives an error message if network connectivity is unavailable.",
+            "input": {
+              "action": "Ask for Emergency Help",
+              "networkStatus": "unavailable"
+            },
+            "expected": "System displays an error message: 'Network unavailable. Please check your connection and try again.'"
+          }
+        ]
+    },
+    {
+    "usecase": {
+        "name": "Upload Evidence",
+        "scenario": "User uploads evidence (video, audio, or image) for emergency help request.",
+        "actors": "User",
+        "preconditions": "User is on the emergency help page after initiating an emergency help request.",
+        "steps": [
+        "User selects the 'Upload Evidence' option.",
+        "User chooses an evidence type (video, audio, or image) and uploads or records the evidence.",
+        "User adds additional types of evidence as necessary.",
+        "User submits the uploaded evidence."
+        ]
+    },
+    "testCases": [
+        {
+        "name": "Upload Video Evidence",
+        "description": "Verify that the user can upload a video file as evidence.",
+        "input": {
+            "evidenceType": "video",
+            "evidenceFile": "emergency_video.mp4"
+        },
+        "expected": "System accepts the video evidence and confirms successful upload."
+        },
+        {
+        "name": "Upload Multiple Evidence Types",
+        "description": "Verify that the user can upload multiple types of evidence in a single request.",
+        "input": {
+            "evidenceType": ["video", "audio", "image"],
+            "evidenceFiles": ["emergency_video.mp4", "emergency_audio.m4a", "emergency_image.jpg"]
+        },
+        "expected": "System accepts all evidence types and confirms successful upload."
+        },
+        {
+        "name": "Submit Without Evidence",
+        "description": "Verify that the user is prompted to upload at least one type of evidence if none is selected.",
+        "input": {
+            "evidenceType": [],
+            "evidenceFiles": []
+        },
+        "expected": "System displays an error message: 'Please upload at least one type of evidence.'"
+        },
+        {
+        "name": "Upload Unsupported File Type",
+        "description": "Verify that the user receives an error when uploading an unsupported file type for evidence.",
+        "input": {
+            "evidenceType": "text",
+            "evidenceFile": "emergency_notes.txt"
+        },
+        "expected": "System displays an error message: 'Unsupported file type. Please upload video, audio, or image evidence.'"
+        },
+        {
+        "name": "System Verification of Evidence Failed",
+        "description": "Verify that if system verification of evidence fails, the user receives an error message.",
+        "input": {
+            "evidenceType": "video",
+            "evidenceFile": "corrupt_video.mp4"
+        },
+        "expected": "System displays an error message: 'Evidence could not be verified. Please try again.'"
+        }
+    ]
+    },
+    {
+    "usecase": {
+        "name": "Track Assigned Agency's Location",
+        "scenario": "User tracks the location of the agency or force assigned to provide assistance.",
+        "actors": "User, System",
+        "preconditions": "User has successfully submitted evidence, and the system has verified it and confirmed assistance is on the way.",
+        "steps": [
+        "System initiates location tracking of the assigned agency or force.",
+        "System provides real-time location information to the user.",
+        "User can monitor the location of the agency or force until they arrive at the user's location."
+        ]
+    },
+    "testCases": [
+        {
+        "name": "Track Assigned Agency Location - Valid Request",
+        "description": "Verify that the user can view the real-time location of the assigned agency after evidence submission.",
+        "input": {
+            "trackingStatus": "enabled",
+            "evidenceVerified": true
+        },
+        "expected": "Map interface displays the real-time location of the assigned agency."
+        },
+        {
+        "name": "System Message Confirmation - Tracking Enabled",
+        "description": "Verify that after evidence submission and verification, the system displays a confirmation message.",
+        "input": {
+            "evidenceVerified": true
+        },
+        "expected": "System displays: 'You will be tracked soon. Help is on the way.'"
+        },
+        {
+        "name": "Tracking Failure - Evidence Not Verified",
+        "description": "Verify that tracking does not start if the evidence verification fails.",
+        "input": {
+            "evidenceVerified": false
+        },
+        "expected": "System displays an error message: 'Unable to track. Please try submitting the evidence again.'"
+        },
+        {
+        "name": "Network Unavailable During Tracking",
+        "description": "Verify that if network connectivity is lost during tracking, the user is informed accordingly.",
+        "input": {
+            "trackingStatus": "enabled",
+            "networkStatus": "unavailable"
+        },
+        "expected": "System displays an error message: 'Network connection lost. Tracking paused until reconnection.'"
+        }
+    ]
+    },
+
+    {
+      "usecase": {
+        "name": "Notify Trusted Contacts and Verify Victim Status",
+        "scenario": "Upon receiving an SOS alert, the system notifies the victim's trusted contacts. If a contact is an app user, they can verify the victim's status from the notification page.",
+        "actors": "System, Trusted Contacts (app users and non-users)",
+        "preconditions": "SOS alert has been triggered by the victim.",
+        "steps": [
+          "System identifies trusted contacts associated with the victim.",
+          "System sends an SMS notification to all trusted contacts, containing the victim's location and a link to verify.",
+          "If the trusted contact is an app user, the system sends an in-app notification, available in the notification section accessible from the home page.",
+          "App user receives the notification and navigates to the notification page from the home page.",
+          "App user views the details of the SOS alert, including victim's name, phone number, and location.",
+          "App user clicks 'Verify' to confirm the victim's status or report any additional information.",
+          "System registers the verification and updates the victim's status on the responder's dashboard."
+        ]
+      },
+      "testCases": [
+        {
+          "name": "Notify Trusted Contacts - Non-App Users",
+          "description": "Verify that the system sends an SMS notification to trusted contacts who are not app users.",
+          "input": {
+            "sosAlertId": "SOS124",
+            "victimInfo": {
+              "name": "Sara",
+              "phone": "+1234567890"
+            },
+            "trustedContacts": ["+1987654321", "+1122334455"]
+          },
+          "expected": "SMS notifications are sent to +1987654321 and +1122334455 with the victim's location and verification link."
+        },
+        {
+          "name": "Notify Trusted Contacts - App User",
+          "description": "Verify that trusted contacts who are app users receive an in-app notification that can be accessed from the notification page.",
+          "input": {
+            "sosAlertId": "SOS124",
+            "victimInfo": {
+              "name": "Sara",
+              "phone": "+1234567890"
+            },
+            "trustedContacts": ["+1987654321", "+1122334455"],
+            "appUserContact": "+1987654321"
+          },
+          "expected": "In-app notification is sent to +1987654321, which is accessible from the notification page."
+        },
+        {
+          "name": "In-App Notification - Verification Action by Trusted Contact",
+          "description": "Verify that an app user can verify the victim's status from the notification page.",
+          "input": {
+            "notificationId": "NOTIF123",
+            "appUserContact": "+1987654321",
+            "victimInfo": {
+              "name": "Sara",
+              "phone": "+1234567890"
+            }
+          },
+          "expected": "App user navigates to the notification page, views the SOS alert details, and verifies the victim’s status."
+        },
+        {
+          "name": "Notification for Non-App User Contact",
+          "description": "Verify that trusted contacts who are non-app users cannot access in-app verification and must use SMS link for verification.",
+          "input": {
+            "sosAlertId": "SOS124",
+            "victimInfo": {
+              "name": "Sara",
+              "phone": "+1234567890"
+            },
+            "trustedContacts": ["+1122334455"],
+            "nonAppUserContact": "+1122334455"
+          },
+          "expected": "SMS sent to +1122334455, containing location and external verification link."
+        },
+        {
+          "name": "Responder Notification of Verification Status Update",
+          "description": "Verify that the verification status of the victim is updated on the responder’s dashboard when a trusted contact confirms the victim’s status.",
+          "input": {
+            "sosAlertId": "SOS124",
+            "verificationStatus": "Verified by +1987654321"
+          },
+          "expected": "Responder's dashboard reflects updated verification status: 'Verified by +1987654321'."
+        }
+      ]
+    },    
+    {
+      "useCase": {
+        "name": "Check SOS Alerts",
+        "scenario": "Police or NGO can view SOS alerts on the map or in a list. Alerts forwarded by one or more police stations (thanas) or NGOs are star-marked, and alerts currently being handled are marked green. SOS alerts near the police or NGO are prioritized by severity.",
+        "actors": "Police, NGO",
+        "preconditions": "The actor is logged in to the Women Security app as police or NGO.",
+        "steps": [
+          "Police or NGO opens the Women Security app.",
+          "Police or NGO navigates to the 'SOS Alerts' section.",
+          "System displays the SOS alerts on the map with pinpoints.",
+          "SOS alerts also appear in a list view sorted by proximity and severity.",
+          "System highlights forwarded alerts with a star mark.",
+          "System highlights alerts currently being handled with a green mark.",
+          "Police or NGO hovers over a pinpoint on the map or a list item.",
+          "System displays a brief description of the SOS alert with its star or green status.",
+          "Police or NGO clicks on an alert to see detailed information, including the forwarding history and handling status."
+        ]
+      },
+      "testCases": [
+        {
+          "name": "SOS Alerts Sorted by Severity and Proximity",
+          "description": "Verify that SOS alerts are displayed in order of severity and proximity.",
+          "input": {
+            "actor": "Police",
+            "location": "Thana A",
+            "alerts": [
+              { "id": 1, "severity": "High", "location": "Nearby" },
+              { "id": 2, "severity": "Low", "location": "Nearby" },
+              { "id": 3, "severity": "High", "location": "Far" }
+            ]
+          },
+          "expected": "Alerts 1 and 2 appear first based on proximity, with alert 1 prioritized due to severity."
+        },
+        {
+          "name": "Star-Marked SOS Alert",
+          "description": "Verify that an SOS alert forwarded by one or more thanas/NGOs is marked with a star.",
+          "input": {
+            "actor": "NGO",
+            "sosAlert": {
+              "id": "SOS123",
+              "forwardedBy": ["Thana A", "NGO B"]
+            }
+          },
+          "expected": "SOS alert SOS123 appears with a star mark, showing it has been forwarded by Thana A and NGO B."
+        },
+        {
+          "name": "Green-Marked SOS Alert",
+          "description": "Verify that an SOS alert currently being handled by a police station or NGO is marked green.",
+          "input": {
+            "actor": "Police",
+            "sosAlert": {
+              "id": "SOS456",
+              "status": "In Progress",
+              "handledBy": "NGO B"
+            }
+          },
+          "expected": "SOS alert SOS456 is marked green, indicating it is currently being handled by NGO B."
+        },
+        {
+          "name": "Hovering over SOS Alert on Map or List",
+          "description": "Verify that hovering over an SOS alert shows a brief description along with its star and green status.",
+          "input": {
+            "actor": "Police",
+            "sosAlert": {
+              "id": "SOS789",
+              "briefDescription": "Harassment reported.",
+              "forwardedBy": ["Thana C"],
+              "status": "In Progress"
+            }
+          },
+          "expected": "Hovering shows: 'Harassment reported.' Star mark for being forwarded by Thana C, and green mark for ongoing handling."
+        },
+        {
+          "name": "Viewing Detailed SOS Alert",
+          "description": "Verify that clicking on an SOS alert displays its full details, including forwarding history and handling status.",
+          "input": {
+            "actor": "Police",
+            "sosAlert": {
+              "id": "SOS101",
+              "description": "Assault at City Center.",
+              "forwardedBy": ["NGO D", "Thana A"],
+              "handledBy": "Thana A"
+            }
+          },
+          "expected": "Detailed view shows the description, forwarding by NGO D and Thana A, and current handling by Thana A."
+        }
+      ]
+      
+    },
+  
+    {
+      "useCase": {
+        "name": "Analyzing Situation and Assigning Force",
+        "scenario": "Police or NGO selects an SOS alert, analyzes the provided information (description, type, severity, and evidence), and assigns appropriate responders. If unavailable or out of scope, the case can be forwarded to other police stations (thanas) or NGOs. If the case is handled, the alert becomes green, indicating the handler.",
+        "actors": "Police, NGO",
+        "preconditions": "The actor is logged in to the Women Security app as police, NGO, or manager.",
+        "steps": [
+          "Police or NGO opens the Women Security app.",
+          "Police or NGO navigates to the 'SOS Alerts' section.",
+          "Police or NGO selects an SOS alert from the list or map.",
+          "System displays the full details of the selected alert, including severity, type, and available evidence.",
+          "Police or NGO analyzes the situation based on the provided information.",
+          "If force or medical assistance is available, the manager assigns responders (police force, medical assistance, or NGO on ground).",
+          "Manager clicks the 'Handle' button and confirms the action.",
+          "System marks the SOS alert green and shows the handler police station or NGO in the alert details.",
+          "If unavailable or out of scope, police or NGO clicks the 'Forward' button.",
+          "System displays a list of other police stations (thanas) or NGOs.",
+          "Police or NGO selects one or more thanas/NGOs from the list and forwards the case.",
+          "System records the forwarding details and updates the alert status with forwarding history."
+        ]
+      },
+      "testCases": [
+        {
+          "name": "Assign Police Force to Handle SOS Alert",
+          "description": "Verify that the manager can assign police force to handle the case.",
+          "input": {
+            "actor": "Police",
+            "sosAlert": {
+              "id": "SOS111",
+              "type": "Robbery",
+              "severity": "High",
+              "availableForce": true
+            }
+          },
+          "expected": "SOS alert is marked green, and the handling police station is displayed in the alert details."
+        },
+        {
+          "name": "Forward SOS Alert to Another Thana or NGO",
+          "description": "Verify that an SOS alert can be forwarded to another police station or NGO if unavailable or out of scope.",
+          "input": {
+            "actor": "NGO",
+            "sosAlert": {
+              "id": "SOS222",
+              "type": "Medical Emergency",
+              "severity": "Medium",
+              "forwardingOptions": ["Thana B", "NGO C"]
+            }
+          },
+          "expected": "SOS alert is forwarded to Thana B and NGO C, and the forwarding history is updated in the alert."
+        },
+        {
+          "name": "Handle SOS Alert with Medical Assistance",
+          "description": "Verify that the manager can assign medical assistance to handle the case.",
+          "input": {
+            "actor": "NGO",
+            "sosAlert": {
+              "id": "SOS333",
+              "type": "Injury",
+              "severity": "High",
+              "availableMedical": true
+            }
+          },
+          "expected": "SOS alert is marked green, and the handling NGO is displayed in the alert details."
+        },
+        {
+          "name": "No Available Force or Out of Scope",
+          "description": "Verify that if force or assistance is unavailable, the alert can only be forwarded to other thanas/NGOs.",
+          "input": {
+            "actor": "Police",
+            "sosAlert": {
+              "id": "SOS444",
+              "type": "Theft",
+              "severity": "Low",
+              "availableForce": false,
+              "forwardingOptions": ["Thana D", "NGO E"]
+            }
+          },
+          "expected": "Forward button becomes active, allowing the case to be forwarded to Thana D or NGO E."
+        },
+        {
+          "name": "Invalid Action for Regular User",
+          "description": "Verify that a regular user cannot access the handle or forward options for SOS alerts.",
+          "input": {
+            "actor": "User",
+            "sosAlert": {
+              "id": "SOS555",
+              "type": "Harassment",
+              "severity": "High"
+            }
+          },
+          "expected": "Error message: 'You do not have permission to handle or forward this SOS alert.'"
+        }
+      ]
+    },
+  
+    {
+      "useCase":{
+          "name": "Taking Actions on Assigned SOS Case",
+          "scenario": "Assigned police, NGO, or medical team takes action on an SOS case by tracking the victim, contacting them or their trusted contacts, and resolving or forwarding the case to the investigation team if needed.",
+          "actors": "Police, NGO, Medical Team",
+          "preconditions": "The SOS case has been assigned by the manager (after clicking the 'Handle' button).",
+          "steps": [
+            "Assigned team (police, NGO, or medical) logs into the Women Security app.",
+            "Team navigates to the 'Assigned Cases' section.",
+            "Team selects the assigned SOS case from the list.",
+            "System provides real-time tracking of the victim's location and shows team location to the victim.",
+            "Team accesses the victim's contact information and trusted contacts set by the user.",
+            "Team contacts the victim or trusted contacts as needed.",
+            "After taking necessary actions, the team clicks the 'Case Solved' button.",
+            "If the team cannot resolve the case (e.g., communication is lost or other issues occur), they click 'Forward to Investigation Team' button.",
+            "Team submits a report with details of the case and any actions taken."
+          ]
+        },
+        
+      "testCases": [
+          {
+          "name": "Track Victim and Contact Trusted Contacts",
+          "description": "Verify that the assigned team can track the victim and contact their trusted contacts.",
+          "input": {
+              "sosAlertId": "SOS123",
+              "teamType": "Police",
+              "contactInfo": {
+              "victimPhone": "+1234567890",
+              "trustedContacts": ["+1987654321", "+1122334455"]
+              }
+          },
+          "expected": "Real-time location of victim is displayed. Team can contact the victim and their trusted contacts."
+          },
+          {
+          "name": "Mark Case as Solved",
+          "description": "Verify that the team can mark the case as solved after taking necessary actions.",
+          "input": {
+              "sosAlertId": "SOS456",
+              "teamType": "Medical",
+              "action": "Case Solved"
+          },
+          "expected": "Case is marked as solved, and the status is updated in the system."
+          },
+          {
+          "name": "Forward Case to Investigation Team",
+          "description": "Verify that the team can forward the case to the investigation team if it cannot be resolved.",
+          "input": {
+              "sosAlertId": "SOS789",
+              "teamType": "NGO",
+              "action": "Forward to Investigation Team"
+          },
+          "expected": "Case is forwarded to the investigation team, and the status is updated accordingly."
+          },
+          {
+          "name": "Submit Report After Forwarding to Investigation Team",
+          "description": "Verify that the team can submit a report after forwarding the case.",
+          "input": {
+              "sosAlertId": "SOS321",
+              "teamType": "Police",
+              "report": "Unable to contact the victim. Case forwarded for investigation."
+          },
+          "expected": "Report is submitted, and the case status is updated to 'Under Investigation'."
+          },
+          {
+          "name": "Access Victim and Trusted Contact Information",
+          "description": "Verify that the assigned team can view the victim's contact information and trusted contacts.",
+          "input": {
+              "sosAlertId": "SOS654",
+              "teamType": "NGO"
+          },
+          "expected": "Contact details of the victim and trusted contacts are displayed."
+          }
+      ]
+        
+        
+        
+      
+    },
+    {
+      "useCase":{
+          "name": "Report an Incident",
+          "scenario": "Users can report an incident by selecting either 'Complain' or 'Share Experience.' Only police or NGOs can submit 'Share a Case.' Users can also upload evidence, which can be public or private, and link the report to a previous SOS activity using a code. Private reports and private evidence are only visible to police, NGOs, and managers.",
+          "actors": "User, Police, NGO",
+          "preconditions": "User is logged in to the Women Security app.",
+          "steps": [
+            "User opens the Women Security app.",
+            "User navigates to the 'File a Report' section.",
+            "User selects the report type: 'Complain' or 'Share Experience.'",
+            "Police or NGO selects the report type: 'Share a Case.'",
+            "User selects the type of incident (e.g., harassment, theft).",
+            "User provides a brief description of the incident.",
+            "User enters the date and time of the incident.",
+            "User selects the location of the incident from the map or enters it manually.",
+            "User uploads evidence (video, audio, or image).",
+            "User chooses whether the evidence is public or private.",
+            "If relevant, the user provides a code to link the report to a previous SOS activity.",
+            "User selects whether the report is public or private.",
+            "User clicks on the 'Submit' button.",
+            "System saves the incident report along with evidence and visibility settings.",
+            "A confirmation message is displayed to the user."
+          ]
+        },
+
+      "testCases": [
+          {
+          "name": "Public Report with Private Evidence",
+          "description": "Verify that a public report can have private evidence only visible to police, NGO, and managers.",
+          "input": {
+              "reportType": "Complain",
+              "incidentType": "Harassment",
+              "description": "Someone followed me home.",
+              "date": "2024-10-28",
+              "time": "20:00",
+              "location": "Central Park",
+              "isPublicReport": true,
+              "evidenceType": "Image",
+              "evidenceVisibility": "Private",
+              "evidenceFile": "image.jpg"
+          },
+          "expected": "Public report is saved with private evidence. Only police, NGO, or managers can view the evidence."
+          },
+          {
+          "name": "Private Report with Private Evidence",
+          "description": "Verify that private reports and private evidence are only accessible to police, NGO, and managers.",
+          "input": {
+              "reportType": "Share a Case",
+              "actor": "NGO",
+              "incidentType": "Theft",
+              "description": "A theft investigation case.",
+              "date": "2024-10-27",
+              "time": "15:30",
+              "location": "5th Avenue",
+              "isPublicReport": false,
+              "evidenceType": "Video",
+              "evidenceVisibility": "Private",
+              "evidenceFile": "theft.mp4"
+          },
+          "expected": "Private report and evidence are accessible only to police, NGO, or managers."
+          },
+          {
+          "name": "Complain Report with SOS Code",
+          "description": "Verify that the user can link a report to a previous SOS activity using a code.",
+          "input": {
+              "reportType": "Complain",
+              "incidentType": "Assault",
+              "description": "A follow-up on a previously reported assault.",
+              "date": "2024-10-26",
+              "time": "15:45",
+              "location": "City Center",
+              "evidenceType": "Audio",
+              "evidenceFile": "audio_evidence.mp3",
+              "sosCode": "SOS12345",
+              "isPublicReport": true
+          },
+          "expected": "Report is saved with the SOS code, and confirmation message is displayed."
+          },
+          {
+          "name": "Regular User Cannot Submit 'Share a Case'",
+          "description": "Verify that a regular user cannot submit a 'Share a Case' report.",
+          "input": {
+              "actor": "User",
+              "reportType": "Share a Case",
+              "incidentType": "Robbery",
+              "description": "A robbery incident.",
+              "date": "2024-10-28",
+              "time": "16:00",
+              "location": "Downtown"
+          },
+          "expected": "Error message: 'Only police or NGO can submit a case.'"
+          },
+          {
+          "name": "Share Experience without Evidence",
+          "description": "Verify that the user can submit a 'Share Experience' report without uploading evidence.",
+          "input": {
+              "reportType": "Share Experience",
+              "incidentType": "Eve teasing",
+              "description": "I want to raise awareness about public harassment.",
+              "date": "2024-10-27",
+              "time": "18:00",
+              "location": "Mall Road"
+          },
+          "expected": "Incident report is saved, and confirmation message is displayed."
+          },
+          {
+          "name": "Police Submits 'Share a Case' with Evidence",
+          "description": "Verify that police can submit a 'Share a Case' report with evidence.",
+          "input": {
+              "actor": "Police",
+              "reportType": "Share a Case",
+              "incidentType": "Burglary",
+              "description": "Investigation into a burglary case.",
+              "date": "2024-10-28",
+              "time": "22:30",
+              "location": "City Outskirts",
+              "evidenceType": "Video",
+              "evidenceVisibility": "Private",
+              "evidenceFile": "burglary.mp4"
+          },
+          "expected": "Report is saved with video evidence and confirmation message is displayed."
+          }
+      ]
+
+      
+  },
+
+  {
+      "useCase": {
+          "name": "Generate Heat Map",
+          "scenario": "The system generates a heat map using incident reports and SOS activities provided by users, police, and NGOs. Each report and SOS activity is plotted with a pinpoint location. Different colors/indicators represent the type and severity of incidents. High-density areas are highlighted as risk zones, and the map displays the current location of the user.",
+          "actors": "System",
+          "preconditions": "Incident reports and SOS activities from users, police, and NGOs are available in the system database.",
+          "steps": [
+            "System retrieves incident reports and SOS activities from the database.",
+            "System plots each incident and SOS activity as a pinpoint on the map based on the provided location.",
+            "Each pinpoint is assigned a color/indicator based on the type and severity of the incident (e.g., red for high severity, yellow for moderate).",
+            "System analyzes the density of incidents within specific areas to identify high-risk zones.",
+            "Heat zones or risky areas are highlighted based on the density (e.g., dark red for high-density areas).",
+            "System marks the user’s current location on the map with a blue dot.",
+            "System allows zooming and interaction with the map to view details of incidents or SOS activities.",
+            "System updates the heat map periodically as new reports or SOS activities are received."
+          ]
+        },
+        "testCases": [
+          {
+            "name": "Display Heat Map with Incidents and SOS Activities",
+            "description": "Verify that the system accurately displays incidents and SOS activities on the heat map with appropriate pinpoints and indicators.",
+            "input": {
+              "reports": [
+                { "reportType": "Complain", "type": "Harassment", "severity": "Moderate", "location": "Central Park" },
+                { "reportType": "Share a Case", "type": "Robbery", "severity": "High", "location": "Downtown" }
+              ],
+              "sosActivities": [
+                { "code": "SOS123", "location": "Mall Road" },
+                { "code": "SOS456", "location": "City Center" }
+              ]
+            },
+            "expected": "Heat map displays pinpoints with appropriate colors/indicators based on type and severity of incidents and SOS activities."
+          },
+          {
+            "name": "Identify and Highlight High-Risk Zones",
+            "description": "Verify that the system identifies high-risk zones based on incident density.",
+            "input": {
+              "reports": [
+                { "type": "Assault", "severity": "High", "location": "Downtown" },
+                { "type": "Theft", "severity": "Moderate", "location": "Downtown" },
+                { "type": "Robbery", "severity": "High", "location": "Downtown" }
+              ]
+            },
+            "expected": "Downtown is highlighted as a high-risk zone in dark red."
+          },
+          {
+            "name": "Display User’s Current Location",
+            "description": "Verify that the system shows the user’s current location on the heat map.",
+            "input": {
+              "userLocation": "Central Park"
+            },
+            "expected": "User’s current location is marked with a blue dot on the map."
+          },
+          {
+            "name": "Update Heat Map with New Data",
+            "description": "Verify that the system updates the heat map dynamically with new reports and SOS activities.",
+            "input": {
+              "newReport": { "reportType": "Complain", "type": "Theft", "location": "Mall Road", "severity": "Moderate" },
+              "newSOSActivity": { "code": "SOS789", "location": "Mall Road" }
+            },
+            "expected": "Heat map refreshes with the new report and SOS activity plotted at Mall Road."
+          },
+          {
+            "name": "View Incident Details on Heat Map",
+            "description": "Verify that users can click on a pinpoint to view details of a specific report or SOS activity.",
+            "input": {
+              "pinpoint": { "type": "Harassment", "location": "Central Park" }
+            },
+            "expected": "Details of the selected harassment report are displayed, including type, severity, time, and location."
+          }
+        ]          
+  },
+  
+  {
+      "useCase": {
+          "name": "Real-Time Location Tracking and Alerts",
+          "scenario": "The system tracks the user's location in real-time. If the user enters a risky zone, an alert is triggered, and messages are sent to trusted contacts. Alerts stop when the user exits the risky zone and marks herself as safe.",
+          "actors": "System, User",
+          "preconditions": "User has provided trusted contacts and has enabled location tracking.",
+          "steps": [
+            "User enables real-time location tracking in the Women Security app.",
+            "System continuously monitors the user's location.",
+            "If the user's location enters a risky zone, the system triggers an alert.",
+            "System sends an alert message to the user's trusted contacts.",
+            "User receives an alert notification on her device.",
+            "User can mark herself as safe if she feels secure.",
+            "When the user marks herself safe, the system stops sending alerts.",
+            "If the user exits the risky zone, the alert is also deactivated automatically."
+          ]
+        },
+
+        "testCases": [
+          {
+          "name": "Alert When Entering Risky Zone",
+          "description": "Verify that the system triggers an alert when the user enters a risky zone.",
+          "input": {
+              "userLocation": "Downtown",
+              "riskyZones": ["Downtown", "Central Park"]
+          },
+          "expected": "An alert is triggered, and the user receives a notification about entering a risky zone."
+          },
+          {
+          "name": "Notify Trusted Contacts",
+          "description": "Verify that the system sends an alert message to the user's trusted contacts when entering a risky zone.",
+          "input": {
+              "trustedContacts": ["contact1@example.com", "contact2@example.com"]
+          },
+          "expected": "Alert messages are sent to all trusted contacts."
+          },
+          {
+          "name": "Stop Alerts When Marking Safe",
+          "description": "Verify that alerts stop when the user marks herself as safe.",
+          "input": {
+              "userStatus": "Safe"
+          },
+          "expected": "The system stops sending alerts, and the user receives a confirmation message."
+          },
+          {
+          "name": "Deactivate Alert When Exiting Risky Zone",
+          "description": "Verify that the alert is deactivated when the user exits a risky zone.",
+          "input": {
+              "userLocation": "Safe Zone"
+          },
+          "expected": "The system stops the alert notifications automatically."
+          },
+          {
+          "name": "Continuous Location Tracking",
+          "description": "Verify that the system continuously tracks the user's location in real-time.",
+          "input": {
+              "userLocationChanges": ["Safe Zone", "Downtown", "Safe Zone"]
+          },
+          "expected": "The system updates the user’s location and triggers alerts appropriately based on risky zone entries."
+          }
+      ]
+        
+  },
+
+  {
+      "useCase": {
+          "name": "Search on Map",
+          "scenario": "The system allows users to search for specific locations, incidents, or persons and displays relevant reports as pinpoints on the map. A list of reports with brief descriptions is shown for the selected location or search criteria.",
+          "actors": "System, User",
+          "preconditions": "Incident reports and location data are available in the system.",
+          "steps": [
+            "User opens the Women Security app.",
+            "User navigates to the 'Search on Map' section.",
+            "User enters a search query for location, incident type, or person in the search field.",
+            "System retrieves incidents matching the search query.",
+            "System displays the location on the map with matching incidents plotted as pinpoints.",
+            "If any hot zones (high-risk areas) are relevant, they are highlighted.",
+            "The system provides a list of incidents or reports with a brief description for the search results.",
+            "User can refine the search by type, date range, or person name if needed."
+          ]
+        },
+
+        "testCases": [
+          {
+          "name": "Search by Location",
+          "description": "Verify that the system shows pinpoints and a list of reports with short descriptions for the specified location.",
+          "input": {
+              "searchLocation": "Central Park"
+          },
+          "expected": "Central Park is displayed on the map with incidents plotted as pinpoints. A list of matching reports with brief descriptions is shown."
+          },
+          {
+          "name": "Search by Incident Type",
+          "description": "Verify that the system shows incidents of a specific type with short descriptions.",
+          "input": {
+              "incidentType": "Harassment"
+          },
+          "expected": "All harassment incidents are plotted on the map, with a list of reports showing brief descriptions."
+          },
+          {
+          "name": "Search by Date Range",
+          "description": "Verify that incidents within the specified date range are shown with short descriptions.",
+          "input": {
+              "dateRange": {
+              "startDate": "2024-10-01",
+              "endDate": "2024-10-20"
+              }
+          },
+          "expected": "Incidents from October 1 to October 20, 2024, are plotted, with a list showing brief descriptions of each report."
+          },
+          {
+          "name": "Search by Person Name",
+          "description": "Verify that the system shows reports involving a specific person with short descriptions.",
+          "input": {
+              "personName": "John Doe"
+          },
+          "expected": "Reports mentioning John Doe are listed with short descriptions, and relevant pinpoints are plotted on the map."
+          },
+          {
+          "name": "Refine Search by Multiple Criteria",
+          "description": "Verify that the user can refine the search using multiple criteria (type, date range, location).",
+          "input": {
+              "incidentType": "Robbery",
+              "dateRange": {
+              "startDate": "2024-09-01",
+              "endDate": "2024-09-30"
+              },
+              "searchLocation": "Downtown"
+          },
+          "expected": "Robbery incidents in Downtown from September 2024 are plotted, with a list of short descriptions provided."
+          },
+          {
+          "name": "Handle No Results Found",
+          "description": "Verify that the system displays an appropriate message if no results match the search query.",
+          "input": {
+              "incidentType": "Kidnapping",
+              "searchLocation": "Safe Zone"
+          },
+          "expected": "'No incidents found for the given criteria' message is displayed."
+          }
+      ]
+        
+  
+  },
+
+  {
+      "useCase": {
+        "name": "View Report",
+        "scenario": "Users can view a report by selecting it from the report list or clicking a pinpoint on the map. Brief details (type, date, and time) are shown in the list or on hover. Police or NGO users can view full reports with all evidence for investigations, area safety reviews, or taking necessary actions. Regular users can view only public details of public reports.",
+        "actors": "System, User, Police, NGO",
+        "preconditions": "User is logged in, and the system has access to reports and evidence.",
+        "steps": [
+          "User navigates to the 'Reports' section or searches a location on the map.",
+          "User selects a report from the list or clicks on a pinpoint on the map.",
+          "The system shows brief details (type, date, and time) for the selected report in the list or on hover.",
+          "User clicks on the selected report to view more details.",
+          {
+            "branch": "If the user is police or NGO:",
+            "steps": [
+              "System verifies user role as police or NGO.",
+              "The system displays the full report with all evidence (video, audio, and images) to support investigations or area safety review.",
+              "User can use the report information to take necessary actions."
+            ]
+          },
+          {
+            "branch": "If the user is a regular user:",
+            "steps": [
+              "The system checks if the report is public.",
+              {
+                "branch": "If the report is public:",
+                "steps": [
+                  "The system displays public details of the report."
+                ]
+              },
+              {
+                "branch": "If the report is not public:",
+                "steps": [
+                  "The system shows a message: 'This report is restricted.'"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+      ,
+      "testCases": [
+        {
+          "name": "View Report as Police for Investigation",
+          "description": "Verify that police users can view the full report with all evidence for investigation purposes.",
+          "input": {
+            "userRole": "Police",
+            "reportID": "12345"
+          },
+          "expected": "The full report, including all evidence, is displayed."
+        },
+        {
+          "name": "View Report as NGO for Area Safety Review",
+          "description": "Verify that NGO users can view the full report with all evidence for reviewing area safety.",
+          "input": {
+            "userRole": "NGO",
+            "reportID": "54321"
+          },
+          "expected": "The full report, including all evidence, is displayed."
+        },
+        {
+          "name": "View Report as Regular User - Public Report",
+          "description": "Verify that regular users can view public details of a public report.",
+          "input": {
+            "userRole": "Regular",
+            "reportID": "67890",
+            "isPublic": true
+          },
+          "expected": "Public details of the report are displayed."
+        },
+        {
+          "name": "View Report as Regular User - Private Report",
+          "description": "Verify that regular users cannot view a private report.",
+          "input": {
+            "userRole": "Regular",
+            "reportID": "54321",
+            "isPublic": false
+          },
+          "expected": "The system shows 'This report is restricted.'"
+        },
+        {
+          "name": "Hover on Pinpoint to View Brief Details",
+          "description": "Verify that brief details (type, date, and time) are shown on hovering over a pinpoint.",
+          "input": {
+            "pinpoint": { "type": "Theft", "date": "2024-10-28", "time": "14:00" }
+          },
+          "expected": "Brief details of the report are displayed on hover."
+        },
+        {
+          "name": "Select Report from List to View Brief",
+          "description": "Verify that brief details are displayed when a report is selected from the list.",
+          "input": {
+            "reportID": "11223",
+            "reportSummary": { "type": "Harassment", "date": "2024-10-25", "time": "18:30" }
+          },
+          "expected": "Brief details of the report (Harassment, 2024-10-25, 18:30) are shown."
+        },
+        {
+          "name": "Restricted Access for Private Reports",
+          "description": "Verify that police or NGO users can access private reports, while regular users cannot.",
+          "input": {
+            "userRole": "Police",
+            "reportID": "99999",
+            "isPublic": false
+          },
+          "expected": "Full report with all evidence is displayed."
+        }
+      ]
+        
+        
+  },
+  
+  {
+    "useCase": {
+        "name": "Manage Trusted Contacts and Safe Locations",
+        "scenario": "Users can add, update, or delete trusted contacts with detailed information, including location and optional fields, and manage safe locations that appear on the main map.",
+        "actors": "User",
+        "preconditions": "User is logged in to the Women Security app.",
+        "steps": [
+          "User opens the Women Security app.",
+          "User navigates to the 'Trusted Contacts and Safe Locations' section.",
+          "User clicks on 'Add Trusted Contact.'",
+          "User enters the contact’s name, phone number, and email.",
+          "User selects the relation type (e.g., friend, family, colleague).",
+          "User selects the gender (Male/Female/Other).",
+          "User enters the profession and date of birth.",
+          "User optionally adds National ID (NID) information.",
+          "User selects the home and workplace location of the contact from the map.",
+          "User saves the trusted contact.",
+          "User selects a trusted contact to update or delete.",
+          "System updates or removes the selected contact based on user input.",
+          "User clicks on 'Add Safe Location.'",
+          "User searches for a location (e.g., home, workplace) using the map search bar.",
+          "User selects the location from the search results and assigns a label (e.g., 'Home,' 'Office').",
+          "User saves the safe location.",
+          "User selects a saved safe location to update or delete.",
+          "System updates or removes the selected location based on user input.",
+          "System displays safe locations on the main map."
+        ]
+      },
+
+      "testCases": [
+        {
+        "name": "Add Trusted Contact with Optional Fields",
+        "description": "Verify that the user can add a trusted contact with all optional fields and locations.",
+        "input": {
+            "contactName": "John Doe",
+            "phone": "+1234567890",
+            "email": "john.doe@example.com",
+            "relationType": "Friend",
+            "gender": "Male",
+            "profession": "Engineer",
+            "dob": "1990-05-10",
+            "nid": "1234567890123",
+            "homeLocation": "456 Oak Street",
+            "workLocation": "789 Elm Avenue"
+        },
+        "expected": "Trusted contact is added with all optional fields and locations. Confirmation message is displayed."
+        },
+        {
+        "name": "Update Trusted Contact",
+        "description": "Verify that the user can update a trusted contact’s information.",
+        "input": {
+            "contactName": "John Doe",
+            "profession": "Manager"
+        },
+        "expected": "Trusted contact's profession is updated, and a confirmation message is displayed."
+        },
+        {
+        "name": "Delete Trusted Contact",
+        "description": "Verify that the user can delete a trusted contact.",
+        "input": {
+            "contact": "John Doe"
+        },
+        "expected": "Trusted contact is deleted, and a confirmation message is displayed."
+        },
+        {
+        "name": "Add Safe Location",
+        "description": "Verify that the user can add a safe location by selecting it from the map.",
+        "input": {
+            "locationSearch": "123 Main Street",
+            "label": "Home"
+        },
+        "expected": "Safe location is saved and displayed on the main map."
+        },
+        {
+        "name": "Update Safe Location",
+        "description": "Verify that the user can update the label of a saved safe location.",
+        "input": {
+            "location": "123 Main Street",
+            "newLabel": "New Home"
+        },
+        "expected": "Safe location label is updated, and the change is reflected on the main map."
+        },
+        {
+        "name": "Delete Safe Location",
+        "description": "Verify that the user can delete a saved safe location.",
+        "input": {
+            "location": "Office"
+        },
+        "expected": "Safe location is deleted, and the change is reflected on the main map."
+        },
+        {
+        "name": "View Safe Locations on Main Map",
+        "description": "Verify that all saved safe locations appear on the main map.",
+        "input": {},
+        "expected": "All saved safe locations are displayed on the main map with their labels."
+        },
+        {
+        "name": "Add Trusted Contact without Optional Fields",
+        "description": "Verify that a user can add a trusted contact with only required fields.",
+        "input": {
+            "contactName": "Alice",
+            "phone": "+9876543210",
+            "relationType": "Family"
+        },
+        "expected": "Trusted contact is added with only required fields. Confirmation message is displayed."
+        }
+    ]
+      
+  },
+  {
+    "useCase": {
+        "name": "Manage App Settings",
+        "scenario": "Users can customize settings such as updating personal information, configuring alerts, setting privacy preferences, logging out, and deleting their account.",
+        "actors": "User",
+        "preconditions": "User is logged in to the Women Security app.",
+        "steps": [
+          "User opens the Women Security app.",
+          "User navigates to the 'Settings' section.",
+          "User updates personal information (name, phone number, email).",
+          "User configures SOS alert preferences (sound, vibration, notifications).",
+          "User updates location sharing preferences (on/off).",
+          "User adjusts privacy settings (e.g., report visibility).",
+          "User clicks on the 'Logout' button to log out of the app.",
+          "User clicks on the 'Delete Account' button to initiate account deletion.",
+          "If 'Delete Account' is selected, a confirmation message is shown to confirm deletion.",
+          "User clicks 'Save' to apply all changes in the settings.",
+          "A confirmation message is displayed, and the new settings are applied."
+        ]
+      },
+      "testCases": [
+        {
+        "name": "Update Personal Information",
+        "description": "Verify that the user can successfully update personal information such as name, phone number, or email.",
+        "input": {
+            "name": "Jane Doe",
+            "phone": "+1234567890",
+            "email": "jane.doe@example.com"
+        },
+        "expected": "Personal information is updated, and a confirmation message is displayed."
+        },
+        {
+        "name": "Configure SOS Alert Preferences",
+        "description": "Verify that the user can adjust SOS alert preferences such as sound and vibration.",
+        "input": {
+            "alertSound": "On",
+            "vibration": "Off",
+            "notifications": "Enabled"
+        },
+        "expected": "SOS alert preferences are saved, and a confirmation message is displayed."
+        },
+        {
+        "name": "Update Location Sharing Preference",
+        "description": "Verify that the user can toggle location sharing on or off.",
+        "input": {
+            "locationSharing": "Off"
+        },
+        "expected": "Location sharing preference is updated, and a confirmation message is displayed."
+        },
+        {
+        "name": "Set Report Privacy Preference",
+        "description": "Verify that the user can adjust report privacy settings (e.g., public/private).",
+        "input": {
+            "reportPrivacy": "Private"
+        },
+        "expected": "Report privacy settings are updated, and a confirmation message is displayed."
+        },
+        {
+        "name": "Logout from App",
+        "description": "Verify that the user can successfully log out from the app.",
+        "input": {
+            "action": "Logout"
+        },
+        "expected": "User is logged out and redirected to the login screen."
+        },
+        {
+        "name": "Initiate Account Deletion",
+        "description": "Verify that the user can initiate the account deletion process.",
+        "input": {
+            "action": "Delete Account"
+        },
+        "expected": "A confirmation message is shown to confirm account deletion."
+        },
+        {
+        "name": "Confirm Account Deletion",
+        "description": "Verify that the account is deleted when the user confirms.",
+        "input": {
+            "confirmation": "Yes"
+        },
+        "expected": "User account is deleted, and the app redirects to the signup screen."
+        },
+        {
+        "name": "Invalid Phone Number Input",
+        "description": "Verify that the system displays an error message if an invalid phone number is entered.",
+        "input": {
+            "phone": "1234"
+        },
+        "expected": "Error message: 'Invalid phone number. Please enter a valid number.'"
+        }
+    ]          
+  }
+]
