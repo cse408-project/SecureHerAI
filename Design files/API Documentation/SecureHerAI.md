@@ -26,12 +26,10 @@
   - [SOS Alert System Module](#sos-alert-system-module)
     - [Trigger SOS Alert](#trigger-sos-alert)
     - [Voice Command Detection](#voice-command-detection)
-    - [Emotion Analysis](#emotion-analysis)
     - [Cancel SOS Alert](#cancel-sos-alert)
     - [Get Active Alerts](#get-active-alerts)
   - [Fake Alert Detection Module](#fake-alert-detection-module)
     - [Verify Alert](#verify-alert)
-    - [Report Misuse](#report-misuse)
     - [Get Alert Status](#get-alert-status)
   - [Map \& Route Tracking Module](#map--route-tracking-module)
     - [Start Journey Tracking](#start-journey-tracking)
@@ -556,6 +554,16 @@
 >   "error": "Invalid or expired token"
 > }
 > ```
+>
+> #### Response Code: 403 (`Forbidden`)
+>
+> ```json
+> {
+>   "success": false,
+>   "reportId": "misuse-789",
+>   "error": "Request detected as potential misuse",
+> }
+> ```
 
 ---
 
@@ -600,9 +608,13 @@
 > ```json
 > {
 >   "success": true,
->   "detectedKeywords": ["help", "emergency", "danger"],
->   "confidence": 0.85,
 >   "transcription": "I need help, there's an emergency",
+>   "detectedKeywords": ["help", "emergency", "danger"],
+>   "primaryEmotion": "fear",
+>   "confidence": 0.85,
+>   "intensity": 0.85,
+>   "secondaryEmotions": ["anxiety", "distress"],
+>   "sentimentScore": -0.8,
 >   "action": "trigger_sos",
 >   "analysisDetails": {
 >     "language": "en-US",
@@ -628,75 +640,6 @@
 > {
 >   "success": false,
 >   "error": "Audio quality too low for analysis"
-> }
-> ```
-
----
-
-### Emotion Analysis
-
-| API Endpoint                 | HTTP Method |             Description              |
-| ---------------------------- | :---------: | :----------------------------------: |
-| [api/sos/emotion-analysis]() |   `POST`    | Analyzes audio for distress emotions |
-
-> ### Request
->
-> #### Headers
->
-> ```
-> Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-> ```
->
-> #### Request Body
->
-> ```json
-> {
->   "audioData": "base64_encoded_audio",
->   "textData": "I feel scared and unsafe", // optional
->   "context": {
->     "location": {
->       "latitude": 23.7915,
->       "longitude": 90.4023
->     },
->     "timestamp": "2025-05-13T14:30:45Z"
->   }
-> }
-> ```
->
->  </br>
-
-> ### Response - Success
->
-> #### Response Code: 200 (`OK`)
->
-> #### Response Body
->
-> ```json
-> {
->   "success": true,
->   "emotionAnalysis": {
->     "primaryEmotion": "fear",
->     "confidence": 0.92,
->     "intensity": 0.85,
->     "secondaryEmotions": ["anxiety", "distress"],
->     "sentimentScore": -0.8
->   },
->   "recommendedAction": "trigger_sos",
->   "analysisDetails": {
->     "processingTime": "0.3s",
->     "modelVersion": "1.2"
->   }
-> }
-> ```
->
-> ### Response - Error Cases
->
-> #### Response Code: 400 (`Bad Request`)
->
-> ```json
-> {
->   "success": false,
->   "error": "Missing required audio or text data"
 > }
 > ```
 
@@ -907,64 +850,6 @@
 >   "success": false,
 >   "error": "alert_not_found",
 >   "message": "The specified alert ID does not exist or has expired"
-> }
-> ```
-
----
-
-### Report Misuse
-
-| API Endpoint                 | HTTP Method |            Description             |
-| ---------------------------- | :---------: | :--------------------------------: |
-| [api/alerts/report-misuse]() |   `POST`    | Reports misuse of the alert system |
-
-> ### Request
->
-> #### Headers
->
-> ```
-> Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-> ```
->
-> #### Request Body
->
-> ```json
-> {
->   "alertId": "sos-123456",
->   "reportReason": "fake_emergency",
->   "description": "User repeatedly activating false alerts",
->   "evidence": "base64_encoded_evidence" // optional
-> }
-> ```
->
->  </br>
-
-> ### Response - Success
->
-> #### Response Code: 201 (`Created`)
->
-> #### Response Body
->
-> ```json
-> {
->   "success": true,
->   "reportId": "misuse-789",
->   "message": "Misuse report submitted for review",
->   "estimatedReviewTime": "24 hours"
-> }
-> ```
-
-> ### Response - Error
-> 
-> #### Response Code: 401 (`Unauthorized`)
-> 
-> #### Response Body
-> 
-> ```json
-> {
->   "success": false,
->   "error": "unauthorized",
->   "message": "Authentication required or token has expired"
 > }
 > ```
 
@@ -2322,7 +2207,6 @@
 >
 > ```
 > Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-> X-Responder-ID: resp123
 > ```
 >
 > #### Request Body
@@ -2383,7 +2267,6 @@
 >
 > ```
 > Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-> X-Responder-ID: resp123
 > ```
 >
 > #### Query Parameters
@@ -2443,7 +2326,6 @@
 >
 > ```
 > Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-> X-Responder-ID: resp123
 > ```
 >
 > #### Request Body
@@ -2505,7 +2387,6 @@
 >
 > ```
 > Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-> X-Responder-ID: resp123
 > ```
 >
 > #### Query Parameters
@@ -2577,7 +2458,6 @@
 >
 > ```
 > Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-> X-Responder-ID: resp123
 > ```
 >
 > #### Request Body
@@ -2642,7 +2522,6 @@
 >
 > ```
 > Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-> X-Responder-ID: resp123
 > ```
 >
 > #### Query Parameters
@@ -2718,7 +2597,6 @@
 >
 > ```
 > Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-> X-Responder-ID: resp123
 > ```
 >
 > #### Request Body
@@ -2782,7 +2660,6 @@
 >
 > ```
 > Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-> X-Responder-ID: resp123
 > ```
 >
 > #### Request Body
