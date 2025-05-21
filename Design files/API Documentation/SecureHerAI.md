@@ -555,7 +555,7 @@
 > }
 > ```
 >
-> #### Response Code: 403 (`Forbidden`)
+> #### Response Code: 429	(`Too Many Requests`)
 >
 > ```json
 > {
