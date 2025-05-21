@@ -188,50 +188,50 @@ CREATE TABLE voice_emotion_analysis (
     CHECK (sentiment_score IS NULL OR (sentiment_score >= -1 AND sentiment_score <= 1))
 );
 
--- HEAT MAP & SAFETY DATA
+-- -- HEAT MAP & SAFETY DATA
 
--- Safety reports from users
-CREATE TABLE area_safety_reports (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    latitude NUMERIC(9,6) NOT NULL,
-    longitude NUMERIC(9,6) NOT NULL,
-    safety_rating SMALLINT NOT NULL,
-    comment TEXT,
-    time_of_day TEXT,
-    categories JSONB NOT NULL DEFAULT '[]'::JSONB,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CHECK (safety_rating >= 1 AND safety_rating <= 5)
-);
+-- -- Safety reports from users
+-- CREATE TABLE area_safety_reports (
+--     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+--     latitude NUMERIC(9,6) NOT NULL,
+--     longitude NUMERIC(9,6) NOT NULL,
+--     safety_rating SMALLINT NOT NULL,
+--     comment TEXT,
+--     time_of_day TEXT,
+--     categories JSONB NOT NULL DEFAULT '[]'::JSONB,
+--     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+--     CHECK (safety_rating >= 1 AND safety_rating <= 5)
+-- );
 
--- Area risk data (aggregated)
-CREATE TABLE area_risk_data (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    latitude NUMERIC(9,6) NOT NULL,
-    longitude NUMERIC(9,6) NOT NULL,
-    risk_level TEXT NOT NULL, -- low, medium, high, extreme
-    incident_count INTEGER DEFAULT 0,
-    last_incident_time TIMESTAMPTZ,
-    safety_score NUMERIC(3,2),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CHECK (risk_level IN ('low', 'medium', 'high', 'extreme'))
-);
+-- -- Area risk data (aggregated)
+-- CREATE TABLE area_risk_data (
+--     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--     latitude NUMERIC(9,6) NOT NULL,
+--     longitude NUMERIC(9,6) NOT NULL,
+--     risk_level TEXT NOT NULL, -- low, medium, high, extreme
+--     incident_count INTEGER DEFAULT 0,
+--     last_incident_time TIMESTAMPTZ,
+--     safety_score NUMERIC(3,2),
+--     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+--     CHECK (risk_level IN ('low', 'medium', 'high', 'extreme'))
+-- );
 
--- Safe routes
-CREATE TABLE safe_routes (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    start_latitude NUMERIC(9,6) NOT NULL,
-    start_longitude NUMERIC(9,6) NOT NULL,
-    end_latitude NUMERIC(9,6) NOT NULL,
-    end_longitude NUMERIC(9,6) NOT NULL,
-    polyline TEXT NOT NULL,
-    safety_rating NUMERIC(3,2) NOT NULL,
-    distance TEXT NOT NULL,
-    duration TEXT NOT NULL,
-    travel_mode TEXT NOT NULL, -- walking, driving, cycling
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CHECK (travel_mode IN ('walking', 'driving', 'cycling'))
-);
+-- -- Safe routes
+-- CREATE TABLE safe_routes (
+--     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--     start_latitude NUMERIC(9,6) NOT NULL,
+--     start_longitude NUMERIC(9,6) NOT NULL,
+--     end_latitude NUMERIC(9,6) NOT NULL,
+--     end_longitude NUMERIC(9,6) NOT NULL,
+--     polyline TEXT NOT NULL,
+--     safety_rating NUMERIC(3,2) NOT NULL,
+--     distance TEXT NOT NULL,
+--     duration TEXT NOT NULL,
+--     travel_mode TEXT NOT NULL, -- walking, driving, cycling
+--     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+--     CHECK (travel_mode IN ('walking', 'driving', 'cycling'))
+-- );
 
 -- INCIDENT REPORTS
 
@@ -271,16 +271,16 @@ CREATE TABLE report_evidence (
     CHECK (file_type IN ('image', 'video', 'audio', 'document'))
 );
 
--- Report comments
-CREATE TABLE report_comments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    report_id UUID NOT NULL REFERENCES incident_reports(id) ON DELETE CASCADE,
-    author_id UUID REFERENCES users(id),
-    author_name TEXT NOT NULL,
-    text TEXT NOT NULL,
-    is_official BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+-- -- Report comments
+-- CREATE TABLE report_comments (
+--     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--     report_id UUID NOT NULL REFERENCES incident_reports(id) ON DELETE CASCADE,
+--     author_id UUID REFERENCES users(id),
+--     author_name TEXT NOT NULL,
+--     text TEXT NOT NULL,
+--     is_official BOOLEAN NOT NULL DEFAULT FALSE,
+--     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+-- );
 
 -- AI CHAT HELPER
 
@@ -321,7 +321,7 @@ CREATE INDEX idx_users_phone ON users(phone);
 -- Location-based queries
 CREATE INDEX idx_alerts_location ON alerts(latitude, longitude);
 CREATE INDEX idx_journeys_locations ON journeys(start_latitude, start_longitude, dest_latitude, dest_longitude);
-CREATE INDEX idx_area_safety_reports_location ON area_safety_reports(latitude, longitude);
+-- CREATE INDEX idx_area_safety_reports_location ON area_safety_reports(latitude, longitude);
 
 -- Status queries
 CREATE INDEX idx_alerts_status ON alerts(status);
