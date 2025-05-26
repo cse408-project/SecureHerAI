@@ -7,6 +7,11 @@ services:
       context: ./secureherai-api
       dockerfile: Dockerfile
       target: development
+    volumes:
+      - ./secureherai-api:/app
+      - maven_cache:/root/.m2
+    working_dir: /app
+    command: mvn spring-boot:run -Dspring-boot.run.profiles=dev
     ports:
       - "8080:8080"
     environment:
