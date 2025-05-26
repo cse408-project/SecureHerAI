@@ -12,7 +12,7 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     full_name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
-    phone TEXT NOT NULL UNIQUE,
+    phone TEXT UNIQUE,
     password_hash TEXT NOT NULL,
     date_of_birth DATE,
     profile_picture TEXT,
@@ -22,20 +22,18 @@ CREATE TABLE users (
     sms_alerts BOOLEAN NOT NULL DEFAULT TRUE,
     push_notifications BOOLEAN NOT NULL DEFAULT TRUE,
     contribution_points INTEGER NOT NULL DEFAULT 0,
+    -- Password reset fields
+    reset_token TEXT,
+    reset_token_expiry TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
+    -- UserDetails fields
+    is_account_non_expired BOOLEAN NOT NULL DEFAULT TRUE,
+    is_account_non_locked BOOLEAN NOT NULL DEFAULT TRUE,
+    is_credentials_non_expired BOOLEAN NOT NULL DEFAULT TRUE,
+    is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
     CHECK (role IN ('USER', 'RESPONDER', 'ADMIN')),
     CHECK (contribution_points >= 0)
-);
-
--- Password reset tokens
-CREATE TABLE password_reset_tokens (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token TEXT NOT NULL,
-    expires_at TIMESTAMPTZ NOT NULL,
-    is_used BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Responder information (extends users with role='RESPONDER')

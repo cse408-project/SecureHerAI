@@ -14,12 +14,26 @@ services:
     command: mvn spring-boot:run -Dspring-boot.run.profiles=dev
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     environment:
+      # Database Configuration
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/secureherai
       SPRING_DATASOURCE_USERNAME: user
       SPRING_DATASOURCE_PASSWORD: password
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
-      SPRING_PROFILES_ACTIVE: dev
+      SPRING_PROFILES_ACTIVE:
+        dev
+
+        # JWT Configuration
+      JWT_SECRET: HRVu1xFYfraq/lculzNaXzMHVady85sMReuLwlSzEjcKznYOEPdbbK3F+9hq+4muGxhYfft5nNQYxbDZIGzzAA==
+      JWT_EXPIRATION: 86400000
+
+      # Email Configuration (Use environment variables for production)
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
     depends_on:
       db:
         condition: service_healthy
