@@ -11,7 +11,7 @@
 ## Index
 
 - [SecureHerAI API Documentation](#secureherai-api-documentation)
-    - [ Women's Safety Application ](#-womens-safety-application-)
+  - [ Women's Safety Application ](#-womens-safety-application-)
   - [Index](#index)
   - [API Status Codes](#api-status-codes)
   - [Core Features](#core-features)
@@ -555,13 +555,13 @@
 > }
 > ```
 >
-> #### Response Code: 429	(`Too Many Requests`)
+> #### Response Code: 429 (`Too Many Requests`)
 >
 > ```json
 > {
 >   "success": false,
 >   "reportId": "misuse-789",
->   "error": "Request detected as potential misuse",
+>   "error": "Request detected as potential misuse"
 > }
 > ```
 
@@ -820,18 +820,18 @@
 >   "confidence": 0.95,
 >   "analysisDetails": {
 >     "voiceMatch": "confirmed",
->     "locationConsistency": "confirmed", 
+>     "locationConsistency": "confirmed",
 >     "patternAnalysis": "genuine_emergency"
 >   }
 > }
 > ```
 
 > ### Response - Error
-> 
+>
 > #### Response Code: 400 (`Bad Request`)
-> 
+>
 > #### Response Body
-> 
+>
 > ```json
 > {
 >   "success": false,
@@ -840,11 +840,11 @@
 >   "supportedMethods": ["voice_recognition", "location_history", "ai_analysis"]
 > }
 > ```
-> 
+>
 > #### Response Code: 404 (`Not Found`)
-> 
+>
 > #### Response Body
-> 
+>
 > ```json
 > {
 >   "success": false,
@@ -893,11 +893,11 @@
 > ```
 
 > ### Response - Error
-> 
+>
 > #### Response Code: 403 (`Forbidden`)
-> 
+>
 > #### Response Body
-> 
+>
 > ```json
 > {
 >   "success": false,

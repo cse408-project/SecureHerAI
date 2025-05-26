@@ -1,0 +1,66 @@
+package com.secureherai.secureherai_api.controller;
+
+import com.secureherai.secureherai_api.dto.auth.AuthRequest;
+import com.secureherai.secureherai_api.dto.auth.AuthResponse;
+import com.secureherai.secureherai_api.service.AuthService;
+import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+
+    @Autowired
+    private AuthService authService;
+
+    @PostMapping("/login")
+    public ResponseEntity<Object> login(@Valid @RequestBody AuthRequest.Login request) {
+        Object response = authService.login(request);
+        
+        if (response instanceof AuthResponse.Error) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+        }
+        
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<Object> register(@Valid @RequestBody AuthRequest.Register request) {
+        Object response = authService.register(request);
+        
+        if (response instanceof AuthResponse.Error) {
+            AuthResponse.Error error = (AuthResponse.Error) response;
+            if (error.getError().contains("already")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+            }
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Object> forgotPassword(@Valid @RequestBody AuthRequest.ForgotPassword request) {
+        Object response = authService.forgotPassword(request);
+        
+        if (response instanceof AuthResponse.Error) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+        
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Object> resetPassword(@Valid @RequestBody AuthRequest.ResetPassword request) {
+        Object response = authService.resetPassword(request);
+        
+        if (response instanceof AuthResponse.Error) {
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        return ResponseEntity.ok(response);
+    }
+}
