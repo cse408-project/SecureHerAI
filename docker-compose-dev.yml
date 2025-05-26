@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  api:
+    container_name: secureherai_api
+    build:
+      context: ./secureherai-api
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/secureherai
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_PROFILES_ACTIVE: dev
+    depends_on:
+      db:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
+    networks:
+      - app-network
+
+  db:
+    container_name: postgres_secureherai
+    image: postgres:15
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: secureherai
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d secureherai"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+  maven_cache:
+
+networks:
+  app-network:
+    driver: bridge
+    name: app-network
