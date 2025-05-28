@@ -1,0 +1,68 @@
+### SecureHerAI Authentication API Tests
+
+@baseUrl = http://localhost:8080/api
+
+### 1. Health Check
+GET {{baseUrl}}/health
+
+### 2. Register User
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "AN Swapnil",
+  "email": "2005009@ugrad.cse.buet.ac.bd",
+  "password": "password123",
+  "phoneNumber": "+8801712345678",
+  "dateOfBirth": "1990-01-01"
+}
+
+### 4. Login User
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "2005009@ugrad.cse.buet.ac.bd",
+  "password": "newpassword123"
+}
+
+### 5. Login User - Wrong Password (should fail)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "2005009@ugrad.cse.buet.ac.bd",
+  "password": "wrongpassword"
+}
+
+### 6. Get User Profile (Fresh token - valid until May 27, 2025)
+GET {{baseUrl}}/user/profile
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI0MzU0YWI1My03Zjg3LTQ1NTctYjhjNy02NDBlYjFhZDJkMzUiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc0ODI4MDQxMCwiZXhwIjoxNzQ4MzY2ODEwfQ.CS7Px6MPxPFH5EPgNuYD1RdjOJZqXTOZsKtt1yghW20
+
+### 7. Update User Profile (Fresh token - valid until May 27, 2025)
+PUT {{baseUrl}}/user/profile
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI0MzU0YWI1My03Zjg3LTQ1NTctYjhjNy02NDBlYjFhZDJkMzUiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc0ODI4MDQxMCwiZXhwIjoxNzQ4MzY2ODEwfQ.CS7Px6MPxPFH5EPgNuYD1RdjOJZqXTOZsKtt1yghW20
+Content-Type: application/json
+
+{
+  "fullName": "Jane Smith",
+  "phoneNumber": "+8801712345679",
+  "profilePicture": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+}
+
+### 8. Forgot Password
+POST {{baseUrl}}/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "2005009@ugrad.cse.buet.ac.bd"
+}
+
+### 9. Reset Password (currently returns error as token validation not implemented)
+POST {{baseUrl}}/auth/reset-password
+Content-Type: application/json
+
+{
+  "token": "a0a2d8c3-454e-4720-b2f1-b51b0a78bdf3",
+  "newPassword": "newpassword123"
+}
