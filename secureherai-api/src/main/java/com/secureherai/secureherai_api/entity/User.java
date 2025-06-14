@@ -85,6 +85,9 @@ public class User implements UserDetails {
     @Column(name = "is_enabled", nullable = false)
     private Boolean isEnabled = true;
     
+    @Column(name = "is_verified", nullable = false)
+    private Boolean isVerified = false;
+    
     public enum Role {
         USER, RESPONDER, ADMIN
     }
@@ -202,6 +205,10 @@ public class User implements UserDetails {
     
     public Boolean getIsEnabled() { return isEnabled; }
     public void setIsEnabled(Boolean isEnabled) { this.isEnabled = isEnabled; }
+    
+    // Verification status getters and setters
+    public Boolean getIsVerified() { return isVerified; }
+    public void setIsVerified(Boolean isVerified) { this.isVerified = isVerified; }
     
     // Reset token getters and setters
     public String getResetToken() { return resetToken; }

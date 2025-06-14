@@ -18,7 +18,11 @@ Content-Type: application/json
   "dateOfBirth": "1990-01-01"
 }
 
+### 2.1 Note: After registration, accounts need to be verified by logging in at least once.
+###     Unverified accounts will be automatically deleted after 7 days.
+
 ### 4. Login User (Step 1: Request Login Code)
+### This first step of the login process doesn't verify the account yet
 POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
@@ -28,6 +32,7 @@ Content-Type: application/json
 }
 
 ### 4.1. Verify Login Code (Step 2: Enter the code received via email)
+### This second step of the login process verifies the account upon successful completion
 POST {{baseUrl}}/auth/verify-login-code
 Content-Type: application/json
 

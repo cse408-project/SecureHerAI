@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID> {
@@ -15,4 +16,5 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByPhone(String phone);
     Optional<User> findByResetToken(String resetToken);
     Optional<User> findByLoginCode(String loginCode);
+    void deleteByIsVerifiedFalseAndCreatedAtBefore(LocalDateTime date);
 }

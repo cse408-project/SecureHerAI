@@ -62,6 +62,7 @@ public class EmailService {
             emailBody.append("<h2 style='color: #4a4a4a;'>Welcome to SecureHerAI!</h2>");
             emailBody.append("<p>Dear ").append(fullName).append(",</p>");
             emailBody.append("<p>Welcome to <b>SecureHerAI</b>! Your account has been successfully created.</p>");
+            emailBody.append("<p><b>Important:</b> Please log in to verify your account. Accounts that remain unverified for more than 7 days will be automatically deleted.</p>");
             emailBody.append("<p>SecureHerAI is designed to keep you safe with advanced safety features including:</p>");
             emailBody.append("<ul>");
             emailBody.append("<li>Real-time location sharing with trusted contacts</li>");

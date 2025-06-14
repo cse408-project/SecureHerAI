@@ -35,6 +35,7 @@ CREATE TABLE users (
     is_account_non_locked BOOLEAN NOT NULL DEFAULT TRUE,
     is_credentials_non_expired BOOLEAN NOT NULL DEFAULT TRUE,
     is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    is_verified BOOLEAN NOT NULL DEFAULT FALSE,
     CHECK (role IN ('USER', 'RESPONDER', 'ADMIN')),
     CHECK (contribution_points >= 0)
 );

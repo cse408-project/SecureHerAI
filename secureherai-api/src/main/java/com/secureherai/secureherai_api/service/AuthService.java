@@ -195,6 +195,12 @@ public class AuthService {
         // Login code is valid, clear it and generate JWT token
         user.setLoginCode(null);
         user.setLoginCodeExpiry(null);
+        
+        // Mark the account as verified upon successful login
+        if (!user.getIsVerified()) {
+            user.setIsVerified(true);
+        }
+        
         userRepository.save(user);
         
         String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole().name());
