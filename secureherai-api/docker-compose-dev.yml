@@ -4,11 +4,11 @@ services:
   api:
     container_name: secureherai_api
     build:
-      context: ./secureherai-api
+      context: .
       dockerfile: Dockerfile
       target: development
     volumes:
-      - ./secureherai-api:/app
+      - .:/app
       - maven_cache:/root/.m2
     working_dir: /app
     command: mvn spring-boot:run -Dspring-boot.run.profiles=dev
