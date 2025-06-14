@@ -147,11 +147,12 @@
 
 ### Login
 
-| API Endpoint       | HTTP Method |                   Description                    |
-| ------------------ | :---------: | :----------------------------------------------: |
-| [api/auth/login]() |   `POST`    | Authenticates a user and returns an access token |
+| API Endpoint                   | HTTP Method |                         Description                          |
+| ------------------------------ | :---------: | :----------------------------------------------------------: |
+| [api/auth/login]()             |   `POST`    | Authenticates user credentials and sends login code to email |
+| [api/auth/verify-login-code]() |   `POST`    |     Verifies the login code and returns an access token      |
 
-> ### Request
+> ### Step 1: Initial Login Request
 >
 > #### Request Body
 >
@@ -164,7 +165,35 @@
 >
 >  </br>
 
-> ### Response - Success
+> ### Step 1: Response - Success
+>
+> #### Response Code: 200 (`OK`)
+>
+> #### Response Body
+>
+> ```json
+> {
+>   "success": true,
+>   "message": "Login code sent to your email. Please check your inbox."
+> }
+> ```
+>
+> <br>
+
+> ### Step 2: Verify Login Code Request
+>
+> #### Request Body
+>
+> ```json
+> {
+>   "email": "user@example.com",
+>   "loginCode": "123456"
+> }
+> ```
+>
+>  </br>
+
+> ### Step 2: Response - Success
 >
 > #### Response Code: 200 (`OK`)
 >
@@ -199,6 +228,22 @@
 > {
 >   "success": false,
 >   "error": "Invalid email or password"
+> }
+> ```
+>
+> #### Login Code Error Cases
+>
+> ```json
+> {
+>   "success": false,
+>   "error": "Invalid email or login code"
+> }
+> ```
+>
+> ```json
+> {
+>   "success": false,
+>   "error": "Login code has expired. Please request a new login code."
 > }
 > ```
 

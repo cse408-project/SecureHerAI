@@ -1,6 +1,7 @@
 ### SecureHerAI Authentication API Tests
 
 @baseUrl = http://localhost:8080/api
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI0ODIwNDExZS03MmMwLTRlNmUtYTM2YS1iMmExOGY5YjRiZjQiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc0OTkxNzI5OSwiZXhwIjoxNzUwMDAzNjk5fQ.fRulT0w0DNiR8AdQ50dNV71Wyn5avFCDoLsGo_cTu9c
 
 ### 1. Health Check
 GET {{baseUrl}}/health
@@ -17,13 +18,40 @@ Content-Type: application/json
   "dateOfBirth": "1990-01-01"
 }
 
-### 4. Login User
+### 4. Login User (Step 1: Request Login Code)
 POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
   "email": "2005009@ugrad.cse.buet.ac.bd",
-  "password": "newpassword123"
+  "password": "password123"
+}
+
+### 4.1. Verify Login Code (Step 2: Enter the code received via email)
+POST {{baseUrl}}/auth/verify-login-code
+Content-Type: application/json
+
+{
+  "email": "2005009@ugrad.cse.buet.ac.bd",
+  "loginCode": "580527"
+}
+
+### 4.2. Verify Login Code - Invalid Code (should fail)
+POST {{baseUrl}}/auth/verify-login-code
+Content-Type: application/json
+
+{
+  "email": "2005009@ugrad.cse.buet.ac.bd",
+  "loginCode": "000000"
+}
+
+### 4.3. Verify Login Code - Expired Code (should fail)
+POST {{baseUrl}}/auth/verify-login-code
+Content-Type: application/json
+
+{
+  "email": "2005009@ugrad.cse.buet.ac.bd",
+  "loginCode": "966971"
 }
 
 ### 5. Login User - Wrong Password (should fail)
@@ -37,11 +65,11 @@ Content-Type: application/json
 
 ### 6. Get User Profile (Fresh token - valid until May 27, 2025)
 GET {{baseUrl}}/user/profile
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI0MzU0YWI1My03Zjg3LTQ1NTctYjhjNy02NDBlYjFhZDJkMzUiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc0ODI4MDQxMCwiZXhwIjoxNzQ4MzY2ODEwfQ.CS7Px6MPxPFH5EPgNuYD1RdjOJZqXTOZsKtt1yghW20
+Authorization: Bearer {{authToken}}
 
 ### 7. Update User Profile (Fresh token - valid until May 27, 2025)
 PUT {{baseUrl}}/user/profile
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI0MzU0YWI1My03Zjg3LTQ1NTctYjhjNy02NDBlYjFhZDJkMzUiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc0ODI4MDQxMCwiZXhwIjoxNzQ4MzY2ODEwfQ.CS7Px6MPxPFH5EPgNuYD1RdjOJZqXTOZsKtt1yghW20
+Authorization: Bearer {{authToken}}
 Content-Type: application/json
 
 {

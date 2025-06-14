@@ -59,6 +59,13 @@ public class User implements UserDetails {
     @Column(name = "reset_token_expiry")
     private LocalDateTime resetTokenExpiry;
     
+    // Login code fields for email 2FA
+    @Column(name = "login_code")
+    private String loginCode;
+    
+    @Column(name = "login_code_expiry")
+    private LocalDateTime loginCodeExpiry;
+    
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
     
@@ -202,4 +209,11 @@ public class User implements UserDetails {
     
     public LocalDateTime getResetTokenExpiry() { return resetTokenExpiry; }
     public void setResetTokenExpiry(LocalDateTime resetTokenExpiry) { this.resetTokenExpiry = resetTokenExpiry; }
+    
+    // Login code getters and setters
+    public String getLoginCode() { return loginCode; }
+    public void setLoginCode(String loginCode) { this.loginCode = loginCode; }
+    
+    public LocalDateTime getLoginCodeExpiry() { return loginCodeExpiry; }
+    public void setLoginCodeExpiry(LocalDateTime loginCodeExpiry) { this.loginCodeExpiry = loginCodeExpiry; }
 }

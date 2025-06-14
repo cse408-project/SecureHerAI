@@ -41,8 +41,24 @@ public class AuthService {
             return new AuthResponse.Error("Invalid email or password");
         }
         
-        String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole().name());
-        return new AuthResponse.Success(token, user.getId().toString(), user.getFullName(), user.getRole().name());
+        // Generate 6-digit login code
+        String loginCode = String.format("%06d", (int)(Math.random() * 1000000));
+        user.setLoginCode(loginCode);
+        user.setLoginCodeExpiry(LocalDateTime.now().plusMinutes(10)); // Code expires in 10 minutes
+        
+        userRepository.save(user);
+        
+        // Send login code email
+        try {
+            emailService.sendLoginCodeEmail(user.getEmail(), user.getFullName(), loginCode);
+            return new AuthResponse.Success("Login code sent to your email. Please check your inbox.");
+        } catch (Exception e) {
+            // Clear the login code if email fails
+            user.setLoginCode(null);
+            user.setLoginCodeExpiry(null);
+            userRepository.save(user);
+            return new AuthResponse.Error("Failed to send login code. Please try again later.");
+        }
     }
 
     public Object register(AuthRequest.Register request) {
@@ -149,56 +165,39 @@ public class AuthService {
         return new AuthResponse.Success("Password reset successful");
     }
 
-    public Object getProfile(UUID userId) {
-        Optional<User> userOpt = userRepository.findById(userId);
-        
-        if (userOpt.isEmpty()) {
-            return new AuthResponse.Error("User not found");
+    public Object verifyLoginCode(AuthRequest.VerifyLoginCode request) {
+        if (request.getLoginCode() == null || request.getLoginCode().trim().isEmpty()) {
+            return new AuthResponse.Error("Login code is required");
         }
         
-        User user = userOpt.get();
-        AuthResponse.Profile.UserProfile profile = new AuthResponse.Profile.UserProfile(
-            user.getId().toString(),
-            user.getFullName(),
-            user.getEmail(),
-            user.getPhone(),
-            user.getProfilePicture(),
-            user.getDateOfBirth(),
-            user.getEmailAlerts(),
-            user.getSmsAlerts(),
-            user.getPushNotifications()
-        );
-        
-        return new AuthResponse.Profile(profile);
-    }
-
-    public Object updateProfile(UUID userId, AuthRequest.UpdateProfile request) {
-        Optional<User> userOpt = userRepository.findById(userId);
+        Optional<User> userOpt = userRepository.findByEmail(request.getEmail());
         
         if (userOpt.isEmpty()) {
-            return new AuthResponse.Error("User not found");
+            return new AuthResponse.Error("Invalid email or login code");
         }
         
         User user = userOpt.get();
         
-        if (request.getFullName() != null) {
-            user.setFullName(request.getFullName());
+        // Check if login code exists and matches
+        if (user.getLoginCode() == null || !user.getLoginCode().equals(request.getLoginCode().trim())) {
+            return new AuthResponse.Error("Invalid email or login code");
         }
         
-        if (request.getPhoneNumber() != null) {
-            // Check if phone is already taken by another user
-            Optional<User> existingUser = userRepository.findByPhone(request.getPhoneNumber());
-            if (existingUser.isPresent() && !existingUser.get().getId().equals(userId)) {
-                return new AuthResponse.Error("Phone number already in use");
-            }
-            user.setPhone(request.getPhoneNumber());
+        // Check if login code has expired
+        if (user.getLoginCodeExpiry() == null || user.getLoginCodeExpiry().isBefore(LocalDateTime.now())) {
+            // Clear expired login code
+            user.setLoginCode(null);
+            user.setLoginCodeExpiry(null);
+            userRepository.save(user);
+            return new AuthResponse.Error("Login code has expired. Please request a new login code.");
         }
         
-        if (request.getProfilePicture() != null) {
-            user.setProfilePicture(request.getProfilePicture());
-        }
-        
+        // Login code is valid, clear it and generate JWT token
+        user.setLoginCode(null);
+        user.setLoginCodeExpiry(null);
         userRepository.save(user);
-        return new AuthResponse.Success("Profile updated successfully");
+        
+        String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole().name());
+        return new AuthResponse.Success(token, user.getId().toString(), user.getFullName(), user.getRole().name());
     }
 }

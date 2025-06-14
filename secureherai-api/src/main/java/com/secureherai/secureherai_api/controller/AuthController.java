@@ -63,4 +63,15 @@ public class AuthController {
         
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/verify-login-code")
+    public ResponseEntity<Object> verifyLoginCode(@Valid @RequestBody AuthRequest.VerifyLoginCode request) {
+        Object response = authService.verifyLoginCode(request);
+        
+        if (response instanceof AuthResponse.Error) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+        }
+        
+        return ResponseEntity.ok(response);
+    }
 }

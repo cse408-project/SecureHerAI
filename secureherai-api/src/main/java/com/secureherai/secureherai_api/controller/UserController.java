@@ -2,7 +2,7 @@ package com.secureherai.secureherai_api.controller;
 
 import com.secureherai.secureherai_api.dto.auth.AuthRequest;
 import com.secureherai.secureherai_api.dto.auth.AuthResponse;
-import com.secureherai.secureherai_api.service.AuthService;
+import com.secureherai.secureherai_api.service.UserService;
 import com.secureherai.secureherai_api.service.JwtService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +17,7 @@ import java.util.UUID;
 public class UserController {
 
     @Autowired
-    private AuthService authService;
+    private UserService userService;
     
     @Autowired
     private JwtService jwtService;
@@ -32,7 +32,7 @@ public class UserController {
             }
             
             UUID userId = jwtService.extractUserId(token);
-            Object response = authService.getProfile(userId);
+            Object response = userService.getProfile(userId);
             
             if (response instanceof AuthResponse.Error) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
@@ -62,7 +62,7 @@ public class UserController {
             }
             
             UUID userId = jwtService.extractUserId(token);
-            Object response = authService.updateProfile(userId, request);
+            Object response = userService.updateProfile(userId, request);
             
             if (response instanceof AuthResponse.Error) {
                 return ResponseEntity.badRequest().body(response);

@@ -77,6 +77,21 @@ public class AuthRequest {
         public void setNewPassword(String newPassword) { this.newPassword = newPassword; }
     }
 
+    // Verify Login Code Request
+    public static class VerifyLoginCode {
+        @NotBlank(message = "Email is required")
+        @Email(message = "Invalid email format")
+        private String email;
+        
+        @NotBlank(message = "Login code is required")
+        private String loginCode;
+
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
+        public String getLoginCode() { return loginCode; }
+        public void setLoginCode(String loginCode) { this.loginCode = loginCode; }
+    }
+
     // Update Profile Request
     public static class UpdateProfile {
         @Size(max = 100, message = "Full name cannot exceed 100 characters")

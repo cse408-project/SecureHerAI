@@ -25,6 +25,9 @@ CREATE TABLE users (
     -- Password reset fields
     reset_token TEXT,
     reset_token_expiry TIMESTAMPTZ,
+    -- Login code fields for email 2FA
+    login_code TEXT,
+    login_code_expiry TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     -- UserDetails fields

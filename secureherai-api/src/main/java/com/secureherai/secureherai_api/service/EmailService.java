@@ -81,4 +81,34 @@ public class EmailService {
             System.err.println("Failed to send welcome email: " + e.getMessage());
         }
     }
+
+    public void sendLoginCodeEmail(String toEmail, String fullName, String loginCode) {
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            
+            helper.setFrom(fromEmail);
+            helper.setTo(toEmail);
+            helper.setSubject("SecureHerAI - Login Verification Code");
+            
+            StringBuilder emailBody = new StringBuilder();
+            emailBody.append("<!DOCTYPE html><html><body style='font-family: Arial, sans-serif; line-height: 1.6;'>");
+            emailBody.append("<div style='max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px;'>");
+            emailBody.append("<h2 style='color: #4a4a4a;'>Login Verification Code</h2>");
+            emailBody.append("<p>Dear ").append(fullName).append(",</p>");
+            emailBody.append("<p>You are attempting to sign in to your <b>SecureHerAI</b> account.</p>");
+            emailBody.append("<p>Your login verification code is: <b style='font-size: 24px; color: rgb(0, 110, 255); background-color: #f5f5f5; padding: 10px; border-radius: 5px; display: inline-block;'>" + loginCode + "</b></p>");
+            emailBody.append("<p>Enter this code in the app or website to complete your login.</p>");
+            emailBody.append("<p><i>This code will expire in 10 minutes for security reasons.</i></p>");
+            emailBody.append("<p>If you did not attempt to sign in, please ignore this email and consider changing your password.</p>");
+            emailBody.append("<p>Best regards,<br><b>SecureHerAI Team</b></p>");
+            emailBody.append("</div></body></html>");
+            
+            helper.setText(emailBody.toString(), true); // true indicates HTML content
+            
+            mailSender.send(mimeMessage);
+        } catch (MessagingException e) {
+            throw new RuntimeException("Failed to send login code email: " + e.getMessage(), e);
+        }
+    }
 }
