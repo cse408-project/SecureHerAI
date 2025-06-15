@@ -33,7 +33,7 @@ public class SecurityConfig {
             .cors(cors -> cors.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/health", "/api/auth/**", "/health", "/auth/**", "/oauth2/**", "/login/oauth2/**").permitAll()
+                .requestMatchers("/api/health", "/api/auth/**", "/health", "/auth/**", "/api/responder/available", "/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/oauth-success.html", "/static/**").permitAll()
                 .anyRequest().authenticated()
             )

@@ -1,24 +1,28 @@
 package com.secureherai.secureherai_api.service;
 
-import com.secureherai.secureherai_api.dto.auth.AuthRequest;
-import com.secureherai.secureherai_api.dto.auth.AuthResponse;
-import com.secureherai.secureherai_api.entity.User;
-import com.secureherai.secureherai_api.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 import java.util.UUID;
 
-@Service
-public class AuthService {
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
 
-    @Autowired
+import com.secureherai.secureherai_api.dto.auth.AuthRequest;
+import com.secureherai.secureherai_api.dto.auth.AuthResponse;
+import com.secureherai.secureherai_api.entity.Responder;
+import com.secureherai.secureherai_api.entity.User;
+import com.secureherai.secureherai_api.repository.ResponderRepository;
+import com.secureherai.secureherai_api.repository.UserRepository;
+
+@Service
+public class AuthService {    @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private ResponderRepository responderRepository;
     
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -59,9 +63,7 @@ public class AuthService {
             userRepository.save(user);
             return new AuthResponse.Error("Failed to send login code. Please try again later.");
         }
-    }
-
-    public Object register(AuthRequest.Register request) {
+    }    public Object register(AuthRequest.Register request) {
         // Check if email already exists
         if (userRepository.existsByEmail(request.getEmail())) {
             return new AuthResponse.Error("Email already registered");
@@ -71,6 +73,38 @@ public class AuthService {
         if (userRepository.existsByPhone(request.getPhoneNumber())) {
             return new AuthResponse.Error("Phone number already registered");
         }
+          // Validate role
+        String role = request.getRole();
+        if (role == null || role.isEmpty()) {
+            return new AuthResponse.Error("Role is required. Must be USER or RESPONDER");
+        }
+        
+        role = role.toUpperCase();
+        if (!role.equals("USER") && !role.equals("RESPONDER")) {
+            return new AuthResponse.Error("Invalid role. Must be USER or RESPONDER");
+        }
+        
+        // If registering as responder, validate responder-specific fields
+        if (role.equals("RESPONDER")) {
+            if (request.getResponderType() == null || request.getResponderType().isEmpty()) {
+                return new AuthResponse.Error("Responder type is required for responder registration");
+            }
+            
+            if (request.getBadgeNumber() == null || request.getBadgeNumber().isEmpty()) {
+                return new AuthResponse.Error("Badge number is required for responder registration");
+            }
+            
+            // Validate responder type
+            String responderType = request.getResponderType().toUpperCase();
+            if (!isValidResponderType(responderType)) {
+                return new AuthResponse.Error("Invalid responder type. Must be POLICE, MEDICAL, FIRE, SECURITY, or OTHER");
+            }
+            
+            // Check if badge number already exists
+            if (responderRepository.existsByBadgeNumber(request.getBadgeNumber())) {
+                return new AuthResponse.Error("Badge number already registered");
+            }
+        }
         
         // Create new user
         User user = new User();
@@ -78,6 +112,7 @@ public class AuthService {
         user.setEmail(request.getEmail());
         user.setPhone(request.getPhoneNumber());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setRole(User.Role.valueOf(role));
         
         if (request.getDateOfBirth() != null && !request.getDateOfBirth().isEmpty()) {
             try {
@@ -89,6 +124,15 @@ public class AuthService {
         
         userRepository.save(user);
         
+        // If registering as responder, create responder record
+        if (role.equals("RESPONDER")) {
+            Responder responder = new Responder();
+            responder.setUser(user);
+            responder.setResponderType(Responder.ResponderType.valueOf(request.getResponderType().toUpperCase()));
+            responder.setBadgeNumber(request.getBadgeNumber());
+            responderRepository.save(responder);
+        }
+        
         // Send welcome email
         try {
             emailService.sendWelcomeEmail(user.getEmail(), user.getFullName());
@@ -98,6 +142,15 @@ public class AuthService {
         }
         
         return new AuthResponse.Success("User registered successfully");
+    }
+    
+    private boolean isValidResponderType(String responderType) {
+        try {
+            Responder.ResponderType.valueOf(responderType);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     public Object forgotPassword(AuthRequest.ForgotPassword request) {

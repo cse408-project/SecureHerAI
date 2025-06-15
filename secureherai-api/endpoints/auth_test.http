@@ -15,11 +15,79 @@ Content-Type: application/json
   "email": "2005009@ugrad.cse.buet.ac.bd",
   "password": "password123",
   "phoneNumber": "+8801712345678",
-  "dateOfBirth": "1990-01-01"
+  "dateOfBirth": "1990-01-01",
+  "role": "USER"
 }
 
-### 2.1 Note: After registration, accounts need to be verified by logging in at least once.
-###     Unverified accounts will be automatically deleted after 7 days.
+
+
+### 2.1 Register User - Missing Role (should fail)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Missing Role User",
+  "email": "missing.role@example.com",
+  "password": "password123",
+  "phoneNumber": "+8801712345677"
+}
+
+### 2.2 Register Responder (Police Officer)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Arimoto kika",
+  "email": "arimotokika2005025@gmail.com",
+  "password": "password123",
+  "phoneNumber": "+8801723456780",
+  "dateOfBirth": "1985-03-20",
+  "role": "RESPONDER",
+  "responderType": "POLICE",
+  "badgeNumber": "POL-0011"
+}
+
+### 2.3 Register Responder (Medical Professional)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Dr. Sarah Ahmed",
+  "email": "sarah.ahmed@hospital.bd",
+  "password": "password123",
+  "phoneNumber": "+8801712345681",
+  "dateOfBirth": "1980-08-10",
+  "role": "RESPONDER",
+  "responderType": "MEDICAL",
+  "badgeNumber": "MED-001"
+}
+
+### 2.4 Register Responder - Invalid Type (should fail)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Invalid Responder",
+  "email": "invalid@example.com",
+  "password": "password123",
+  "phoneNumber": "+8801712345682",
+  "role": "RESPONDER",
+  "responderType": "INVALID_TYPE",
+  "badgeNumber": "INV-001"
+}
+
+### 2.5 Register Responder - Missing Badge Number (should fail)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Missing Badge",
+  "email": "missing@example.com",
+  "password": "password123",
+  "phoneNumber": "+8801712345683",
+  "role": "RESPONDER",
+  "responderType": "FIRE"
+}
 
 ### 4. Login User (Step 1: Request Login Code)
 ### This first step of the login process doesn't verify the account yet
@@ -31,6 +99,15 @@ Content-Type: application/json
   "password": "password123"
 }
 
+### 4.1 Login Responder (Step 1: Request Login Code)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "arimotokika2005025@gmail.com",
+  "password": "password123"
+}
+
 ### 4.1. Verify Login Code (Step 2: Enter the code received via email)
 ### This second step of the login process verifies the account upon successful completion
 POST {{baseUrl}}/auth/verify-login-code
@@ -38,16 +115,7 @@ Content-Type: application/json
 
 {
   "email": "2005009@ugrad.cse.buet.ac.bd",
-  "loginCode": "580527"
-}
-
-### 4.2. Verify Login Code - Invalid Code (should fail)
-POST {{baseUrl}}/auth/verify-login-code
-Content-Type: application/json
-
-{
-  "email": "2005009@ugrad.cse.buet.ac.bd",
-  "loginCode": "000000"
+  "loginCode": "884687"
 }
 
 ### 4.3. Verify Login Code - Expired Code (should fail)
@@ -59,13 +127,25 @@ Content-Type: application/json
   "loginCode": "966971"
 }
 
+
+### 4.3.
+POST {{baseUrl}}/auth/verify-login-code
+Content-Type: application/json
+
+{
+  "email": "arimotokika2005025@gmail.com",
+  "loginCode": "762949"
+}
+
+
+
 ### 5. Login User - Wrong Password (should fail)
 POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
   "email": "2005009@ugrad.cse.buet.ac.bd",
-  "password": "wrongpassword"
+  "password": "password123"
 }
 
 ### 6. Get User Profile (Fresh token - valid until May 27, 2025)
@@ -78,8 +158,8 @@ Authorization: Bearer {{authToken}}
 Content-Type: application/json
 
 {
-  "fullName": "Jane Smith",
-  "phoneNumber": "+8801712345679",
+  "fullName": "Arimotokika",
+  "phoneNumber": "+8801712345699",
   "profilePicture": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
 }
 
@@ -91,14 +171,26 @@ Content-Type: application/json
   "email": "2005009@ugrad.cse.buet.ac.bd"
 }
 
+
+### 8.1 Forgot Password - Invalid Email (should fail)
+
+POST {{baseUrl}}/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "arimotokika2005025@gmail.com"
+}
+
+
 ### 9. Reset Password (currently returns error as token validation not implemented)
 POST {{baseUrl}}/auth/reset-password
 Content-Type: application/json
 
 {
-  "token": "a0a2d8c3-454e-4720-b2f1-b51b0a78bdf3",
+  "token": "31f51acc-1429-4cf5-bd2c-d3e3e08af798",
   "newPassword": "newpassword123"
 }
+
 
 ### 10. Get Google OAuth Login URL
 GET {{baseUrl}}/auth/google/login
@@ -121,3 +213,112 @@ Content-Type: application/json
   "phoneNumber": "+8801712345678",
   "dateOfBirth": "1990-01-01"
 }
+
+### === USER PROFILE ENDPOINTS (UNIFIED FOR USERS AND RESPONDERS) ===
+
+### 10. Get User Profile (works for both users and responders - role-based response)
+### Expected Response for USER role:
+### {
+###   "success": true,
+###   "data": {
+###     "userId": "12345",
+###     "fullName": "Jane Doe",
+###     "email": "user@example.com", 
+###     "phoneNumber": "+8801712345678",
+###     "profilePicture": "base64...",
+###     "dateOfBirth": "1990-01-01",
+###     "role": "USER",
+###     "notificationPreferences": {
+###       "emailAlerts": true,
+###       "smsAlerts": true,
+###       "pushNotifications": true
+###     }
+###   }
+### }
+### Expected Response for RESPONDER role:
+### {
+###   "success": true,
+###   "data": {
+###     "userId": "12345",
+###     "fullName": "Officer John Smith",
+###     "email": "officer@police.gov.bd",
+###     "phoneNumber": "+8801712345678",
+###     "profilePicture": "base64...",
+###     "dateOfBirth": "1985-03-20",
+###     "role": "RESPONDER",
+###     "notificationPreferences": {
+###       "emailAlerts": true,
+###       "smsAlerts": true,
+###       "pushNotifications": true
+###     },
+###     "responderInfo": {
+###       "responderType": "POLICE",
+###       "badgeNumber": "POL-001",
+###       "status": "AVAILABLE",
+###       "isActive": true,
+###       "lastStatusUpdate": "2025-06-15T10:30:00Z"
+###     }
+###   }
+### }
+GET {{baseUrl}}/user/profile
+Authorization: Bearer {{authToken}}
+
+### 11. Update User Profile (works for both users and responders)
+PUT {{baseUrl}}/user/profile
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Arimotokika Smith Updated",
+  "phoneNumber": "+8801712345699"
+}
+
+### 12. Update Responder Status (only works if user role is RESPONDER)
+PUT {{baseUrl}}/user/profile
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "status": "AVAILABLE"
+}
+
+### 13. Update Responder Status - Set to Busy (only works if user role is RESPONDER)
+PUT {{baseUrl}}/user/profile
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "status": "BUSY"
+}
+
+### 14. Update Responder Status - Set to Off Duty (only works if user role is RESPONDER)
+PUT {{baseUrl}}/user/profile
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "status": "OFF_DUTY"
+}
+
+### 15. Update Both Profile and Status (combined update for responders)
+PUT {{baseUrl}}/user/profile
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Officer Arimoto Updated",
+  "phoneNumber": "+8801712345700",
+  "status": "AVAILABLE"
+}
+
+### 16. Update Responder Status - Invalid Status (should fail)
+PUT {{baseUrl}}/user/profile
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "status": "INVALID_STATUS"
+}
+
+### 17. Get Available Responders (public endpoint - still available from ResponderController)
+GET {{baseUrl}}/responder/available

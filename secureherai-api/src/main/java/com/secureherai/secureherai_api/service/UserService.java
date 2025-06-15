@@ -3,7 +3,9 @@ package com.secureherai.secureherai_api.service;
 import com.secureherai.secureherai_api.dto.auth.AuthRequest;
 import com.secureherai.secureherai_api.dto.auth.AuthResponse;
 import com.secureherai.secureherai_api.entity.User;
+import com.secureherai.secureherai_api.entity.Responder;
 import com.secureherai.secureherai_api.repository.UserRepository;
+import com.secureherai.secureherai_api.repository.ResponderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,11 +17,14 @@ public class UserService {
 
     @Autowired
     private UserRepository userRepository;
-
     @Autowired
     private JwtService jwtService;
 
+    @Autowired
+    private ResponderRepository responderRepository;
+
     public Object getProfile(UUID userId) {
+        
         Optional<User> userOpt = userRepository.findById(userId);
         
         if (userOpt.isEmpty()) {
@@ -39,6 +44,23 @@ public class UserService {
             user.getSmsAlerts(),
             user.getPushNotifications()
         );
+
+        // If user is a responder, include responder-specific information
+        if (user.getRole() == User.Role.RESPONDER) {
+            Optional<Responder> responderOpt = responderRepository.findByUserId(userId);
+            if (responderOpt.isPresent()) {
+                Responder responder = responderOpt.get();
+                AuthResponse.Profile.UserProfile.ResponderInfo responderInfo = 
+                    new AuthResponse.Profile.UserProfile.ResponderInfo(
+                        responder.getResponderType().toString(),
+                        responder.getBadgeNumber(),
+                        responder.getStatus().toString(),
+                        responder.getIsActive(),
+                        responder.getLastStatusUpdate()
+                    );
+                userProfile.setResponderInfo(responderInfo);
+            }
+        }
         
         return new AuthResponse.Profile(userProfile);
     }
@@ -52,7 +74,7 @@ public class UserService {
         
         User user = userOpt.get();
         
-        // Update fields if they are provided
+        // Update user fields if they are provided
         if (request.getFullName() != null && !request.getFullName().trim().isEmpty()) {
             user.setFullName(request.getFullName().trim());
         }
@@ -68,6 +90,23 @@ public class UserService {
         
         if (request.getProfilePicture() != null) {
             user.setProfilePicture(request.getProfilePicture());
+        }
+        
+        // Handle responder-specific updates
+        if (user.getRole() == User.Role.RESPONDER && request.getStatus() != null) {
+            Optional<Responder> responderOpt = responderRepository.findByUserId(userId);
+            if (responderOpt.isPresent()) {
+                try {
+                    Responder.Status status = Responder.Status.valueOf(request.getStatus().toUpperCase());
+                    Responder responder = responderOpt.get();
+                    responder.setStatus(status);
+                    responderRepository.save(responder);
+                } catch (IllegalArgumentException e) {
+                    return new AuthResponse.Error("Invalid status. Must be AVAILABLE, BUSY, or OFF_DUTY");
+                }
+            } else {
+                return new AuthResponse.Error("Responder profile not found");
+            }
         }
         
         userRepository.save(user);
