@@ -255,7 +255,7 @@
 | --------------------- | :---------: | :--------------------------: |
 | [api/auth/register]() |   `POST`    | Registers a new user account |
 
-> ### Request
+> ### Request - User Registration
 >
 > #### Request Body
 >
@@ -265,9 +265,34 @@
 >   "email": "user@example.com",
 >   "password": "password123",
 >   "phoneNumber": "+8801712345678",
->   "dateOfBirth": "1990-01-01"
+>   "dateOfBirth": "1990-01-01",
+>   "role": "USER"
 > }
 > ```
+>
+> ### Request - Responder Registration
+>
+> #### Request Body
+>
+> ```json
+> {
+>   "fullName": "Officer John Smith",
+>   "email": "john.smith@police.gov.bd",
+>   "password": "password123",
+>   "phoneNumber": "+8801712345678",
+>   "dateOfBirth": "1985-03-20",
+>   "role": "RESPONDER",
+>   "responderType": "POLICE",
+>   "badgeNumber": "POL-001"
+> }
+> ```
+>
+> #### Responder Types:
+> - `POLICE` - Police Officer
+> - `MEDICAL` - Medical Professional
+> - `FIRE` - Fire Department
+> - `SECURITY` - Security Personnel
+> - `OTHER` - Other Emergency Responder
 >
 >  </br>
 
@@ -280,8 +305,7 @@
 > ```json
 > {
 >   "success": true,
->   "message": "User registered successfully",
->   "userId": "12345"
+>   "message": "User registered successfully"
 > }
 > ```
 >
@@ -298,12 +322,40 @@
 > }
 > ```
 >
+> ```json
+> {
+>   "success": false,
+>   "error": "Badge number already registered"
+> }
+> ```
+>
 > #### Response Code: 400 (`Bad Request`)
 >
 > ```json
 > {
 >   "success": false,
 >   "error": "Password must be at least 8 characters long"
+> }
+> ```
+>
+> ```json
+> {
+>   "success": false,
+>   "error": "Role is required. Must be USER or RESPONDER"
+> }
+> ```
+>
+> ```json
+> {
+>   "success": false,
+>   "error": "Responder type is required for responder registration"
+> }
+> ```
+>
+> ```json
+> {
+>   "success": false,
+>   "error": "Badge number is required for responder registration"
 > }
 > ```
 
@@ -402,7 +454,7 @@
 
 | API Endpoint         | HTTP Method |            Description             |
 | -------------------- | :---------: | :--------------------------------: |
-| [api/user/profile]() |    `GET`    | Retrieves user profile information |
+| [api/user/profile]() |    `GET`    | Retrieves user profile information (role-based response) |
 
 > ### Request
 >
@@ -414,7 +466,7 @@
 >
 >  </br>
 
-> ### Response - Success
+> ### Response - Success (USER role)
 >
 > #### Response Code: 200 (`OK`)
 >
@@ -428,21 +480,47 @@
 >     "fullName": "Jane Doe",
 >     "email": "user@example.com",
 >     "phoneNumber": "+8801712345678",
->     "emergencyContacts": [
->       {
->         "id": "c1",
->         "name": "John Doe",
->         "relationship": "Brother",
->         "phoneNumber": "+8801812345678"
->       }
->     ],
+>     "profilePicture": "base64_encoded_image_data",
+>     "dateOfBirth": "1990-01-01",
+>     "role": "USER",
+>     "notificationPreferences": {
+>       "emailAlerts": true,
+>       "smsAlerts": true,
+>       "pushNotifications": true
+>     }
+>   }
+> }
+> ```
+
+> ### Response - Success (RESPONDER role)
+>
+> #### Response Code: 200 (`OK`)
+>
+> #### Response Body
+>
+> ```json
+> {
+>   "success": true,
+>   "data": {
+>     "userId": "67890",
+>     "fullName": "Officer John Smith",
+>     "email": "officer@police.gov.bd",
+>     "phoneNumber": "+8801712345678",
+>     "profilePicture": "base64_encoded_image_data",
+>     "dateOfBirth": "1985-03-20",
+>     "role": "RESPONDER",
 >     "notificationPreferences": {
 >       "emailAlerts": true,
 >       "smsAlerts": true,
 >       "pushNotifications": true
 >     },
->     "profilePicture": "https://secureher.com/profiles/jane.jpg",
->     "dateOfBirth": "1990-01-01"
+>     "responderInfo": {
+>       "responderType": "POLICE",
+>       "badgeNumber": "POL-001",
+>       "status": "AVAILABLE",
+>       "isActive": true,
+>       "lastStatusUpdate": "2025-06-15T10:30:00Z"
+>     }
 >   }
 > }
 > ```
@@ -466,9 +544,9 @@
 
 | API Endpoint         | HTTP Method |           Description            |
 | -------------------- | :---------: | :------------------------------: |
-| [api/user/profile]() |    `PUT`    | Updates user profile information |
+| [api/user/profile]() |    `PUT`    | Updates user profile information (includes responder status for responders) |
 
-> ### Request
+> ### Request - User Profile Update
 >
 > #### Headers
 >
@@ -483,6 +561,40 @@
 >   "fullName": "Jane Smith",
 >   "phoneNumber": "+8801712345679",
 >   "profilePicture": "base64_encoded_image_data"
+> }
+> ```
+
+> ### Request - Responder Status Update
+>
+> #### Headers
+>
+> ```
+> Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+> ```
+>
+> #### Request Body
+>
+> ```json
+> {
+>   "status": "AVAILABLE"
+> }
+> ```
+>
+> #### Available Status Values:
+> - `AVAILABLE` - Responder is available for new alerts
+> - `BUSY` - Responder is currently handling an alert
+> - `OFF_DUTY` - Responder is not available
+
+> ### Request - Combined Profile and Status Update (Responders)
+>
+> #### Request Body
+>
+> ```json
+> {
+>   "fullName": "Officer John Smith Updated",
+>   "phoneNumber": "+8801712345679", 
+>   "profilePicture": "base64_encoded_image_data",
+>   "status": "BUSY"
 > }
 > ```
 >
@@ -511,6 +623,27 @@
 > {
 >   "success": false,
 >   "error": "Invalid phone number format"
+> }
+> ```
+>
+> ```json
+> {
+>   "success": false,
+>   "error": "Invalid status. Must be AVAILABLE, BUSY, or OFF_DUTY"
+> }
+> ```
+>
+> ```json
+> {
+>   "success": false,
+>   "error": "Phone number already in use"
+> }
+> ```
+>
+> ```json
+> {
+>   "success": false,
+>   "error": "Responder profile not found"
 > }
 > ```
 >
@@ -2239,6 +2372,8 @@
 ---
 
 ## Responder Module
+
+> **Note**: Responder profile management (GET/PUT responder profile and status updates) has been consolidated into the unified `api/user/profile` endpoints. See the [Profile Management](#profile-management) section above for details.
 
 ### Accept/Reject Alert
 
