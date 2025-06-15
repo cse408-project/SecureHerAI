@@ -9,6 +9,7 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.secureherai.secureherai_api.dto.auth.AuthRequest;
 import com.secureherai.secureherai_api.dto.auth.AuthResponse;
@@ -18,6 +19,7 @@ import com.secureherai.secureherai_api.repository.ResponderRepository;
 import com.secureherai.secureherai_api.repository.UserRepository;
 
 @Service
+@Transactional
 public class AuthService {    @Autowired
     private UserRepository userRepository;
     
@@ -63,7 +65,10 @@ public class AuthService {    @Autowired
             userRepository.save(user);
             return new AuthResponse.Error("Failed to send login code. Please try again later.");
         }
-    }    public Object register(AuthRequest.Register request) {
+    }
+    
+    @Transactional(rollbackFor = Exception.class)
+    public Object register(AuthRequest.Register request) {
         // Check if email already exists
         if (userRepository.existsByEmail(request.getEmail())) {
             return new AuthResponse.Error("Email already registered");
@@ -122,20 +127,35 @@ public class AuthService {    @Autowired
             }
         }
         
-        userRepository.save(user);
+        // Save user first to get the ID
+        user = userRepository.save(user);
         
         // If registering as responder, create responder record
         if (role.equals("RESPONDER")) {
-            Responder responder = new Responder();
-            responder.setUser(user);
-            responder.setResponderType(Responder.ResponderType.valueOf(request.getResponderType().toUpperCase()));
-            responder.setBadgeNumber(request.getBadgeNumber());
-            responderRepository.save(responder);
+            try {
+                Responder responder = new Responder();
+                responder.setUser(user); // This will handle the mapping with @MapsId
+                responder.setResponderType(Responder.ResponderType.valueOf(request.getResponderType().toUpperCase()));
+                responder.setBadgeNumber(request.getBadgeNumber());
+                responderRepository.save(responder);
+            } catch (Exception e) {
+                // Log the error
+                System.err.println("Error creating responder: " + e.getMessage());
+                e.printStackTrace();
+                // Return error response
+                return new AuthResponse.Error("Error creating responder profile: " + e.getMessage());
+            }
         }
         
-        // Send welcome email
+        // Send welcome email with verification instructions
         try {
             emailService.sendWelcomeEmail(user.getEmail(), user.getFullName());
+            
+            // For responders, send additional information
+            if (role.equals("RESPONDER")) {
+                // You can add a specialized email for responders here
+                // emailService.sendResponderWelcomeEmail(user.getEmail(), user.getFullName());
+            }
         } catch (Exception e) {
             // Log but don't fail registration if email fails
             System.err.println("Failed to send welcome email: " + e.getMessage());
@@ -249,10 +269,9 @@ public class AuthService {    @Autowired
         user.setLoginCode(null);
         user.setLoginCodeExpiry(null);
         
-        // Mark the account as verified upon successful login
-        if (!user.getIsVerified()) {
-            user.setIsVerified(true);
-        }
+        // Verification temporarily handled in-memory only
+        // We'll consider any account as verified once they've logged in successfully
+        user.setIsVerified(true);
         
         userRepository.save(user);
         

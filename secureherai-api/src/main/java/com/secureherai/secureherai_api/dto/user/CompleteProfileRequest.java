@@ -16,4 +16,15 @@ public class CompleteProfileRequest {
     
     @NotNull(message = "Date of birth is required")
     private LocalDate dateOfBirth;
+    
+    // Role field for profile completion after OAuth login
+    // @Pattern(regexp = "USER|RESPONDER|ADMIN", message = "Role must be USER, RESPONDER, or ADMIN")
+    private String role;
+    
+    // Responder-specific fields, required only if role is RESPONDER
+    // @Pattern(regexp = "^(POLICE|MEDICAL|FIRE|SECURITY|OTHER)$", message = "Responder type must be valid")
+    private String responderType;
+    
+    // @Pattern(regexp = "^[A-Za-z0-9\\-]{3,20}$", message = "Badge number must be 3-20 alphanumeric characters")
+    private String badgeNumber;
 }

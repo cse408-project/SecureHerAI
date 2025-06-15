@@ -122,12 +122,62 @@ public class UserService {
         }
         
         User user = userOpt.get();
+        
+        // Check if profile is already complete
+        if (user.getIsProfileComplete()) {
+            return new AuthResponse.Error("Profile is already complete");
+        }
+        
+        // Update basic user information
         user.setPhone(request.getPhoneNumber());
         user.setDateOfBirth(request.getDateOfBirth());
-        user.setIsProfileComplete(true);
-        userRepository.save(user);
         
-        // Generate new token with updated profile status
+        // Update role if provided
+        if (request.getRole() != null && !request.getRole().isEmpty()) {
+            try {
+                User.Role role = User.Role.valueOf(request.getRole().toUpperCase());
+                user.setRole(role);
+            } catch (IllegalArgumentException e) {
+                return new AuthResponse.Error("Invalid role: " + request.getRole() + ". Must be USER, RESPONDER, or ADMIN");
+            }
+        }
+        
+        // Save user first to ensure it exists for responder relationship
+        user.setIsProfileComplete(true);
+        // Ensure the user is marked as verified when completing their profile
+        user.setIsVerified(true);
+        user = userRepository.save(user);
+        
+        // Handle responder creation if user role is RESPONDER
+        if (user.getRole() == User.Role.RESPONDER) {
+            // Validate responder fields
+            if (request.getResponderType() == null || request.getResponderType().isEmpty()) {
+                return new AuthResponse.Error("Responder type is required for responder registration");
+            }
+            
+            if (request.getBadgeNumber() == null || request.getBadgeNumber().isEmpty()) {
+                return new AuthResponse.Error("Badge number is required for responder registration");
+            }
+            
+            // Check if badge number already exists
+            if (responderRepository.existsByBadgeNumber(request.getBadgeNumber())) {
+                return new AuthResponse.Error("Badge number already registered");
+            }
+            
+            try {
+                Responder responder = new Responder();
+                responder.setUser(user);
+                responder.setResponderType(Responder.ResponderType.valueOf(request.getResponderType().toUpperCase()));
+                responder.setBadgeNumber(request.getBadgeNumber());
+                responderRepository.save(responder);
+            } catch (IllegalArgumentException e) {
+                return new AuthResponse.Error("Invalid responder type: " + request.getResponderType());
+            } catch (Exception e) {
+                return new AuthResponse.Error("Error creating responder profile: " + e.getMessage());
+            }
+        }
+        
+        // Generate new token with updated profile status and role
         String newToken = jwtService.generateTokenWithProfileStatus(
             user.getId(),
             user.getEmail(),

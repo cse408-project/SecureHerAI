@@ -16,5 +16,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByPhone(String phone);
     Optional<User> findByResetToken(String resetToken);
     Optional<User> findByLoginCode(String loginCode);
+    
+    // Now that isVerified is properly mapped to database, we can use it
     void deleteByIsVerifiedFalseAndCreatedAtBefore(LocalDateTime date);
 }

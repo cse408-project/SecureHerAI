@@ -43,6 +43,7 @@ public class OAuthService {
             user.setPasswordHash(""); // OAuth users don't have passwords
             user.setOauthProvider(provider);
             user.setIsProfileComplete(false); // Mark as incomplete profile
+            user.setIsVerified(true); // OAuth users are already verified through the provider
             userRepository.save(user);
             
             // Send welcome email for new users

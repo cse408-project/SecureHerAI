@@ -386,3 +386,48 @@ This module handles responder functionality including alert response, user commu
 >   "error": "User not authenticated"
 > }
 > ```
+
+---
+
+### Get Available Responders
+
+| API Endpoint             | HTTP Method |                       Description                        |
+| ------------------------ | :---------: | :------------------------------------------------------: |
+| /api/responder/available |    `GET`    | Retrieves a list of available responders for emergencies |
+
+> #### Request Parameters (Optional)
+>
+> - `type`: Filter by responder type (POLICE, MEDICAL, FIRE, SECURITY, OTHER)
+
+> #### Response - Success
+>
+> ```json
+> {
+>   "success": true,
+>   "responders": [
+>     {
+>       "userId": "responder123",
+>       "fullName": "Officer John Smith",
+>       "responderType": "POLICE",
+>       "badgeNumber": "POL-001",
+>       "status": "AVAILABLE",
+>       "currentLocation": {
+>         "latitude": 23.8103,
+>         "longitude": 90.4125
+>       },
+>       "lastStatusUpdate": "2025-06-15T10:30:00Z"
+>     }
+>   ]
+> }
+> ```
+
+> #### Response - Error Cases
+>
+> #### Response Code: 400 (`Bad Request`)
+>
+> ```json
+> {
+>   "success": false,
+>   "error": "Invalid responder type"
+> }
+> ```

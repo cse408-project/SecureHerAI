@@ -17,12 +17,13 @@ public class AccountCleanupTask {
     private UserRepository userRepository;
     
     /**
-     * Delete unverified accounts that are older than 7 days
+     * Delete old accounts that are older than 7 days
      * Runs daily at 1:00 AM
      */
     @Scheduled(cron = "0 0 1 * * ?")
     public void cleanupUnverifiedAccounts() {
-        // Find and delete accounts created more than 7 days ago that were never verified
+        // Now that isVerified is properly mapped to database, we can use it
+        // Find and delete unverified accounts created more than 7 days ago
         LocalDateTime cutoffDate = LocalDateTime.now().minusDays(7);
         userRepository.deleteByIsVerifiedFalseAndCreatedAtBefore(cutoffDate);
     }

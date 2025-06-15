@@ -218,7 +218,7 @@ public class User implements UserDetails {
     public Boolean getIsEnabled() { return isEnabled; }
     public void setIsEnabled(Boolean isEnabled) { this.isEnabled = isEnabled; }
     
-    // Verification status getters and setters
+    // Verification status getters and setters - using transient field (not stored in database)
     public Boolean getIsVerified() { return isVerified; }
     public void setIsVerified(Boolean isVerified) { this.isVerified = isVerified; }
     

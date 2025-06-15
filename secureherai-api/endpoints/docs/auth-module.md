@@ -6,6 +6,97 @@ This module handles user authentication, registration, profile management, and O
 
 ## Endpoints
 
+### Registration
+
+| API Endpoint          | HTTP Method |                 Description                 |
+| --------------------- | :---------: | :-----------------------------------------: |
+| [api/auth/register]() |   `POST`    | Registers a new user or responder in system |
+
+> ### User Registration Request
+>
+> #### Request Body
+>
+> ```json
+> {
+>   "fullName": "Jane Doe",
+>   "email": "user@example.com",
+>   "password": "password123",
+>   "phoneNumber": "+8801712345678",
+>   "dateOfBirth": "1990-01-01",
+>   "role": "USER"
+> }
+> ```
+
+> ### Responder Registration Request
+>
+> #### Request Body
+>
+> ```json
+> {
+>   "fullName": "Officer John Smith",
+>   "email": "officer@example.com",
+>   "password": "password123",
+>   "phoneNumber": "+8801712345678",
+>   "dateOfBirth": "1990-01-01",
+>   "role": "RESPONDER",
+>   "responderType": "POLICE",
+>   "badgeNumber": "POL-001"
+> }
+> ```
+
+> ### Response - Success
+>
+> #### Response Code: 200 (`OK`)
+>
+> #### Response Body
+>
+> ```json
+> {
+>   "success": true,
+>   "message": "Registration successful! Please check your email for verification.",
+>   "userId": "12345"
+> }
+> ```
+
+> ### Response - Error Cases
+>
+> #### Response Code: 400 (`Bad Request`)
+>
+> ```json
+> {
+>   "success": false,
+>   "error": "Email already registered"
+> }
+> ```
+>
+> ```json
+> {
+>   "success": false,
+>   "error": "Phone number already registered"
+> }
+> ```
+>
+> ```json
+> {
+>   "success": false,
+>   "error": "Role is required. Must be USER or RESPONDER"
+> }
+> ```
+>
+> ```json
+> {
+>   "success": false,
+>   "error": "Responder type is required for responder registration"
+> }
+> ```
+>
+> ```json
+> {
+>   "success": false,
+>   "error": "Badge number is required for responder registration"
+> }
+> ```
+
 ### Login
 
 | API Endpoint                   | HTTP Method |                         Description                          |
@@ -221,12 +312,25 @@ This module handles user authentication, registration, profile management, and O
 > Authorization: Bearer {jwt_token}
 > ```
 
-> #### Request Body
+> #### Request Body (Regular User)
 >
 > ```json
 > {
 >   "phoneNumber": "+8801712345678",
->   "dateOfBirth": "1990-01-01"
+>   "dateOfBirth": "1990-01-01",
+>   "role": "USER"
+> }
+> ```
+
+> #### Request Body (Responder)
+>
+> ```json
+> {
+>   "phoneNumber": "+8801712345680",
+>   "dateOfBirth": "1985-07-15",
+>   "role": "RESPONDER",
+>   "responderType": "POLICE",
+>   "badgeNumber": "POL-2023"
 > }
 > ```
 
@@ -248,6 +352,27 @@ This module handles user authentication, registration, profile management, and O
 >   "error": "Invalid phone number format"
 > }
 > ```
+>
+> ```json
+> {
+>   "success": false,
+>   "error": "Responder type is required for responder registration"
+> }
+> ```
+>
+> ```json
+> {
+>   "success": false,
+>   "error": "Badge number is required for responder registration"
+> }
+> ```
+>
+> ```json
+> {
+>   "success": false,
+>   "error": "Profile is already complete"
+> }
+> ```
 
 ---
 
@@ -263,13 +388,23 @@ This module handles user authentication, registration, profile management, and O
 > Authorization: Bearer {jwt_token}
 > ```
 
-> #### Request Body
+> #### Request Body (Regular User)
 >
 > ```json
 > {
 >   "fullName": "Jane Smith",
 >   "phoneNumber": "+8801712345679",
 >   "profilePicture": "data:image/jpeg;base64,..."
+> }
+> ```
+
+> #### Request Body (Responder)
+>
+> ```json
+> {
+>   "fullName": "Officer John Smith",
+>   "phoneNumber": "+8801712345699",
+>   "status": "AVAILABLE" // AVAILABLE, BUSY, or OFF_DUTY
 > }
 > ```
 
@@ -281,3 +416,29 @@ This module handles user authentication, registration, profile management, and O
 >   "message": "Profile updated successfully"
 > }
 > ```
+
+---
+
+## Account Verification and Profile Completion
+
+The system uses two separate flags to track user authentication and profile completion status:
+
+### Account Verification (`isVerified`)
+
+- An account is marked as verified when:
+
+  - A user successfully logs in with an email verification code
+  - A user registers through Google OAuth (automatically verified)
+  - A user completes their profile (implicitly verified)
+
+- Unverified accounts may be removed from the system after 7 days
+
+### Profile Completion (`isProfileComplete`)
+
+- A profile is considered complete when:
+
+  - A user has provided all required profile information including phone number and date of birth
+  - For responders, this also includes their responder type and badge number
+
+- OAuth users initially have `isProfileComplete=false` and must call the complete-profile endpoint
+- Regular users who register with all required information start with `isProfileComplete=true`

@@ -57,6 +57,8 @@ public class Responder {
     }
     
     public enum Status {
+        // Note: Even though enum is uppercase, JPA will convert to lowercase when storing in DB
+        // so it will match the schema values: 'available', 'busy', 'off_duty'
         AVAILABLE, BUSY, OFF_DUTY
     }
     
@@ -71,19 +73,21 @@ public class Responder {
 
     public Responder(User user, ResponderType responderType, String badgeNumber) {
         this.user = user;
-        this.userId = user.getId();
+        // userId is managed by @MapsId - it will be set automatically
         this.responderType = responderType;
         this.badgeNumber = badgeNumber;
+        this.status = Status.AVAILABLE;
     }
 
     // Getters and Setters
     public UUID getUserId() { return userId; }
+    // With @MapsId, we don't need to set userId explicitly
     public void setUserId(UUID userId) { this.userId = userId; }
     
     public User getUser() { return user; }
     public void setUser(User user) { 
         this.user = user;
-        this.userId = user != null ? user.getId() : null;
+        // With @MapsId, we don't need to set userId explicitly
     }
     
     public ResponderType getResponderType() { return responderType; }

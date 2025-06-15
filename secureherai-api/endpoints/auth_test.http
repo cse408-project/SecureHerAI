@@ -1,7 +1,7 @@
 ### SecureHerAI Authentication API Tests
 
 @baseUrl = http://localhost:8080/api
-@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI0ODIwNDExZS03MmMwLTRlNmUtYTM2YS1iMmExOGY5YjRiZjQiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc0OTkxNzI5OSwiZXhwIjoxNzUwMDAzNjk5fQ.fRulT0w0DNiR8AdQ50dNV71Wyn5avFCDoLsGo_cTu9c
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZjA2YjljOS1mY2IzLTRhYWItYTBlYy1iNDk4ZDM5MDlmZjQiLCJlbWFpbCI6ImFyaW1vdG9raWthMjAwNTAyNUBnbWFpbC5jb20iLCJyb2xlIjoiUkVTUE9OREVSIiwiaWF0IjoxNzUwMDA0MDc1LCJleHAiOjE3NTAwOTA0NzV9.IL2fG82qkmYKV5cZibyx9v4RP4vLmPlr6cAmC-NOcu0
 
 ### 1. Health Check
 GET {{baseUrl}}/health
@@ -53,7 +53,7 @@ Content-Type: application/json
 
 {
   "fullName": "Dr. Sarah Ahmed",
-  "email": "sarah.ahmed@hospital.bd",
+  "email": "soniakhatun94358@gmail.com",
   "password": "password123",
   "phoneNumber": "+8801712345681",
   "dateOfBirth": "1980-08-10",
@@ -115,7 +115,7 @@ Content-Type: application/json
 
 {
   "email": "2005009@ugrad.cse.buet.ac.bd",
-  "loginCode": "884687"
+  "loginCode": "956885"
 }
 
 ### 4.3. Verify Login Code - Expired Code (should fail)
@@ -134,7 +134,7 @@ Content-Type: application/json
 
 {
   "email": "arimotokika2005025@gmail.com",
-  "loginCode": "762949"
+  "loginCode": "234984"
 }
 
 
@@ -204,14 +204,28 @@ GET {{baseUrl}}/auth/mobile/test-redirect
 ### 13. Test Mobile OAuth Success Flow
 GET {{baseUrl}}/auth/mobile/oauth-success?token={{authToken}}
 
-### 14. Complete Profile after OAuth Login
+### 14. Complete Profile after OAuth Login (User)
 POST {{baseUrl}}/user/complete-profile
 Authorization: Bearer {{authToken}}
 Content-Type: application/json
 
 {
   "phoneNumber": "+8801712345678",
-  "dateOfBirth": "1990-01-01"
+  "dateOfBirth": "1990-01-01",
+  "role": "USER"
+}
+
+### 14.1. Complete Profile after OAuth Login (Responder)
+POST {{baseUrl}}/user/complete-profile
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "phoneNumber": "+8801712345680",
+  "dateOfBirth": "1985-07-15",
+  "role": "RESPONDER",
+  "responderType": "POLICE",
+  "badgeNumber": "POL-2023"
 }
 
 ### === USER PROFILE ENDPOINTS (UNIFIED FOR USERS AND RESPONDERS) ===
@@ -290,35 +304,3 @@ Content-Type: application/json
 {
   "status": "BUSY"
 }
-
-### 14. Update Responder Status - Set to Off Duty (only works if user role is RESPONDER)
-PUT {{baseUrl}}/user/profile
-Authorization: Bearer {{authToken}}
-Content-Type: application/json
-
-{
-  "status": "OFF_DUTY"
-}
-
-### 15. Update Both Profile and Status (combined update for responders)
-PUT {{baseUrl}}/user/profile
-Authorization: Bearer {{authToken}}
-Content-Type: application/json
-
-{
-  "fullName": "Officer Arimoto Updated",
-  "phoneNumber": "+8801712345700",
-  "status": "AVAILABLE"
-}
-
-### 16. Update Responder Status - Invalid Status (should fail)
-PUT {{baseUrl}}/user/profile
-Authorization: Bearer {{authToken}}
-Content-Type: application/json
-
-{
-  "status": "INVALID_STATUS"
-}
-
-### 17. Get Available Responders (public endpoint - still available from ResponderController)
-GET {{baseUrl}}/responder/available
