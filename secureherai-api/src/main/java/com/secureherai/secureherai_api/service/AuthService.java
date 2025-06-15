@@ -1,24 +1,30 @@
 package com.secureherai.secureherai_api.service;
 
-import com.secureherai.secureherai_api.dto.auth.AuthRequest;
-import com.secureherai.secureherai_api.dto.auth.AuthResponse;
-import com.secureherai.secureherai_api.entity.User;
-import com.secureherai.secureherai_api.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 import java.util.UUID;
 
-@Service
-public class AuthService {
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-    @Autowired
+import com.secureherai.secureherai_api.dto.auth.AuthRequest;
+import com.secureherai.secureherai_api.dto.auth.AuthResponse;
+import com.secureherai.secureherai_api.entity.Responder;
+import com.secureherai.secureherai_api.entity.User;
+import com.secureherai.secureherai_api.repository.ResponderRepository;
+import com.secureherai.secureherai_api.repository.UserRepository;
+
+@Service
+@Transactional
+public class AuthService {    @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private ResponderRepository responderRepository;
     
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -41,10 +47,27 @@ public class AuthService {
             return new AuthResponse.Error("Invalid email or password");
         }
         
-        String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole().name());
-        return new AuthResponse.Success(token, user.getId().toString(), user.getFullName(), user.getRole().name());
+        // Generate 6-digit login code
+        String loginCode = String.format("%06d", (int)(Math.random() * 1000000));
+        user.setLoginCode(loginCode);
+        user.setLoginCodeExpiry(LocalDateTime.now().plusMinutes(10)); // Code expires in 10 minutes
+        
+        userRepository.save(user);
+        
+        // Send login code email
+        try {
+            emailService.sendLoginCodeEmail(user.getEmail(), user.getFullName(), loginCode);
+            return new AuthResponse.Success("Login code sent to your email. Please check your inbox.");
+        } catch (Exception e) {
+            // Clear the login code if email fails
+            user.setLoginCode(null);
+            user.setLoginCodeExpiry(null);
+            userRepository.save(user);
+            return new AuthResponse.Error("Failed to send login code. Please try again later.");
+        }
     }
-
+    
+    @Transactional(rollbackFor = Exception.class)
     public Object register(AuthRequest.Register request) {
         // Check if email already exists
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -55,6 +78,38 @@ public class AuthService {
         if (userRepository.existsByPhone(request.getPhoneNumber())) {
             return new AuthResponse.Error("Phone number already registered");
         }
+          // Validate role
+        String role = request.getRole();
+        if (role == null || role.isEmpty()) {
+            return new AuthResponse.Error("Role is required. Must be USER or RESPONDER");
+        }
+        
+        role = role.toUpperCase();
+        if (!role.equals("USER") && !role.equals("RESPONDER")) {
+            return new AuthResponse.Error("Invalid role. Must be USER or RESPONDER");
+        }
+        
+        // If registering as responder, validate responder-specific fields
+        if (role.equals("RESPONDER")) {
+            if (request.getResponderType() == null || request.getResponderType().isEmpty()) {
+                return new AuthResponse.Error("Responder type is required for responder registration");
+            }
+            
+            if (request.getBadgeNumber() == null || request.getBadgeNumber().isEmpty()) {
+                return new AuthResponse.Error("Badge number is required for responder registration");
+            }
+            
+            // Validate responder type
+            String responderType = request.getResponderType().toUpperCase();
+            if (!isValidResponderType(responderType)) {
+                return new AuthResponse.Error("Invalid responder type. Must be POLICE, MEDICAL, FIRE, SECURITY, or OTHER");
+            }
+            
+            // Check if badge number already exists
+            if (responderRepository.existsByBadgeNumber(request.getBadgeNumber())) {
+                return new AuthResponse.Error("Badge number already registered");
+            }
+        }
         
         // Create new user
         User user = new User();
@@ -62,6 +117,7 @@ public class AuthService {
         user.setEmail(request.getEmail());
         user.setPhone(request.getPhoneNumber());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setRole(User.Role.valueOf(role));
         
         if (request.getDateOfBirth() != null && !request.getDateOfBirth().isEmpty()) {
             try {
@@ -71,17 +127,50 @@ public class AuthService {
             }
         }
         
-        userRepository.save(user);
+        // Save user first to get the ID
+        user = userRepository.save(user);
         
-        // Send welcome email
+        // If registering as responder, create responder record
+        if (role.equals("RESPONDER")) {
+            try {
+                Responder responder = new Responder();
+                responder.setUser(user); // This will handle the mapping with @MapsId
+                responder.setResponderType(Responder.ResponderType.valueOf(request.getResponderType().toUpperCase()));
+                responder.setBadgeNumber(request.getBadgeNumber());
+                responderRepository.save(responder);
+            } catch (Exception e) {
+                // Log the error
+                System.err.println("Error creating responder: " + e.getMessage());
+                e.printStackTrace();
+                // Return error response
+                return new AuthResponse.Error("Error creating responder profile: " + e.getMessage());
+            }
+        }
+        
+        // Send welcome email with verification instructions
         try {
             emailService.sendWelcomeEmail(user.getEmail(), user.getFullName());
+            
+            // For responders, send additional information
+            if (role.equals("RESPONDER")) {
+                // You can add a specialized email for responders here
+                // emailService.sendResponderWelcomeEmail(user.getEmail(), user.getFullName());
+            }
         } catch (Exception e) {
             // Log but don't fail registration if email fails
             System.err.println("Failed to send welcome email: " + e.getMessage());
         }
         
         return new AuthResponse.Success("User registered successfully");
+    }
+    
+    private boolean isValidResponderType(String responderType) {
+        try {
+            Responder.ResponderType.valueOf(responderType);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     public Object forgotPassword(AuthRequest.ForgotPassword request) {
@@ -149,56 +238,44 @@ public class AuthService {
         return new AuthResponse.Success("Password reset successful");
     }
 
-    public Object getProfile(UUID userId) {
-        Optional<User> userOpt = userRepository.findById(userId);
-        
-        if (userOpt.isEmpty()) {
-            return new AuthResponse.Error("User not found");
+    public Object verifyLoginCode(AuthRequest.VerifyLoginCode request) {
+        if (request.getLoginCode() == null || request.getLoginCode().trim().isEmpty()) {
+            return new AuthResponse.Error("Login code is required");
         }
         
-        User user = userOpt.get();
-        AuthResponse.Profile.UserProfile profile = new AuthResponse.Profile.UserProfile(
-            user.getId().toString(),
-            user.getFullName(),
-            user.getEmail(),
-            user.getPhone(),
-            user.getProfilePicture(),
-            user.getDateOfBirth(),
-            user.getEmailAlerts(),
-            user.getSmsAlerts(),
-            user.getPushNotifications()
-        );
-        
-        return new AuthResponse.Profile(profile);
-    }
-
-    public Object updateProfile(UUID userId, AuthRequest.UpdateProfile request) {
-        Optional<User> userOpt = userRepository.findById(userId);
+        Optional<User> userOpt = userRepository.findByEmail(request.getEmail());
         
         if (userOpt.isEmpty()) {
-            return new AuthResponse.Error("User not found");
+            return new AuthResponse.Error("Invalid email or login code");
         }
         
         User user = userOpt.get();
         
-        if (request.getFullName() != null) {
-            user.setFullName(request.getFullName());
+        // Check if login code exists and matches
+        if (user.getLoginCode() == null || !user.getLoginCode().equals(request.getLoginCode().trim())) {
+            return new AuthResponse.Error("Invalid email or login code");
         }
         
-        if (request.getPhoneNumber() != null) {
-            // Check if phone is already taken by another user
-            Optional<User> existingUser = userRepository.findByPhone(request.getPhoneNumber());
-            if (existingUser.isPresent() && !existingUser.get().getId().equals(userId)) {
-                return new AuthResponse.Error("Phone number already in use");
-            }
-            user.setPhone(request.getPhoneNumber());
+        // Check if login code has expired
+        if (user.getLoginCodeExpiry() == null || user.getLoginCodeExpiry().isBefore(LocalDateTime.now())) {
+            // Clear expired login code
+            user.setLoginCode(null);
+            user.setLoginCodeExpiry(null);
+            userRepository.save(user);
+            return new AuthResponse.Error("Login code has expired. Please request a new login code.");
         }
         
-        if (request.getProfilePicture() != null) {
-            user.setProfilePicture(request.getProfilePicture());
-        }
+        // Login code is valid, clear it and generate JWT token
+        user.setLoginCode(null);
+        user.setLoginCodeExpiry(null);
+        
+        // Verification temporarily handled in-memory only
+        // We'll consider any account as verified once they've logged in successfully
+        user.setIsVerified(true);
         
         userRepository.save(user);
-        return new AuthResponse.Success("Profile updated successfully");
+        
+        String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole().name());
+        return new AuthResponse.Success(token, user.getId().toString(), user.getFullName(), user.getRole().name());
     }
 }

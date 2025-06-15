@@ -9,6 +9,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -61,6 +64,25 @@ public class AuthController {
             return ResponseEntity.badRequest().body(response);
         }
         
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/verify-login-code")
+    public ResponseEntity<Object> verifyLoginCode(@Valid @RequestBody AuthRequest.VerifyLoginCode request) {
+        Object response = authService.verifyLoginCode(request);
+        
+        if (response instanceof AuthResponse.Error) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+        }
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    @GetMapping("/google")
+    public ResponseEntity<Object> googleLogin() {
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("authUrl", "/oauth2/authorize/google");
         return ResponseEntity.ok(response);
     }
 }

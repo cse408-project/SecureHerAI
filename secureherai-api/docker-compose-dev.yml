@@ -4,12 +4,13 @@ services:
   api:
     container_name: secureherai_api
     build:
-      context: ./secureherai-api
+      context: .
       dockerfile: Dockerfile
       target: development
     volumes:
-      - ./secureherai-api:/app
+      - .:/app
       - maven_cache:/root/.m2
+      - cert_fingerprints:/app/cert-fingerprints
     working_dir: /app
     command: mvn spring-boot:run -Dspring-boot.run.profiles=dev
     ports:
@@ -17,6 +18,8 @@ services:
     env_file:
       - .env
     environment:
+      # OAuth keystore password
+      OAUTH_KEYSTORE_PASSWORD: secureherai123
       # Database Configuration
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/secureherai
       SPRING_DATASOURCE_USERNAME: user
@@ -66,6 +69,9 @@ services:
 volumes:
   postgres_data:
   maven_cache:
+  cert_fingerprints:
+    # Persist certificate fingerprints across container restarts
+    name: secureherai_cert_fingerprints
 
 networks:
   app-network:

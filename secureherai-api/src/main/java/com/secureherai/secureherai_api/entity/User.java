@@ -49,6 +49,12 @@ public class User implements UserDetails {
     @Column(name = "push_notifications", nullable = false)
     private Boolean pushNotifications = true;
     
+    @Column(name = "oauth_provider")
+    private String oauthProvider;
+    
+    @Column(name = "is_profile_complete")
+    private Boolean isProfileComplete = false;
+    
     @Column(name = "contribution_points")
     private Integer contributionPoints = 0;
     
@@ -58,6 +64,13 @@ public class User implements UserDetails {
     
     @Column(name = "reset_token_expiry")
     private LocalDateTime resetTokenExpiry;
+    
+    // Login code fields for email 2FA
+    @Column(name = "login_code")
+    private String loginCode;
+    
+    @Column(name = "login_code_expiry")
+    private LocalDateTime loginCodeExpiry;
     
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -77,6 +90,9 @@ public class User implements UserDetails {
     
     @Column(name = "is_enabled", nullable = false)
     private Boolean isEnabled = true;
+    
+    @Column(name = "is_verified", nullable = false)
+    private Boolean isVerified = false;
     
     public enum Role {
         USER, RESPONDER, ADMIN
@@ -177,6 +193,12 @@ public class User implements UserDetails {
     public Integer getContributionPoints() { return contributionPoints; }
     public void setContributionPoints(Integer contributionPoints) { this.contributionPoints = contributionPoints; }
     
+    public String getOauthProvider() { return oauthProvider; }
+    public void setOauthProvider(String oauthProvider) { this.oauthProvider = oauthProvider; }
+    
+    public Boolean getIsProfileComplete() { return isProfileComplete; }
+    public void setIsProfileComplete(Boolean isProfileComplete) { this.isProfileComplete = isProfileComplete; }
+    
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     
@@ -196,10 +218,21 @@ public class User implements UserDetails {
     public Boolean getIsEnabled() { return isEnabled; }
     public void setIsEnabled(Boolean isEnabled) { this.isEnabled = isEnabled; }
     
+    // Verification status getters and setters - using transient field (not stored in database)
+    public Boolean getIsVerified() { return isVerified; }
+    public void setIsVerified(Boolean isVerified) { this.isVerified = isVerified; }
+    
     // Reset token getters and setters
     public String getResetToken() { return resetToken; }
     public void setResetToken(String resetToken) { this.resetToken = resetToken; }
     
     public LocalDateTime getResetTokenExpiry() { return resetTokenExpiry; }
     public void setResetTokenExpiry(LocalDateTime resetTokenExpiry) { this.resetTokenExpiry = resetTokenExpiry; }
+    
+    // Login code getters and setters
+    public String getLoginCode() { return loginCode; }
+    public void setLoginCode(String loginCode) { this.loginCode = loginCode; }
+    
+    public LocalDateTime getLoginCodeExpiry() { return loginCodeExpiry; }
+    public void setLoginCodeExpiry(LocalDateTime loginCodeExpiry) { this.loginCodeExpiry = loginCodeExpiry; }
 }

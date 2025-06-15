@@ -1,6 +1,7 @@
 package com.secureherai.secureherai_api.dto.auth;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 // Combined DTOs for all Authentication Responses
 public class AuthResponse {
@@ -51,11 +52,28 @@ public class AuthResponse {
         }
 
         public boolean isSuccess() { return success; }
-        public void setSuccess(boolean success) { this.success = success; }
         public String getError() { return error; }
         public void setError(String error) { this.error = error; }
     }
-
+    
+    // Complete Profile Response
+    public static class CompleteProfile {
+        private boolean success;
+        private String token;
+        private String message;
+        
+        public CompleteProfile() {}
+        
+        public boolean isSuccess() { return success; }
+        public void setSuccess(boolean success) { this.success = success; }
+        
+        public String getToken() { return token; }
+        public void setToken(String token) { this.token = token; }
+        
+        public String getMessage() { return message; }
+        public void setMessage(String message) { this.message = message; }
+    }
+    
     // Profile Response
     public static class Profile {
         private boolean success = true;
@@ -78,6 +96,9 @@ public class AuthResponse {
             private String profilePicture;
             private LocalDate dateOfBirth;
             private NotificationPreferences notificationPreferences;
+            private String role;
+            // Responder-specific fields (only populated if role is RESPONDER)
+            private ResponderInfo responderInfo;
 
             public UserProfile() {}
 
@@ -91,6 +112,15 @@ public class AuthResponse {
                 this.profilePicture = profilePicture;
                 this.dateOfBirth = dateOfBirth;
                 this.notificationPreferences = new NotificationPreferences(emailAlerts, smsAlerts, pushNotifications);
+            }
+
+            // Constructor with role
+            public UserProfile(String userId, String fullName, String email, String phoneNumber, 
+                             String profilePicture, LocalDate dateOfBirth, boolean emailAlerts, 
+                             boolean smsAlerts, boolean pushNotifications, String role) {
+                this(userId, fullName, email, phoneNumber, profilePicture, dateOfBirth, 
+                     emailAlerts, smsAlerts, pushNotifications);
+                this.role = role;
             }
 
             // Getters and Setters
@@ -108,6 +138,41 @@ public class AuthResponse {
             public void setDateOfBirth(LocalDate dateOfBirth) { this.dateOfBirth = dateOfBirth; }
             public NotificationPreferences getNotificationPreferences() { return notificationPreferences; }
             public void setNotificationPreferences(NotificationPreferences notificationPreferences) { this.notificationPreferences = notificationPreferences; }
+            public String getRole() { return role; }
+            public void setRole(String role) { this.role = role; }
+            public ResponderInfo getResponderInfo() { return responderInfo; }
+            public void setResponderInfo(ResponderInfo responderInfo) { this.responderInfo = responderInfo; }
+
+            public static class ResponderInfo {
+                private String responderType;
+                private String badgeNumber;
+                private String status;
+                private boolean isActive;
+                private LocalDateTime lastStatusUpdate;
+
+                public ResponderInfo() {}
+
+                public ResponderInfo(String responderType, String badgeNumber, String status, 
+                                   boolean isActive, LocalDateTime lastStatusUpdate) {
+                    this.responderType = responderType;
+                    this.badgeNumber = badgeNumber;
+                    this.status = status;
+                    this.isActive = isActive;
+                    this.lastStatusUpdate = lastStatusUpdate;
+                }
+
+                // Getters and Setters
+                public String getResponderType() { return responderType; }
+                public void setResponderType(String responderType) { this.responderType = responderType; }
+                public String getBadgeNumber() { return badgeNumber; }
+                public void setBadgeNumber(String badgeNumber) { this.badgeNumber = badgeNumber; }
+                public String getStatus() { return status; }
+                public void setStatus(String status) { this.status = status; }
+                public boolean isActive() { return isActive; }
+                public void setActive(boolean isActive) { this.isActive = isActive; }
+                public LocalDateTime getLastStatusUpdate() { return lastStatusUpdate; }
+                public void setLastStatusUpdate(LocalDateTime lastStatusUpdate) { this.lastStatusUpdate = lastStatusUpdate; }
+            }
 
             public static class NotificationPreferences {
                 private boolean emailAlerts;

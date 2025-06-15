@@ -1,0 +1,41 @@
+Frontend:
+cd secureherai-app
+npm install
+npm start
+
+Backend:
+cd secureherai-api
+docker-compose -f docker-compose-dev.yml up --build
+docker-compose -f docker-compose-dev.yml down
+
+Git:
+cd SecureHerAI
+git pull origin
+
+git add . 
+git commit -m "message"
+git push origin 
+
+
+Merge Conflict:
+# 1. Make sure you're on your branch and changes are committed
+git status  # Verify your working directory is clean
+
+# 2. Fetch the latest changes without merging
+git fetch origin
+
+# 3. Merge the remote branch into your local branch
+git merge origin/main  # Replace 'main' with the branch you're merging from
+
+# 4. If there are conflicts, Git will tell you
+# Open each conflicted file and resolve the conflicts
+# Look for markers like <<<<<<< HEAD, =======, and >>>>>>>
+
+# 5. After resolving all conflicts, add the resolved files
+git add .  # Or add each file individually
+
+# 6. Create a merge commit
+git commit -m "Merge remote branch and resolve conflicts"
+
+# 7. Push your changes to the remote repository
+git push origin your-branch-name

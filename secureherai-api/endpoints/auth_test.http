@@ -1,6 +1,7 @@
 ### SecureHerAI Authentication API Tests
 
 @baseUrl = http://localhost:8080/api
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZjA2YjljOS1mY2IzLTRhYWItYTBlYy1iNDk4ZDM5MDlmZjQiLCJlbWFpbCI6ImFyaW1vdG9raWthMjAwNTAyNUBnbWFpbC5jb20iLCJyb2xlIjoiUkVTUE9OREVSIiwiaWF0IjoxNzUwMDA4MDk4LCJleHAiOjE3NTAwOTQ0OTh9.iPRhTZgC6y6Au18c945IvTrP3cAoabam-ZDCFjItunk
 
 ### 1. Health Check
 GET {{baseUrl}}/health
@@ -14,17 +15,196 @@ Content-Type: application/json
   "email": "2005009@ugrad.cse.buet.ac.bd",
   "password": "password123",
   "phoneNumber": "+8801712345678",
-  "dateOfBirth": "1990-01-01"
+  "dateOfBirth": "1990-01-01",
+  "role": "USER"
 }
 
-### 4. Login User
+### Successful Registration Response
+HTTP/1.1 200
+Content-Type: application/json
+
+{
+  "success": true,
+  "token": null,
+  "userId": null,
+  "fullName": null,
+  "role": null,
+  "message": "User registered successfully"
+}
+
+### Unsuccessful Registration Response (Email already registered)
+HTTP/1.1 409
+Content-Type: application/json
+
+{
+  "error": "Email already registered",
+  "success": false
+}
+
+
+### 2.1 Register User - Missing Role (should fail)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Missing Role User",
+  "email": "missing.role@example.com",
+  "password": "password123",
+  "phoneNumber": "+8801712345677"
+}
+
+### Unsuccessful Registration Response (Missing Role)
+HTTP/1.1 400
+Content-Type: application/json
+
+{
+  "error": "Validation failed: role Role is required; ",
+  "success": false
+}
+
+### 2.2 Register Responder (Police Officer)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Arimoto kika",
+  "email": "arimotokika2005025@gmail.com",
+  "password": "password123",
+  "phoneNumber": "+8801723456780",
+  "dateOfBirth": "1985-03-20",
+  "role": "RESPONDER",
+  "responderType": "POLICE",
+  "badgeNumber": "POL-0011"
+}
+
+### 2.3 Register Responder (Medical Professional)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Dr. Sarah Ahmed",
+  "email": "soniakhatun94358@gmail.com",
+  "password": "password123",
+  "phoneNumber": "+8801712345681",
+  "dateOfBirth": "1980-08-10",
+  "role": "RESPONDER",
+  "responderType": "MEDICAL",
+  "badgeNumber": "MED-001"
+}
+
+### 2.4 Register Responder - Invalid Type (should fail)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Invalid Responder",
+  "email": "invalid@example.com",
+  "password": "password123",
+  "phoneNumber": "+8801712345682",
+  "role": "RESPONDER",
+  "responderType": "INVALID_TYPE",
+  "badgeNumber": "INV-001"
+}
+
+### 2.5 Register Responder - Missing Badge Number (should fail)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Missing Badge",
+  "email": "missing@example.com",
+  "password": "password123",
+  "phoneNumber": "+8801712345683",
+  "role": "RESPONDER",
+  "responderType": "FIRE"
+}
+
+### 4. Login User (Step 1: Request Login Code)
+### This first step of the login process doesn't verify the account yet
 POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
   "email": "2005009@ugrad.cse.buet.ac.bd",
-  "password": "newpassword123"
+  "password": "password123"
 }
+
+### Successful Login Response
+HTTP/1.1 200
+Content-Type: application/json
+
+{
+  "success": true,
+  "token": null,
+  "userId": null,
+  "fullName": null,
+  "role": null,
+  "message": "Login code sent to your email. Please check your inbox."
+}
+
+### 4.1 Login Responder (Step 1: Request Login Code)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "arimotokika2005025@gmail.com",
+  "password": "password123"
+}
+
+### 4.1. Verify Login Code (Step 2: Enter the code received via email)
+### This second step of the login process verifies the account upon successful completion
+POST {{baseUrl}}/auth/verify-login-code
+Content-Type: application/json
+
+{
+  "email": "2005009@ugrad.cse.buet.ac.bd",
+  "loginCode": "824967"
+}
+
+### Successful Verification Response (User)
+HTTP/1.1 200
+Content-Type: application/json
+
+{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxYjA1YjBmOS02OGExLTQ1MzktOTg1NS04N2MwOTQ3ODJlMWMiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc1MDAwNzkyNSwiZXhwIjoxNzUwMDk0MzI1fQ.eViDYSzuZDVirf_qfjeUVHAJ65Ly_WOlNr_owVEaUuE",
+  "userId": "1b05b0f9-68a1-4539-9855-87c094782e1c",
+  "fullName": "AN Swapnil",
+  "role": "USER",
+  "message": null
+}
+
+### 4.3.
+POST {{baseUrl}}/auth/verify-login-code
+Content-Type: application/json
+
+{
+  "email": "arimotokika2005025@gmail.com",
+  "loginCode": "902307"
+}
+
+### Successful Verification Response
+HTTP/1.1 200
+Content-Type: application/json
+
+{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZjA2YjljOS1mY2IzLTRhYWItYTBlYy1iNDk4ZDM5MDlmZjQiLCJlbWFpbCI6ImFyaW1vdG9raWthMjAwNTAyNUBnbWFpbC5jb20iLCJyb2xlIjoiUkVTUE9OREVSIiwiaWF0IjoxNzUwMDA4MDk4LCJleHAiOjE3NTAwOTQ0OTh9.iPRhTZgC6y6Au18c945IvTrP3cAoabam-ZDCFjItunk",
+  "userId": "df06b9c9-fcb3-4aab-a0ec-b498d3909ff4",
+  "fullName": "Arimotokika",
+  "role": "RESPONDER",
+  "message": null
+}
+
+### 4.3. Verify Login Code - Expired Code (should fail)
+POST {{baseUrl}}/auth/verify-login-code
+Content-Type: application/json
+
+{
+  "email": "2005009@ugrad.cse.buet.ac.bd",
+  "loginCode": "902307"
+}
+
 
 ### 5. Login User - Wrong Password (should fail)
 POST {{baseUrl}}/auth/login
@@ -32,23 +212,160 @@ Content-Type: application/json
 
 {
   "email": "2005009@ugrad.cse.buet.ac.bd",
-  "password": "wrongpassword"
+  "password": "password123"
 }
 
 ### 6. Get User Profile (Fresh token - valid until May 27, 2025)
 GET {{baseUrl}}/user/profile
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI0MzU0YWI1My03Zjg3LTQ1NTctYjhjNy02NDBlYjFhZDJkMzUiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc0ODI4MDQxMCwiZXhwIjoxNzQ4MzY2ODEwfQ.CS7Px6MPxPFH5EPgNuYD1RdjOJZqXTOZsKtt1yghW20
+Authorization: Bearer {{authToken}}
 
-### 7. Update User Profile (Fresh token - valid until May 27, 2025)
-PUT {{baseUrl}}/user/profile
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI0MzU0YWI1My03Zjg3LTQ1NTctYjhjNy02NDBlYjFhZDJkMzUiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc0ODI4MDQxMCwiZXhwIjoxNzQ4MzY2ODEwfQ.CS7Px6MPxPFH5EPgNuYD1RdjOJZqXTOZsKtt1yghW20
+### Succressful Response (Responder)
+HTTP/1.1 200
 Content-Type: application/json
 
 {
-  "fullName": "Jane Smith",
-  "phoneNumber": "+8801712345679",
-  "profilePicture": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+  "data": {
+    "userId": "df06b9c9-fcb3-4aab-a0ec-b498d3909ff4",
+    "fullName": "Arimotokika",
+    "email": "arimotokika2005025@gmail.com",
+    "phoneNumber": "+8801712345680",
+    "profilePicture": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=",
+    "dateOfBirth": "1985-07-15",
+    "notificationPreferences": {
+      "emailAlerts": true,
+      "smsAlerts": true,
+      "pushNotifications": true
+    },
+    "role": null,
+    "responderInfo": {
+      "responderType": "POLICE",
+      "badgeNumber": "POL-0011",
+      "status": "AVAILABLE",
+      "lastStatusUpdate": "2025-06-15T16:21:48.062696",
+      "active": true
+    }
+  },
+  "success": true
 }
+
+### Successful Response (User)
+HTTP/1.1 200
+Content-Type: application/json
+
+{
+  "data": {
+    "userId": "1b05b0f9-68a1-4539-9855-87c094782e1c",
+    "fullName": "AN Swapnil",
+    "email": "2005009@ugrad.cse.buet.ac.bd",
+    "phoneNumber": "+8801712345678",
+    "profilePicture": null,
+    "dateOfBirth": "1990-01-01",
+    "notificationPreferences": {
+      "emailAlerts": true,
+      "smsAlerts": true,
+      "pushNotifications": true
+    },
+    "role": null,
+    "responderInfo": null
+  },
+  "success": true
+}
+
+### 7. Update User Profile (All possible fields - Fresh token - valid until May 27, 2025)
+PUT {{baseUrl}}/user/profile
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Arimotokika",
+  "phoneNumber": "+8801712345699",
+  "profilePicture": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=",
+  "dateOfBirth": "1990-02-15",
+  "emailAlerts": true,
+  "smsAlerts": true,
+  "pushNotifications": false
+}
+
+### Successful Update Response for Regular User
+HTTP/1.1 200
+Content-Type: application/json
+
+{
+  "success": true,
+  "token": null,
+  "userId": null,
+  "fullName": null,
+  "role": null,
+  "message": "Profile updated successfully"
+}
+
+### Successful Update Response
+HTTP/1.1 200
+Content-Type: application/json
+
+{
+  "success": true,
+  "token": null,
+  "userId": null,
+  "fullName": null,
+  "role": null,
+  "message": "Profile updated successfully"
+}
+
+
+### 12. Update Responder Profile (Full Update with all fields)
+PUT {{baseUrl}}/user/profile
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Arimoto Kika",
+  "phoneNumber": "+8801712345688",
+  "profilePicture": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=",
+  "dateOfBirth": "1985-08-16",
+  "emailAlerts": true,
+  "smsAlerts": true,
+  "pushNotifications": true,
+  "status": "AVAILABLE",
+  "responderType": "POLICE",
+  "badgeNumber": "POL-0012"
+}
+
+### Successful Update Response for Responder 
+HTTP/1.1 200
+Content-Type: application/json
+
+{
+  "success": true,
+  "token": null,
+  "userId": null,
+  "fullName": null,
+  "role": null,
+  "message": "Profile updated successfully"
+}
+
+### 13. Update Responder Status - Set to Busy (only works if user role is RESPONDER)
+PUT {{baseUrl}}/user/profile
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "status": "BUSY"
+}
+
+### Successful Status Update Response
+HTTP/1.1 200
+Content-Type: application/json
+
+{
+  "success": true,
+  "token": null,
+  "userId": null,
+  "fullName": null,
+  "role": null,
+  "message": "Profile updated successfully"
+}
+
 
 ### 8. Forgot Password
 POST {{baseUrl}}/auth/forgot-password
@@ -58,11 +375,93 @@ Content-Type: application/json
   "email": "2005009@ugrad.cse.buet.ac.bd"
 }
 
+### Successful Forgot Password Response
+HTTP/1.1 200
+Content-Type: application/json
+
+{
+  "success": true,
+  "token": null,
+  "userId": null,
+  "fullName": null,
+  "role": null,
+  "message": "Password reset instructions sent to your email"
+}
+
+
+### 8.1 Forgot Password - Invalid Email (should fail)
+POST {{baseUrl}}/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "arimotokika2005025@gmail.com"
+}
+
+
 ### 9. Reset Password (currently returns error as token validation not implemented)
 POST {{baseUrl}}/auth/reset-password
 Content-Type: application/json
 
 {
-  "token": "a0a2d8c3-454e-4720-b2f1-b51b0a78bdf3",
-  "newPassword": "newpassword123"
+  "token": "78953b99-7376-495c-9ea9-bcaced3022df",
+  "newPassword": "password123"
+}
+
+### Successful Reset Password Response
+HTTP/1.1 200
+Content-Type: application/json
+
+{
+  "success": true,
+  "token": null,
+  "userId": null,
+  "fullName": null,
+  "role": null,
+  "message": "Password reset successful"
+}
+
+
+### 10. Get Google OAuth Login URL
+GET {{baseUrl}}/auth/google/login
+
+### Successful Response
+HTTP/1.1 200
+Content-Type: application/json
+
+{
+  "success": true,
+  "url": "/oauth2/authorize/google"
+}
+
+### 11. Simulate OAuth Success (normally this would be handled by the OAuth flow)
+GET {{baseUrl}}/oauth2/success?token={{authToken}}
+
+### 12. Test Mobile App Redirection
+GET {{baseUrl}}/auth/mobile/test-redirect
+
+### 13. Test Mobile OAuth Success Flow
+GET {{baseUrl}}/auth/mobile/oauth-success?token={{authToken}}
+
+### 14. Complete Profile after OAuth Login (User)
+POST {{baseUrl}}/user/complete-profile
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "phoneNumber": "+8801712345678",
+  "dateOfBirth": "1990-01-01",
+  "role": "USER"
+}
+
+### 14.1. Complete Profile after OAuth Login (Responder)
+POST {{baseUrl}}/user/complete-profile
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "phoneNumber": "+8801712345680",
+  "dateOfBirth": "1985-07-15",
+  "role": "RESPONDER",
+  "responderType": "POLICE",
+  "badgeNumber": "POL-2023"
 }

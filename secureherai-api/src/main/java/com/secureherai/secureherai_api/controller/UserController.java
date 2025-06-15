@@ -2,7 +2,8 @@ package com.secureherai.secureherai_api.controller;
 
 import com.secureherai.secureherai_api.dto.auth.AuthRequest;
 import com.secureherai.secureherai_api.dto.auth.AuthResponse;
-import com.secureherai.secureherai_api.service.AuthService;
+import com.secureherai.secureherai_api.dto.user.CompleteProfileRequest;
+import com.secureherai.secureherai_api.service.UserService;
 import com.secureherai.secureherai_api.service.JwtService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +18,7 @@ import java.util.UUID;
 public class UserController {
 
     @Autowired
-    private AuthService authService;
+    private UserService userService;
     
     @Autowired
     private JwtService jwtService;
@@ -32,7 +33,7 @@ public class UserController {
             }
             
             UUID userId = jwtService.extractUserId(token);
-            Object response = authService.getProfile(userId);
+            Object response = userService.getProfile(userId);
             
             if (response instanceof AuthResponse.Error) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
@@ -51,51 +52,50 @@ public class UserController {
     }
 
     @PutMapping("/profile")
-    public ResponseEntity<Object> updateProfile(
-            @RequestHeader("Authorization") String authHeader,
-            @Valid @RequestBody AuthRequest.UpdateProfile request) {
+    public ResponseEntity<Object> updateProfile(@RequestHeader("Authorization") String authHeader,
+                                              @Valid @RequestBody AuthRequest.UpdateProfile request) {
         try {
             String token = authHeader.replace("Bearer ", "");
             if (!jwtService.isTokenValid(token)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new AuthResponse.Error("Authentication token is invalid or expired"));
+                        .body(new AuthResponse.Error("Invalid or expired token"));
             }
             
-            UUID userId = jwtService.extractUserId(token);
-            Object response = authService.updateProfile(userId, request);
+            UUID userId = UUID.fromString(jwtService.extractSubject(token));
+            Object response = userService.updateProfile(userId, request);
             
             if (response instanceof AuthResponse.Error) {
                 return ResponseEntity.badRequest().body(response);
             }
             
             return ResponseEntity.ok(response);
-        } catch (org.springframework.dao.DataIntegrityViolationException e) {
-            // Handle database constraint violations
-            String message = e.getMessage();
-            if (message.contains("value too long")) {
-                return ResponseEntity.badRequest()
-                    .body(new AuthResponse.Error("Profile picture data is too large. Please use a smaller image."));
-            } else if (message.contains("duplicate key") || message.contains("already exists")) {
-                return ResponseEntity.badRequest()
-                    .body(new AuthResponse.Error("Email or phone number already exists"));
-            } else {
-                return ResponseEntity.badRequest()
-                    .body(new AuthResponse.Error("Invalid data provided: " + message));
-            }
-        } catch (org.springframework.dao.DataAccessException e) {
-            // Handle other database errors
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new AuthResponse.Error("Database error occurred while updating profile"));
-        } catch (io.jsonwebtoken.JwtException e) {
-            // Handle JWT specific errors
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new AuthResponse.Error("Invalid or expired authentication token"));
         } catch (Exception e) {
-            // Log the exception for debugging
-            System.err.println("Unexpected error in updateProfile: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new AuthResponse.Error("An unexpected error occurred while updating profile"));
+                    .body(new AuthResponse.Error("An error occurred: " + e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/complete-profile")
+    public ResponseEntity<Object> completeProfile(@RequestHeader("Authorization") String authHeader,
+                                              @Valid @RequestBody CompleteProfileRequest request) {
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            if (!jwtService.isTokenValid(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new AuthResponse.Error("Invalid or expired token"));
+            }
+            
+            UUID userId = UUID.fromString(jwtService.extractSubject(token));
+            Object response = userService.completeProfile(userId, request);
+            
+            if (response instanceof AuthResponse.Error) {
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new AuthResponse.Error("An error occurred: " + e.getMessage()));
         }
     }
 }
