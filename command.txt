@@ -4,3 +4,12 @@ npm start
 
 docker-compose -f docker-compose-dev.yml up --build
 docker-compose -f docker-compose-dev.yml down
+
+
+git add . 
+git commit -m "message"
+git push origin 
+
+
+
+git pull origin
