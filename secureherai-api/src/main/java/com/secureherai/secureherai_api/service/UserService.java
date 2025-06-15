@@ -9,6 +9,8 @@ import com.secureherai.secureherai_api.repository.ResponderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -92,21 +94,65 @@ public class UserService {
             user.setProfilePicture(request.getProfilePicture());
         }
         
+        // Update date of birth if provided
+        if (request.getDateOfBirth() != null && !request.getDateOfBirth().trim().isEmpty()) {
+            try {
+                // Parse the date and set it
+                LocalDate dateOfBirth = LocalDate.parse(request.getDateOfBirth());
+                user.setDateOfBirth(dateOfBirth);
+            } catch (DateTimeParseException e) {
+                return new AuthResponse.Error("Invalid date format. Use YYYY-MM-DD format.");
+            }
+        }
+        
+        // Update notification preferences if provided
+        if (request.getEmailAlerts() != null) {
+            user.setEmailAlerts(request.getEmailAlerts());
+        }
+        
+        if (request.getSmsAlerts() != null) {
+            user.setSmsAlerts(request.getSmsAlerts());
+        }
+        
+        if (request.getPushNotifications() != null) {
+            user.setPushNotifications(request.getPushNotifications());
+        }
+        
         // Handle responder-specific updates
-        if (user.getRole() == User.Role.RESPONDER && request.getStatus() != null) {
+        if (user.getRole() == User.Role.RESPONDER) {
             Optional<Responder> responderOpt = responderRepository.findByUserId(userId);
-            if (responderOpt.isPresent()) {
+            if (responderOpt.isEmpty()) {
+                return new AuthResponse.Error("Responder profile not found");
+            }
+            
+            Responder responder = responderOpt.get();
+            
+            // Update status if provided
+            if (request.getStatus() != null) {
                 try {
                     Responder.Status status = Responder.Status.valueOf(request.getStatus().toUpperCase());
-                    Responder responder = responderOpt.get();
                     responder.setStatus(status);
-                    responderRepository.save(responder);
                 } catch (IllegalArgumentException e) {
                     return new AuthResponse.Error("Invalid status. Must be AVAILABLE, BUSY, or OFF_DUTY");
                 }
-            } else {
-                return new AuthResponse.Error("Responder profile not found");
             }
+            
+            // Update responder type if provided
+            if (request.getResponderType() != null) {
+                try {
+                    Responder.ResponderType responderType = Responder.ResponderType.valueOf(request.getResponderType().toUpperCase());
+                    responder.setResponderType(responderType);
+                } catch (IllegalArgumentException e) {
+                    return new AuthResponse.Error("Invalid responder type. Must be POLICE, MEDICAL, or FIRE");
+                }
+            }
+            
+            // Update badge number if provided
+            if (request.getBadgeNumber() != null && !request.getBadgeNumber().trim().isEmpty()) {
+                responder.setBadgeNumber(request.getBadgeNumber().trim());
+            }
+            
+            responderRepository.save(responder);
         }
         
         userRepository.save(user);

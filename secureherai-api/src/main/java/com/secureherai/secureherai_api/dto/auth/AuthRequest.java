@@ -112,8 +112,18 @@ public class AuthRequest {
         @Size(max = 1000000, message = "Profile picture data cannot exceed 1MB (base64 encoded)")
         private String profilePicture;
         
+        // Added date of birth field
+        private String dateOfBirth;
+        
+        // Added email preferences
+        private Boolean emailAlerts;
+        private Boolean smsAlerts;
+        private Boolean pushNotifications;
+        
         // Responder-specific fields (only processed if user is a responder)
         private String status; // AVAILABLE, BUSY, OFF_DUTY
+        private String responderType; // POLICE, MEDICAL, FIRE
+        private String badgeNumber;
 
         public String getFullName() { return fullName; }
         public void setFullName(String fullName) { this.fullName = fullName; }
@@ -121,7 +131,19 @@ public class AuthRequest {
         public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
         public String getProfilePicture() { return profilePicture; }
         public void setProfilePicture(String profilePicture) { this.profilePicture = profilePicture; }
+        public String getDateOfBirth() { return dateOfBirth; }
+        public void setDateOfBirth(String dateOfBirth) { this.dateOfBirth = dateOfBirth; }
+        public Boolean getEmailAlerts() { return emailAlerts; }
+        public void setEmailAlerts(Boolean emailAlerts) { this.emailAlerts = emailAlerts; }
+        public Boolean getSmsAlerts() { return smsAlerts; }
+        public void setSmsAlerts(Boolean smsAlerts) { this.smsAlerts = smsAlerts; }
+        public Boolean getPushNotifications() { return pushNotifications; }
+        public void setPushNotifications(Boolean pushNotifications) { this.pushNotifications = pushNotifications; }
         public String getStatus() { return status; }
         public void setStatus(String status) { this.status = status; }
+        public String getResponderType() { return responderType; }
+        public void setResponderType(String responderType) { this.responderType = responderType; }
+        public String getBadgeNumber() { return badgeNumber; }
+        public void setBadgeNumber(String badgeNumber) { this.badgeNumber = badgeNumber; }
     }
 }

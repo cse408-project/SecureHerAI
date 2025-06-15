@@ -6,6 +6,25 @@ This module handles user authentication, registration, profile management, and O
 
 ## Endpoints
 
+### Health Check
+
+| API Endpoint | HTTP Method |                   Description                   |
+| ------------ | :---------: | :---------------------------------------------: |
+| /api/health  |    `GET`    | Checks if the API server is running and healthy |
+
+> ### Response - Success
+>
+> #### Response Code: 200 (`OK`)
+>
+> #### Response Body
+>
+> ```json
+> {
+>   "status": "UP",
+>   "timestamp": "2025-06-16T10:15:30Z"
+> }
+> ```
+
 ### Registration
 
 | API Endpoint          | HTTP Method |                 Description                 |
@@ -388,23 +407,34 @@ This module handles user authentication, registration, profile management, and O
 > Authorization: Bearer {jwt_token}
 > ```
 
-> #### Request Body (Regular User)
+> #### Request Body (Regular User - All Possible Fields)
 >
 > ```json
 > {
 >   "fullName": "Jane Smith",
 >   "phoneNumber": "+8801712345679",
->   "profilePicture": "data:image/jpeg;base64,..."
+>   "profilePicture": "data:image/jpeg;base64,...",
+>   "dateOfBirth": "1990-02-15",
+>   "emailAlerts": true,
+>   "smsAlerts": true,
+>   "pushNotifications": false
 > }
 > ```
 
-> #### Request Body (Responder)
+> #### Request Body (Responder - All Possible Fields)
 >
 > ```json
 > {
 >   "fullName": "Officer John Smith",
 >   "phoneNumber": "+8801712345699",
->   "status": "AVAILABLE" // AVAILABLE, BUSY, or OFF_DUTY
+>   "profilePicture": "data:image/jpeg;base64,...",
+>   "dateOfBirth": "1985-08-16",
+>   "emailAlerts": true,
+>   "smsAlerts": true,
+>   "pushNotifications": true,
+>   "status": "AVAILABLE", // AVAILABLE, BUSY, or OFF_DUTY
+>   "responderType": "POLICE", // POLICE, MEDICAL, or FIRE
+>   "badgeNumber": "POL-0012"
 > }
 > ```
 
@@ -442,3 +472,91 @@ The system uses two separate flags to track user authentication and profile comp
 
 - OAuth users initially have `isProfileComplete=false` and must call the complete-profile endpoint
 - Regular users who register with all required information start with `isProfileComplete=true`
+
+---
+
+## Password Reset
+
+### Forgot Password
+
+| API Endpoint              | HTTP Method |                  Description                   |
+| ------------------------- | :---------: | :--------------------------------------------: |
+| /api/auth/forgot-password |   `POST`    | Sends a password reset email with a reset link |
+
+> #### Request Body
+>
+> ```json
+> {
+>   "email": "user@example.com"
+> }
+> ```
+
+> #### Response - Success
+>
+> #### Response Code: 200 (`OK`)
+>
+> #### Response Body
+>
+> ```json
+> {
+>   "success": true,
+>   "message": "Password reset instructions sent to your email"
+> }
+> ```
+
+> #### Response - Error Cases
+>
+> #### Response Code: 404 (`Not Found`)
+>
+> ```json
+> {
+>   "success": false,
+>   "error": "Email not registered"
+> }
+> ```
+
+### Reset Password
+
+| API Endpoint             | HTTP Method |                Description                |
+| ------------------------ | :---------: | :---------------------------------------: |
+| /api/auth/reset-password |   `POST`    | Resets the user password with a new value |
+
+> #### Request Body
+>
+> ```json
+> {
+>   "token": "78953b99-7376-495c-9ea9-bcaced3022df",
+>   "newPassword": "password123"
+> }
+> ```
+
+> #### Response - Success
+>
+> #### Response Code: 200 (`OK`)
+>
+> #### Response Body
+>
+> ```json
+> {
+>   "success": true,
+>   "message": "Password reset successful"
+> }
+> ```
+
+> #### Response - Error Cases
+>
+> #### Response Code: 400 (`Bad Request`)
+>
+> ```json
+> {
+>   "success": false,
+>   "error": "Invalid or expired reset token"
+> }
+> ```
+>
+> ```json
+> {
+>   "success": false,
+>   "error": "New password does not meet requirements"
+> }
+> ```
