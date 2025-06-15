@@ -1,15 +1,18 @@
+Frontend:
+cd secureherai-app
 npm install
 npm start
 
-
+Backend:
+cd secureherai-api
 docker-compose -f docker-compose-dev.yml up --build
 docker-compose -f docker-compose-dev.yml down
 
+Git:
+cd SecureHerAI
+
+git pull origin
 
 git add . 
 git commit -m "message"
 git push origin 
-
-
-
-git pull origin
