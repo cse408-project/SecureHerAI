@@ -17,6 +17,8 @@ CREATE TABLE users (
     date_of_birth DATE,
     profile_picture TEXT,
     role TEXT NOT NULL DEFAULT 'USER',
+    oauth_provider TEXT,
+    is_profile_complete BOOLEAN NOT NULL DEFAULT FALSE,
     -- Notification preferences directly in users table
     email_alerts BOOLEAN NOT NULL DEFAULT TRUE,
     sms_alerts BOOLEAN NOT NULL DEFAULT TRUE,

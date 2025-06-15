@@ -112,4 +112,33 @@ public class EmailService {
             throw new RuntimeException("Failed to send login code email: " + e.getMessage(), e);
         }
     }
+
+    public void sendWelcomeEmailForOAuth(String toEmail, String name, String provider) {
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            
+            helper.setFrom(fromEmail);
+            helper.setTo(toEmail);
+            helper.setSubject("Welcome to SecureHerAI!");
+            
+            StringBuilder emailBody = new StringBuilder();
+            emailBody.append("<!DOCTYPE html><html><body style='font-family: Arial, sans-serif; line-height: 1.6;'>");
+            emailBody.append("<div style='max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px;'>");
+            emailBody.append("<h2 style='color: #4a4a4a;'>Welcome to SecureHerAI!</h2>");
+            emailBody.append("<p>Dear " + name + ",</p>");
+            emailBody.append("<p>Thank you for signing up with <b>SecureHerAI</b> using your " + provider + " account.</p>");
+            emailBody.append("<p>Your account has been created successfully and you can now use all features of our application.</p>");
+            emailBody.append("<p>We're committed to helping you stay safe and secure.</p>");
+            emailBody.append("<p>Best regards,<br><b>SecureHerAI Team</b></p>");
+            emailBody.append("</div></body></html>");
+            
+            helper.setText(emailBody.toString(), true);
+            mailSender.send(mimeMessage);
+            
+        } catch (MessagingException e) {
+            // Log error but don't fail the registration process
+            System.err.println("Failed to send welcome email: " + e.getMessage());
+        }
+    }
 }

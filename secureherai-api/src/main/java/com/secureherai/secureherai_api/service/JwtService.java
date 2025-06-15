@@ -36,6 +36,18 @@ public class JwtService {
                 .compact();
     }
 
+    public String generateTokenWithProfileStatus(UUID userId, String email, String role, boolean isProfileComplete) {
+        return Jwts.builder()
+                .setSubject(userId.toString())
+                .claim("email", email)
+                .claim("role", role)
+                .claim("profileComplete", isProfileComplete)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
+                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
     public Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSignInKey())
@@ -46,6 +58,10 @@ public class JwtService {
 
     public String extractEmail(String token) {
         return extractAllClaims(token).get("email", String.class);
+    }
+
+    public String extractSubject(String token) {
+        return extractAllClaims(token).getSubject();
     }
 
     public UUID extractUserId(String token) {

@@ -49,6 +49,12 @@ public class User implements UserDetails {
     @Column(name = "push_notifications", nullable = false)
     private Boolean pushNotifications = true;
     
+    @Column(name = "oauth_provider")
+    private String oauthProvider;
+    
+    @Column(name = "is_profile_complete")
+    private Boolean isProfileComplete = false;
+    
     @Column(name = "contribution_points")
     private Integer contributionPoints = 0;
     
@@ -186,6 +192,12 @@ public class User implements UserDetails {
     
     public Integer getContributionPoints() { return contributionPoints; }
     public void setContributionPoints(Integer contributionPoints) { this.contributionPoints = contributionPoints; }
+    
+    public String getOauthProvider() { return oauthProvider; }
+    public void setOauthProvider(String oauthProvider) { this.oauthProvider = oauthProvider; }
+    
+    public Boolean getIsProfileComplete() { return isProfileComplete; }
+    public void setIsProfileComplete(Boolean isProfileComplete) { this.isProfileComplete = isProfileComplete; }
     
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

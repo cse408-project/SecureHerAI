@@ -16,6 +16,9 @@ public class UserService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private JwtService jwtService;
+
     public Object getProfile(UUID userId) {
         Optional<User> userOpt = userRepository.findById(userId);
         
@@ -70,5 +73,35 @@ public class UserService {
         userRepository.save(user);
         
         return new AuthResponse.Success("Profile updated successfully");
+    }
+
+    public Object completeProfile(UUID userId, com.secureherai.secureherai_api.dto.user.CompleteProfileRequest request) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        
+        if (userOpt.isEmpty()) {
+            return new AuthResponse.Error("User not found");
+        }
+        
+        User user = userOpt.get();
+        user.setPhone(request.getPhoneNumber());
+        user.setDateOfBirth(request.getDateOfBirth());
+        user.setIsProfileComplete(true);
+        userRepository.save(user);
+        
+        // Generate new token with updated profile status
+        String newToken = jwtService.generateTokenWithProfileStatus(
+            user.getId(),
+            user.getEmail(),
+            user.getRole().name(),
+            true
+        );
+        
+        // Create response
+        AuthResponse.CompleteProfile response = new AuthResponse.CompleteProfile();
+        response.setSuccess(true);
+        response.setToken(newToken);
+        response.setMessage("Profile completed successfully");
+        
+        return response;
     }
 }

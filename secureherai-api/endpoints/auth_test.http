@@ -99,3 +99,25 @@ Content-Type: application/json
   "token": "a0a2d8c3-454e-4720-b2f1-b51b0a78bdf3",
   "newPassword": "newpassword123"
 }
+
+### 10. Get Google OAuth Login URL
+GET {{baseUrl}}/auth/google/login
+
+### 11. Simulate OAuth Success (normally this would be handled by the OAuth flow)
+GET {{baseUrl}}/oauth2/success?token={{authToken}}
+
+### 12. Test Mobile App Redirection
+GET {{baseUrl}}/auth/mobile/test-redirect
+
+### 13. Test Mobile OAuth Success Flow
+GET {{baseUrl}}/auth/mobile/oauth-success?token={{authToken}}
+
+### 14. Complete Profile after OAuth Login
+POST {{baseUrl}}/user/complete-profile
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "phoneNumber": "+8801712345678",
+  "dateOfBirth": "1990-01-01"
+}

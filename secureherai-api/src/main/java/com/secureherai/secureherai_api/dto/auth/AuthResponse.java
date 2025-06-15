@@ -51,11 +51,28 @@ public class AuthResponse {
         }
 
         public boolean isSuccess() { return success; }
-        public void setSuccess(boolean success) { this.success = success; }
         public String getError() { return error; }
         public void setError(String error) { this.error = error; }
     }
-
+    
+    // Complete Profile Response
+    public static class CompleteProfile {
+        private boolean success;
+        private String token;
+        private String message;
+        
+        public CompleteProfile() {}
+        
+        public boolean isSuccess() { return success; }
+        public void setSuccess(boolean success) { this.success = success; }
+        
+        public String getToken() { return token; }
+        public void setToken(String token) { this.token = token; }
+        
+        public String getMessage() { return message; }
+        public void setMessage(String message) { this.message = message; }
+    }
+    
     // Profile Response
     public static class Profile {
         private boolean success = true;
