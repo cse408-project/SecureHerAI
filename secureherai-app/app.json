@@ -41,9 +41,22 @@
     "linking": {
       "prefixes": [
         "secureheraiapp://",
+        "secureherai://",
         "https://secureherai.app",
         "http://localhost:8081"
-      ]
+      ],
+      "config": {
+        "screens": {
+          "index": {
+            "path": ""
+          },
+          "login": "login",
+          "dashboard": "dashboard",
+          "forgot-password": "forgot-password",
+          "reset-password": "reset-password",
+          "verify-login": "verify-login"
+        }
+      }
     }
   }
 }

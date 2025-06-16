@@ -66,15 +66,25 @@
 
       // Check if we should redirect to a mobile app
       if (token) {
-        // Check if the mobile app can handle this
-        const mobileRedirect = `secureherai://auth?token=${token}`;
+        // Try the new app scheme first
+        const mobileRedirect = `secureheraiapp://auth?token=${token}`;
+        // Fallback to old scheme if needed
+        const fallbackRedirect = `secureherai://auth?token=${token}`;
+        
         setTimeout(() => {
           try {
+            console.log("Attempting to redirect to app:", mobileRedirect);
             window.location.href = mobileRedirect;
+            
+            // Fallback after a short delay if the first redirect doesn't work
+            setTimeout(() => {
+              console.log("Attempting fallback redirect:", fallbackRedirect);
+              window.location.href = fallbackRedirect;
+            }, 500);
           } catch (e) {
             console.error("Could not redirect to app:", e);
           }
-        }, 1500);
+        }, 1000);
       }
     </script>
   </body>

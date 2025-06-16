@@ -6,6 +6,7 @@ import React, {
   ReactNode,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import {
   AuthContextType,
   User,
@@ -121,6 +122,139 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Method to handle Google OAuth authentication
+  const handleGoogleLogin = async (token: string): Promise<AuthResponse> => {
+    try {
+      if (token) {
+        // Save token
+        await AsyncStorage.setItem("auth_token", token);
+        setToken(token);
+
+        // Get user info from token (JWT decode)
+        const base64Url = token.split(".")[1];
+        const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+
+        // Using a safer method that works in web and native without external dependencies
+        // This is a simple JWT decode that should work in all environments
+        // In a production app, consider using a proper JWT library
+        const jsonPayload = JSON.parse(
+          decodeURIComponent(
+            atob(base64)
+              .split("")
+              .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+              .join("")
+          )
+        );
+        const decodedToken = JSON.parse(jsonPayload);
+
+        // Create user object from token
+        const userData: User = {
+          userId: decodedToken.sub,
+          fullName: decodedToken.fullName || "Google User",
+          email: decodedToken.email,
+          role: decodedToken.role || "USER",
+        };
+
+        setUser(userData);
+        await AsyncStorage.setItem("user_data", JSON.stringify(userData));
+
+        // Check if profile needs completion (based on profileComplete from token)
+        const needsProfileCompletion = decodedToken.profileComplete === false;
+
+        // Return success response
+        return {
+          success: true,
+          token: token,
+          userId: userData.userId,
+          fullName: userData.fullName,
+          role: userData.role,
+          needsProfileCompletion: needsProfileCompletion,
+        };
+      }
+
+      return {
+        success: false,
+        error: "Invalid token received from Google authentication.",
+      };
+    } catch (error) {
+      console.error("Google login error:", error);
+      return {
+        success: false,
+        error: "Failed to process Google login.",
+      };
+    }
+  };
+
+  // Expose a method to directly set a token (used for deep links)
+  const setTokenAndUpdateUser = async (newToken: string): Promise<void> => {
+    try {
+      // Save token
+      await AsyncStorage.setItem("auth_token", newToken);
+      setToken(newToken);
+
+      // Parse token to get user info
+      try {
+        // Split the token to get the payload part
+        const parts = newToken.split(".");
+        if (parts.length !== 3) {
+          throw new Error("Invalid token format");
+        }
+
+        // Decode the base64-encoded payload
+        const payload = parts[1];
+        // Need to pad the base64 string to make it a valid length
+        const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+
+        // For browser environments
+        if (typeof atob === "function") {
+          const jsonString = atob(base64);
+          const decodedToken = JSON.parse(jsonString);
+
+          // Create user object from token
+          const userData: User = {
+            userId: decodedToken.sub,
+            fullName: decodedToken.fullName || "User",
+            email: decodedToken.email,
+            role: decodedToken.role || "USER",
+          };
+
+          setUser(userData);
+          await AsyncStorage.setItem("user_data", JSON.stringify(userData));
+        }
+        // For React Native environments
+        else {
+          // Fetch user profile using the token
+          const profileResponse = await ApiService.getUserProfile();
+          if (profileResponse.success && profileResponse.data) {
+            setUser(profileResponse.data);
+            await AsyncStorage.setItem(
+              "user_data",
+              JSON.stringify(profileResponse.data)
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Error decoding token:", error);
+
+        // Fetch user profile as fallback
+        try {
+          const profileResponse = await ApiService.getUserProfile();
+          if (profileResponse.success && profileResponse.data) {
+            setUser(profileResponse.data);
+            await AsyncStorage.setItem(
+              "user_data",
+              JSON.stringify(profileResponse.data)
+            );
+          }
+        } catch (profileError) {
+          console.error("Failed to fetch user profile:", profileError);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to set token:", error);
+    }
+  };
+
   const logout = async () => {
     // Clear state immediately for instant UI feedback
     setToken(null);
@@ -144,6 +278,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     verifyLoginCode,
     register,
     logout,
+    handleGoogleLogin,
+    setToken: setTokenAndUpdateUser, // Expose the new method
     isAuthenticated: !!token && !!user,
   };
 

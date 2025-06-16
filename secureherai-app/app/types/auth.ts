@@ -28,6 +28,7 @@ export interface AuthResponse {
   role?: string;
   message?: string;
   error?: string;
+  needsProfileCompletion?: boolean;
 }
 
 export interface LoginRequest {
@@ -58,8 +59,10 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<AuthResponse>;
   verifyLoginCode: (email: string, code: string) => Promise<AuthResponse>;
   register: (data: RegisterRequest) => Promise<AuthResponse>;
+  handleGoogleLogin: (token: string) => Promise<AuthResponse>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
+  setToken: (token: string) => Promise<void>;
 }
 
 export interface CompleteProfileRequest {

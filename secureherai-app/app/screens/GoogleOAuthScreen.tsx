@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,9 +6,17 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
 import ApiService from "../services/api";
+import { useAuth } from "../context/AuthContext";
+import { useNavigation } from "@react-navigation/native";
+
+// Required for expo-web-browser flow
+WebBrowser.maybeCompleteAuthSession();
 
 interface GoogleOAuthScreenProps {
   onBack: () => void;
@@ -20,36 +28,103 @@ export const GoogleOAuthScreen: React.FC<GoogleOAuthScreenProps> = ({
   onSuccess,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const { handleGoogleLogin } = useAuth();
+  // Use any for navigation since we don't have the type definitions
+  const navigation = useNavigation<any>();
+  const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
-  const handleGoogleLogin = async () => {
+  // Define processOAuthToken function with useCallback
+  const processOAuthToken = useCallback(async (token: string) => {
+    try {
+      setIsLoading(true);
+      const response = await handleGoogleLogin(token);
+      
+      if (response.success) {
+        // Check if this is a new user (profile not complete)
+        if (response.needsProfileCompletion) {
+          // Navigate to profile completion screen
+          navigation.navigate('CompleteProfile');
+        } else {
+          // Just proceed as normal
+          onSuccess(token);
+        }
+      } else {
+        Alert.alert("Authentication Error", response.error || "Failed to authenticate with Google");
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to process authentication");
+      console.error("OAuth token processing error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [handleGoogleLogin, onSuccess, setIsLoading, navigation]);
+
+  // Set up deep link handling for OAuth callback
+  useEffect(() => {
+    const handleRedirect = (event: any) => {
+      const { path, queryParams } = Linking.parse(event.url);
+      
+      if (path === 'auth' && queryParams?.token) {
+        processOAuthToken(queryParams.token as string);
+      }
+    };
+
+    // Add event listener for deep links
+    const subscription = Linking.addEventListener("url", handleRedirect);
+
+    return () => {
+      // Clean up the event listener
+      subscription.remove();
+    };
+  }, [processOAuthToken]);
+
+  const handleGoogleLoginPress = async () => {
     setIsLoading(true);
     try {
       const response = await ApiService.getGoogleOAuthUrl();
 
       if (response.success && response.url) {
-        // In a real app, you would:
-        // 1. Open the OAuth URL in a WebView or browser
-        // 2. Handle the redirect/callback
-        // 3. Extract the token from the callback
-
-        Alert.alert(
-          "OAuth Integration",
-          "Google OAuth would open here. This is a demo implementation.\n\nIn a production app, this would:\n1. Open Google login in WebView\n2. Handle the OAuth callback\n3. Complete the authentication flow",
-          [
-            { text: "Cancel", onPress: onBack },
-            {
-              text: "Simulate Success",
-              onPress: () => {
-                // Simulate successful OAuth flow
-                onSuccess("demo-oauth-token");
-              },
-            },
-          ]
-        );
+        // Get the full URL for OAuth
+        const authUrl = `${API_BASE_URL}${response.url}`;
+        
+        // Open Google Auth in browser
+        if (Platform.OS === 'web') {
+          // For web, we need to handle the flow differently
+          // Open in a new window and set up message listener
+          const newWindow = window.open(authUrl, '_blank');
+          
+          if (newWindow) {
+            const handleMessage = (event: any) => {
+              if (event.data && event.data.token) {
+                newWindow.close();
+                processOAuthToken(event.data.token);
+                window.removeEventListener('message', handleMessage);
+              }
+            };
+            
+            window.addEventListener('message', handleMessage);
+          } else {
+            Alert.alert(
+              "Popup Blocked", 
+              "The popup window was blocked. Please enable popups for this site."
+            );
+          }
+        } else {
+          // For mobile, use WebBrowser to handle the flow
+          const result = await WebBrowser.openAuthSessionAsync(
+            authUrl,
+            Linking.createURL('auth')
+          );
+          
+          if (result.type === 'cancel') {
+            Alert.alert("Authentication Cancelled", "You cancelled the authentication process");
+          }
+        }
       } else {
         Alert.alert("Error", "Failed to get OAuth URL");
       }
-    } catch {
+    } catch (error) {
+      console.error("Google login error:", error);
       Alert.alert("Error", "Network error. Please try again.");
     } finally {
       setIsLoading(false);
@@ -94,7 +169,7 @@ export const GoogleOAuthScreen: React.FC<GoogleOAuthScreenProps> = ({
           className={`bg-white border border-gray-300 rounded-lg py-4 mb-6 flex-row items-center justify-center ${
             isLoading ? "opacity-70" : ""
           }`}
-          onPress={handleGoogleLogin}
+          onPress={handleGoogleLoginPress}
           disabled={isLoading}
         >
           {isLoading ? (

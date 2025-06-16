@@ -10,7 +10,6 @@ services:
     volumes:
       - .:/app
       - maven_cache:/root/.m2
-      - cert_fingerprints:/app/cert-fingerprints
     working_dir: /app
     command: mvn spring-boot:run -Dspring-boot.run.profiles=dev
     ports:
@@ -18,14 +17,13 @@ services:
     env_file:
       - .env
     environment:
-      # OAuth keystore password
-      OAUTH_KEYSTORE_PASSWORD: secureherai123
       # Database Configuration
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/secureherai
       SPRING_DATASOURCE_USERNAME: user
       SPRING_DATASOURCE_PASSWORD: password
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
-      SPRING_PROFILES_ACTIVE: dev
+      SPRING_PROFILES_ACTIVE:
+        dev
 
         # JWT Configuration
       JWT_SECRET: HRVu1xFYfraq/lculzNaXzMHVady85sMReuLwlSzEjcKznYOEPdbbK3F+9hq+4muGxhYfft5nNQYxbDZIGzzAA==
@@ -38,6 +36,14 @@ services:
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
 
       EXPO_APP_URL: ${EXPO_APP_URL:-}
+      EXPO_METRO_URL: ${EXPO_METRO_URL:-}
+      EXPO_PUBLIC_API_BASE_URL: ${EXPO_PUBLIC_API_BASE_URL:-http://localhost:8080}
+
+      OAUTH2_WEB_ORIGIN: ${OAUTH2_WEB_ORIGIN:-}
+      OAUTH2_WEB_REDIRECT_URI: ${OAUTH2_WEB_REDIRECT_URI:-}
+
+      OAUTH2_CLIENT_ID: ${OAUTH2_CLIENT_ID:-}
+      OAUTH2_CLIENT_SECRET: ${OAUTH2_CLIENT_SECRET:-}
     depends_on:
       db:
         condition: service_healthy
@@ -70,9 +76,6 @@ services:
 volumes:
   postgres_data:
   maven_cache:
-  cert_fingerprints:
-    # Persist certificate fingerprints across container restarts
-    name: secureherai_cert_fingerprints
 
 networks:
   app-network:

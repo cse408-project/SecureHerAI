@@ -32,6 +32,14 @@ export default function TestDeepLinks() {
       url: "secureheraiapp://verify-login?code=123456&email=test@example.com",
     },
     {
+      title: "Google OAuth Callback (Primary Scheme)",
+      url: "secureheraiapp://auth?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZW1haWwiOiJ0ZXN0QGV4YW1wbGUuY29tIiwicm9zZSI6IlVTRVIiLCJmdWxsTmFtZSI6IlRlc3QgVXNlciIsImlhdCI6MTUxNjIzOTAyMn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+    },
+    {
+      title: "Google OAuth Callback (Fallback Scheme)",
+      url: "secureherai://auth?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZW1haWwiOiJ0ZXN0QGV4YW1wbGUuY29tIiwicm9zZSI6IlVTRVIiLCJmdWxsTmFtZSI6IlRlc3QgVXNlciIsImlhdCI6MTUxNjIzOTAyMn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+    },
+    {
       title: "Login Page",
       url: "http://localhost:8081/login",
     },

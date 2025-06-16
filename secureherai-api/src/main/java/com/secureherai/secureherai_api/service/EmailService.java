@@ -19,6 +19,9 @@ public class EmailService {
 
     @Value("${app.frontend.url:http://localhost:8081}")
     private String frontendUrl;
+    
+    // Add mobile app scheme for deep linking
+    private static final String APP_SCHEME = "secureheraiapp://";
 
     /**
      * Creates a consistent email header with SecureHerAI branding
@@ -71,7 +74,7 @@ public class EmailService {
             
             // Create reset link for web/app deep linking
             String resetLink = frontendUrl + "/reset-password?token=" + resetToken + "&email=" + toEmail;
-            String appResetLink = "secureheraiapp://reset-password?token=" + resetToken + "&email=" + toEmail;
+            String appResetLink = APP_SCHEME + "reset-password?token=" + resetToken + "&email=" + toEmail;
             
             StringBuilder emailBody = new StringBuilder();
             emailBody.append(createEmailHeader("Password Reset Request"));

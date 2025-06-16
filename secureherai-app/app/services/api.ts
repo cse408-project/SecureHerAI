@@ -1,7 +1,16 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
+// Ensure API base URL works in both web and native environments
+const API_BASE_URL = "http://localhost:8080/api";
+
+// Debug log for API base URL
+console.log("API_BASE_URL:", API_BASE_URL);
+
+// Test API connection on startup
+fetch(`${API_BASE_URL}/health`)
+  .then((response) => response.json())
+  .then((data) => console.log("API Health Check:", data))
+  .catch((error) => console.error("API Health Check Failed:", error));
 
 class ApiService {
   private async getHeaders(
@@ -22,23 +31,86 @@ class ApiService {
   }
 
   async login(email: string, password: string) {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: "POST",
-      headers: await this.getHeaders(),
-      body: JSON.stringify({ email, password }),
-    });
+    try {
+      console.log("API: Attempting login for:", email);
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: "POST",
+        headers: await this.getHeaders(),
+        body: JSON.stringify({ email, password }),
+      });
 
-    return response.json();
+      console.log("API: Login response status:", response.status);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("API: Login response data:", data);
+      return data;
+    } catch (error) {
+      console.error("API: Network error during login:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
   }
 
   async verifyLoginCode(email: string, loginCode: string) {
-    const response = await fetch(`${API_BASE_URL}/auth/verify-login-code`, {
-      method: "POST",
-      headers: await this.getHeaders(),
-      body: JSON.stringify({ email, loginCode }),
-    });
+    try {
+      console.log(
+        "API: Verifying login code for:",
+        email,
+        "with code:",
+        loginCode
+      );
 
-    return response.json();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+      const response = await fetch(`${API_BASE_URL}/auth/verify-login-code`, {
+        method: "POST",
+        headers: await this.getHeaders(),
+        body: JSON.stringify({ email, loginCode }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      console.log("API: Response status:", response.status);
+
+      const data = await response.json();
+      console.log("API: Response data:", data);
+
+      if (!response.ok) {
+        // Return the actual error message from the server
+        return {
+          success: false,
+          error:
+            data.error ||
+            data.message ||
+            `Server returned ${response.status}: ${response.statusText}`,
+        };
+      }
+
+      return data;
+    } catch (error: any) {
+      console.error("API: Network error during verification:", error);
+
+      if (error.name === "AbortError") {
+        return {
+          success: false,
+          error:
+            "Request timed out. Please check your connection and try again.",
+        };
+      }
+
+      return {
+        success: false,
+        error: `Network error: ${
+          error.message || "Please check your connection and try again."
+        }`,
+      };
+    }
   }
 
   // Alias for deep link compatibility
