@@ -61,7 +61,7 @@ public class OAuthService {
             user.getId(), 
             user.getEmail(), 
             user.getRole().name(),
-            user.getIsProfileComplete()
+            user.getIsProfileComplete() != null ? user.getIsProfileComplete() : true
         );
     }
 }

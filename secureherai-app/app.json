@@ -4,7 +4,7 @@
     "slug": "secureherai-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/secureherai_logo.png",
     "scheme": "secureheraiapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -21,7 +21,7 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/secureherai_logo.png"
     },
     "plugins": [
       "expo-router",
@@ -37,6 +37,26 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "linking": {
+      "prefixes": [
+        "secureheraiapp://",
+        "secureherai://",
+        "https://secureherai.app",
+        "http://localhost:8081"
+      ],
+      "config": {
+        "screens": {
+          "index": {
+            "path": ""
+          },
+          "login": "login",
+          "dashboard": "dashboard",
+          "forgot-password": "forgot-password",
+          "reset-password": "reset-password",
+          "verify-login": "verify-login"
+        }
+      }
     }
   }
 }
