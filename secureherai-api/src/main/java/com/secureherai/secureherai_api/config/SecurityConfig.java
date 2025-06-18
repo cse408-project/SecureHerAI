@@ -1,5 +1,6 @@
 package com.secureherai.secureherai_api.config;
 
+import com.secureherai.secureherai_api.security.ApiAuthenticationEntryPoint;
 import com.secureherai.secureherai_api.security.JwtAuthFilter;
 import com.secureherai.secureherai_api.security.OAuth2SuccessHandler;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +32,9 @@ public class SecurityConfig {
     @Autowired
     private OAuth2SuccessHandler oAuth2SuccessHandler;
     
+    @Autowired
+    private ApiAuthenticationEntryPoint apiAuthenticationEntryPoint;
+    
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -41,8 +45,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/health", "/api/auth/**", "/health", "/auth/**", "/api/responder/available", "/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/oauth-success.html", "/static/**").permitAll()
                 .anyRequest().authenticated()
-            )
-            .oauth2Login(oauth2 -> oauth2
+            )            .oauth2Login(oauth2 -> oauth2
                 .authorizationEndpoint(authorization -> authorization
                     .baseUri("/oauth2/authorize")
                     .authorizationRequestRepository(authorizationRequestRepository())
@@ -51,6 +54,9 @@ public class SecurityConfig {
                     .baseUri("/oauth2/callback/*")
                 )
                 .successHandler(oAuth2SuccessHandler)
+            )
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint(apiAuthenticationEntryPoint)
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .httpBasic(httpBasic -> httpBasic.disable())

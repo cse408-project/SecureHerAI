@@ -1,0 +1,523 @@
+### Trusted Contacts Module Tests
+
+### Variables for testing
+@baseUrl = http://localhost:8080
+@authToken= eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MTg3ZjBlYi0wZGQwLTQwZDgtOWRlMy05NjdjY2NlNjgwOTkiLCJlbWFpbCI6ImFyaW1vdG9raWthMjAwNTAyNUBnbWFpbC5jb20iLCJyb2xlIjoiUkVTUE9OREVSIiwiaWF0IjoxNzUwMjIxMjExLCJleHAiOjE3NTAzMDc2MTF9.qfCxNb_bRDUppKquGa0SGN0IjvQFxlMC9fpVK3cDvt8
+@userId = 5187f0eb-0dd0-40d8-9de3-967ccce68099
+@another_token = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIwMmQ2ZGY1OC1lNTZmLTQyNWItOGIwYi00YzY2ZWY2ZGU1MDIiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc1MDA0NTk1MywiZXhwIjoxNzUwMTMyMzUzfQ.dHWozHJZXZppxLaQ-SeGTGRGn51hQ3C9ENlQ4_rrKqE
+@userId_another = "02d6df58-e56f-425b-8b0b-4c66ef6de502"
+@expiredToken= eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZjA2YjljOS1mY2IzLTRhYWItYTBlYy1iNDk4ZDM5MDlmZjQiLCJlbWFpbCI6ImFyaW1vdG9raWthMjAwNTAyNUBnbWFpbC5jb20iLCJyb2xlIjoiUkVTUE9OREVSIiwiaWF0IjoxNzUwMDA4MDk4LCJleHAiOjE3NTAwOTQ0OTh9.iPRhTZgC6y6Au18c945IvTrP3cAoabam-ZDCFjItunk
+@invalidToken = invalid_token_format
+@malformedToken = eyJhbGciOiJIUzI1NiJ9.invalid_payload.invalid_signature
+
+### QUICK AUTH TEST - Should return 401 JSON response (not 302 redirect)
+POST {{baseUrl}}/api/contacts/add
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "contact": {
+    "name": "Auth Test Contact",
+    "phone": "+8801000000000",
+    "relationship": "test"
+  }
+}
+
+### 1. Add Trusted Contact - Friend
+POST {{baseUrl}}/api/contacts/add
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "contact": {
+    "name": "John Doe (ar)",
+    "phone": "+8801712345678",
+    "relationship": "friend",
+    "email": "john.doe@example.com",
+    "shareLocation": true
+  }
+}
+
+### 2. Add Trusted Contact - Family Member
+POST {{baseUrl}}/api/contacts/add
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "contact": {
+    "name": "Jane Smith(ar)",
+    "phone": "+8801987654321",
+    "relationship": "family",
+    "email": "jane.smith@example.com",
+    "shareLocation": true
+  }
+}
+
+### 3. Add Trusted Contact - Minimal Info (No Email)
+POST {{baseUrl}}/api/contacts/add
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "contact": {
+    "name": "Bob Wilson(ar)",
+    "phone": "+8801555555555",
+    "relationship": "colleague"
+  }
+}
+
+### 4. Try to Add Contact with Invalid Phone Format (Should Fail - 400)
+POST {{baseUrl}}/api/contacts/add
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "contact": {
+    "name": "Invalid Contact",
+    "phone": "123456789",
+    "relationship": "friend",
+    "email": "invalid@example.com"
+  }
+}
+
+### 5. Try to Add Duplicate Contact (Should Fail - 400)
+POST {{baseUrl}}/api/contacts/add
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "contact": {
+    "name": "John Doe Duplicate",
+    "phone": "+8801712345678",
+    "relationship": "colleague",
+    "email": "john.duplicate@example.com"
+  }
+}
+
+### 6. Add Contact with Invalid Email Format (Should Fail - 400)
+POST {{baseUrl}}/api/contacts/add
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "contact": {
+    "name": "Test Contact",
+    "phone": "+8801666666666",
+    "relationship": "friend",
+    "email": "invalid-email-format"
+  }
+}
+
+### 7. Add Contact with Missing Required Fields (Should Fail - 400)
+POST {{baseUrl}}/api/contacts/add
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "contact": {
+    "name": "",
+    "phone": "",
+    "relationship": ""
+  }
+}
+
+### 8. Get All Trusted Contacts
+GET {{baseUrl}}/api/contacts
+Authorization: Bearer {{authToken}}
+
+### 9. Get Trusted Contacts with User ID Parameter
+GET {{baseUrl}}/api/contacts?userId={{userId}}
+Authorization: Bearer {{authToken}}
+
+### 10. Delete Trusted Contact (Replace contactId with actual ID from GET request)
+DELETE {{baseUrl}}/api/contacts/delete
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "contactId": "941f244e-951d-43e2-bea1-c39c3dd2eeea"
+}
+
+### 11. Try to Delete Non-existent Contact (Should Fail - 400)
+DELETE {{baseUrl}}/api/contacts/delete
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "contactId": "00000000-0000-0000-0000-000000000000"
+}
+
+### 12. Try to Delete Contact with Invalid UUID Format (Should Fail - 400)
+DELETE {{baseUrl}}/api/contacts/delete
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "contactId": "invalid-uuid-format"
+}
+
+
+
+
+### Authentication Error Tests
+
+### 13. Try to Add Contact Without Authorization (Should Fail - 401)
+POST {{baseUrl}}/api/contacts/add
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "contact": {
+    "name": "Unauthorized Contact",
+    "phone": "+8801712345678",
+    "relationship": "friend"
+  }
+}
+
+### 14. Try to Get Contacts with Invalid Token (Should Fail - 401)
+GET {{baseUrl}}/api/contacts
+Authorization: Bearer {{invalidToken}}
+
+### 14b. Try to Get Contacts with Malformed Token (Should Fail - 401)
+GET {{baseUrl}}/api/contacts
+Authorization: Bearer {{malformedToken}}
+
+
+### 14c. Try to Get Contacts with Expired Token (Should Fail - 401)
+GET {{baseUrl}}/api/contacts
+Authorization: Bearer {{expiredToken}}
+
+### 15. Try to Delete Contact with Expired Token (Should Fail - 401)
+DELETE {{baseUrl}}/api/contacts/delete
+Authorization: Bearer {{expiredToken}}
+Content-Type: application/json
+
+{
+  "userId": "df06b9c9-fcb3-4aab-a0ec-b498d3909ff4",
+  "contactId": "fedec516-9067-4e61-b5f2-7f3c768cbf28"
+}
+
+### 15b. Try to Delete Contact with Expired Token and Wrong User (Should Fail - 403)
+DELETE {{baseUrl}}/api/contacts/delete
+Authorization: Bearer {{expiredToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "contactId": "fedec516-9067-4e61-b5f2-7f3c768cbf28"
+}
+
+
+### Authorization Error Tests (Wrong User ID)
+
+### 16. Try to Add Contact with Different User ID (Should Fail - 403)
+POST {{baseUrl}}/api/contacts/add
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "00000000-0000-0000-0000-000000000000",
+  "contact": {
+    "name": "Forbidden Contact",
+    "phone": "+8801712345678",
+    "relationship": "friend"
+  }
+}
+
+### 17. Try to Get Contacts for Different User (Should Fail - 403)
+GET {{baseUrl}}/api/contacts?userId=00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{authToken}}
+
+### 18. Try to Delete Contact for Different User (Should Fail - 403)
+DELETE {{baseUrl}}/api/contacts/delete
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "00000000-0000-0000-0000-000000000000",
+  "contactId": "b9772796-d199-4bb5-aa00-e232150faaed"
+}
+
+### Edge Cases
+
+### 19. Add Contact with Maximum Length Values
+POST {{baseUrl}}/api/contacts/add
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "contact": {
+    "name": "Very Long Name That Tests Maximum Length Constraints",
+    "phone": "+8801777777777",
+    "relationship": "acquaintance",
+    "email": "very.long.email.address.for.testing@example.com",
+    "shareLocation": false
+  }
+}
+
+### 20. Add Contact with Special Characters in Name
+POST {{baseUrl}}/api/contacts/add
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "contact": {
+    "name": "José María O'Connor-Smith",
+    "phone": "+8801888888888",
+    "relationship": "family",
+    "email": "jose.maria@example.com"
+  }
+}
+
+### Final State Check
+
+### 21. Get All Contacts After All Operations (Final State)
+GET {{baseUrl}}/api/contacts
+Authorization: Bearer {{authToken}}
+
+### Notes:
+# 1. Replace {{authToken}} with a valid JWT token from your authentication endpoint
+# 2. Replace {{userId}} with the actual user ID from your user profile
+# 3. Replace contact IDs in delete requests with actual IDs returned from GET requests
+# 4. Ensure the server is running on the specified baseUrl before running tests
+# 5. Expected responses:
+#    - 200 OK for successful operations
+#    - 400 Bad Request for validation errors or business logic errors
+#    - 401 Unauthorized for authentication failures
+#    - 403 Forbidden for authorization failures
+#    - 500 Internal Server Error for unexpected errors
+# 6. Test scenarios include success cases, validation errors, authentication/authorization errors, and edge cases
+# 7. Some tests are expected to fail to validate error handling
+# 8. Run tests in sequence for best results, as some tests depend on data from previous tests
+
+### ====================================
+### NOTIFICATION PREFERENCES MODULE TESTS
+### ====================================
+TODO
+
+### 22. Get Current Notification Preferences
+GET {{baseUrl}}/api/notifications/preferences
+Authorization: Bearer {{authToken}}
+
+### 23. Update Notification Preferences - All Enabled
+PUT {{baseUrl}}/api/notifications/update-preferences
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "preferences": {
+    "emailAlerts": false,
+    "smsAlerts": true,
+    "pushNotifications": true
+  }
+}
+
+### 24. Update Notification Preferences - Mixed Settings
+PUT {{baseUrl}}/api/notifications/update-preferences
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "preferences": {
+    "emailAlerts": true,
+    "smsAlerts": false,
+    "pushNotifications": true
+  }
+}
+
+### 25. Update Notification Preferences - All Disabled
+PUT {{baseUrl}}/api/notifications/update-preferences
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "preferences": {
+    "emailAlerts": false,
+    "smsAlerts": false,
+    "pushNotifications": false
+  }
+}
+
+### 26. Get Notification Preferences After Update (Verify Changes)
+GET {{baseUrl}}/api/notifications/preferences
+Authorization: Bearer {{authToken}}
+
+### Notification Preferences Authentication Error Tests
+
+### 27. Try to Update Preferences Without Authorization (Should Fail - 401)
+PUT {{baseUrl}}/api/notifications/update-preferences
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "preferences": {
+    "emailAlerts": true,
+    "smsAlerts": true,
+    "pushNotifications": true
+  }
+}
+
+### 28. Try to Update Preferences with Invalid Token (Should Fail - 401)
+PUT {{baseUrl}}/api/notifications/update-preferences
+Authorization: Bearer {{invalidToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "preferences": {
+    "emailAlerts": true,
+    "smsAlerts": true,
+    "pushNotifications": true
+  }
+}
+
+### 29. Try to Update Preferences with Malformed Token (Should Fail - 401)
+PUT {{baseUrl}}/api/notifications/update-preferences
+Authorization: Bearer {{malformedToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "preferences": {
+    "emailAlerts": true,
+    "smsAlerts": true,
+    "pushNotifications": true
+  }
+}
+
+### 30. Try to Update Preferences with Expired Token (Should Fail - 401)
+PUT {{baseUrl}}/api/notifications/update-preferences
+Authorization: Bearer {{expiredToken}}
+Content-Type: application/json
+
+{
+  "userId": "df06b9c9-fcb3-4aab-a0ec-b498d3909ff4",
+  "preferences": {
+    "emailAlerts": true,
+    "smsAlerts": true,
+    "pushNotifications": true
+  }
+}
+
+### 31. Try to Get Preferences Without Authorization (Should Fail - 401)
+GET {{baseUrl}}/api/notifications/preferences
+
+### 32. Try to Get Preferences with Invalid Token (Should Fail - 401)
+GET {{baseUrl}}/api/notifications/preferences
+Authorization: Bearer {{invalidToken}}
+
+### 33. Try to Get Preferences with Expired Token (Should Fail - 401)
+GET {{baseUrl}}/api/notifications/preferences
+Authorization: Bearer {{expiredToken}}
+
+### Notification Preferences Authorization Error Tests
+
+### 34. Try to Update Preferences for Different User (Should Fail - 403)
+PUT {{baseUrl}}/api/notifications/update-preferences
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "00000000-0000-0000-0000-000000000000",
+  "preferences": {
+    "emailAlerts": true,
+    "smsAlerts": true,
+    "pushNotifications": true
+  }
+}
+
+### 35. Try to Get Preferences for Different User (Should Fail - 403)
+GET {{baseUrl}}/api/notifications/preferences?userId=00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{authToken}}
+
+### Notification Preferences Validation Error Tests
+
+### 36. Try to Update Preferences with Missing Fields (Should Fail - 400)
+PUT {{baseUrl}}/api/notifications/update-preferences
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "preferences": {
+    "emailAlerts": true
+  }
+}
+
+### 37. Try to Update Preferences with Invalid Values (Should Fail - 400)
+PUT {{baseUrl}}/api/notifications/update-preferences
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "preferences": {
+    "emailAlerts": "invalid",
+    "smsAlerts": "true",
+    "pushNotifications": null
+  }
+}
+
+### 38. Try to Update Preferences with Missing User ID (Should Fail - 400)
+PUT {{baseUrl}}/api/notifications/update-preferences
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "preferences": {
+    "emailAlerts": true,
+    "smsAlerts": true,
+    "pushNotifications": true
+  }
+}
+
+### 39. Try to Update Preferences with Empty Preferences Object (Should Fail - 400)
+PUT {{baseUrl}}/api/notifications/update-preferences
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}"
+}
+
+
+
+### 42. Try to Update Notification Status as Regular User (Should Fail - 403)
+PUT {{baseUrl}}/api/notifications/00000000-0000-0000-0000-000000000000/status?status=notified
+Authorization: Bearer {{authToken}}
+
+### Edge Cases and Final Tests
+
+### 43. Reset Preferences to Default State
+PUT {{baseUrl}}/api/notifications/update-preferences
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "preferences": {
+    "emailAlerts": true,
+    "smsAlerts": true,
+    "pushNotifications": true
+  }
+}
+
+### 44. Final Verification - Get Preferences After Reset
+GET {{baseUrl}}/api/notifications/preferences
+Authorization: Bearer {{authToken}}
+
