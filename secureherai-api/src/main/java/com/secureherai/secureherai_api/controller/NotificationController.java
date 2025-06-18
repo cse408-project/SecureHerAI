@@ -1,18 +1,26 @@
 package com.secureherai.secureherai_api.controller;
 
-import com.secureherai.secureherai_api.dto.notification.NotificationRequest;
-import com.secureherai.secureherai_api.dto.notification.NotificationResponse;
-import com.secureherai.secureherai_api.exception.AuthenticationException;
-import com.secureherai.secureherai_api.service.JwtService;
-import com.secureherai.secureherai_api.service.NotificationService;
-import jakarta.validation.Valid;
+import java.util.List;
+import java.util.UUID;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-import java.util.UUID;
+import com.secureherai.secureherai_api.dto.notification.NotificationRequest;
+import com.secureherai.secureherai_api.dto.notification.NotificationResponse;
+import com.secureherai.secureherai_api.service.JwtService;
+import com.secureherai.secureherai_api.service.NotificationService;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/notifications")
@@ -46,14 +54,9 @@ public class NotificationController {
                     .body(new NotificationResponse.GenericResponse(false, null, "Unable to update preferences with invalid token"));
             } catch (io.jsonwebtoken.JwtException e) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new NotificationResponse.GenericResponse(false, null, "Unable to update preferences with invalid token"));
-            } catch (Exception e) {
+                    .body(new NotificationResponse.GenericResponse(false, null, "Unable to update preferences with invalid token"));            } catch (Exception e) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new NotificationResponse.GenericResponse(false, null, "Unable to update preferences with invalid token"));
-            }            // Validate that the request userId matches the token userId (if provided)
-            if (request.getUserId() != null && !request.getUserId().equals(userId.toString())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new NotificationResponse.GenericResponse(false, null, "Cannot update preferences for another user"));
             }
             
             // Extract preferences from request
@@ -69,16 +72,7 @@ public class NotificationController {
                 return ResponseEntity.ok(response);
             } else {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-            }        } catch (AuthenticationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new NotificationResponse.GenericResponse(false, null, "Unable to update preferences with invalid token"));
-        } catch (io.jsonwebtoken.ExpiredJwtException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new NotificationResponse.GenericResponse(false, null, "Unable to update preferences with invalid token"));
-        } catch (io.jsonwebtoken.JwtException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new NotificationResponse.GenericResponse(false, null, "Unable to update preferences with invalid token"));
-        } catch (Exception e) {
+            }        } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new NotificationResponse.GenericResponse(false, null, "An unexpected error occurred"));
         }
@@ -86,11 +80,10 @@ public class NotificationController {
 
     /**
      * Get notification preferences for the authenticated user
-     */
-    @GetMapping("/preferences")
+     */    @GetMapping("/preferences")
     public ResponseEntity<NotificationResponse.GetPreferencesResponse> getNotificationPreferences(
-            @RequestHeader("Authorization") String authHeader,
-            @RequestParam(required = false) String userId) {        try {
+            @RequestHeader("Authorization") String authHeader) {
+        try {
             String token = authHeader.replace("Bearer ", "");
             
             // Validate token and extract user ID in one step to catch all JWT exceptions
@@ -106,33 +99,17 @@ public class NotificationController {
                     .body(new NotificationResponse.GetPreferencesResponse(false, null, "Unable to get preferences with invalid token"));
             } catch (io.jsonwebtoken.JwtException e) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new NotificationResponse.GetPreferencesResponse(false, null, "Unable to get preferences with invalid token"));
-            } catch (Exception e) {
+                    .body(new NotificationResponse.GetPreferencesResponse(false, null, "Unable to get preferences with invalid token"));            } catch (Exception e) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new NotificationResponse.GetPreferencesResponse(false, null, "Unable to get preferences with invalid token"));
-            }
-
-            // Validate that the request userId matches the token userId (if provided)
-            if (userId != null && !userId.equals(tokenUserId.toString())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new NotificationResponse.GetPreferencesResponse(false, null, "Cannot access another user's preferences"));
             }
             
             NotificationResponse.GetPreferencesResponse response = notificationService.getNotificationPreferences(tokenUserId);
             
             if (response.isSuccess()) {
-                return ResponseEntity.ok(response);
-            } else {
+                return ResponseEntity.ok(response);            } else {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-            }        } catch (AuthenticationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new NotificationResponse.GetPreferencesResponse(false, null, "Unable to get preferences with invalid token"));
-        } catch (io.jsonwebtoken.ExpiredJwtException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new NotificationResponse.GetPreferencesResponse(false, null, "Unable to get preferences with invalid token"));
-        } catch (io.jsonwebtoken.JwtException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new NotificationResponse.GetPreferencesResponse(false, null, "Unable to get preferences with invalid token"));
+            }
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new NotificationResponse.GetPreferencesResponse(false, null, "An unexpected error occurred"));
@@ -166,12 +143,9 @@ public class NotificationController {
             if (!"ADMIN".equals(userRole) && !"RESPONDER".equals(userRole)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
-            
-            List<NotificationResponse.AlertNotificationInfo> notifications = notificationService.getAlertNotifications(alertId);
+              List<NotificationResponse.AlertNotificationInfo> notifications = notificationService.getAlertNotifications(alertId);
             return ResponseEntity.ok(notifications);
 
-        } catch (AuthenticationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         } catch (io.jsonwebtoken.JwtException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         } catch (Exception e) {
@@ -205,12 +179,9 @@ public class NotificationController {
             if (!"ADMIN".equals(userRole)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
-            
-            List<NotificationResponse.AlertNotificationInfo> failedNotifications = notificationService.getFailedNotifications();
+              List<NotificationResponse.AlertNotificationInfo> failedNotifications = notificationService.getFailedNotifications();
             return ResponseEntity.ok(failedNotifications);
 
-        } catch (AuthenticationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         } catch (io.jsonwebtoken.JwtException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         } catch (Exception e) {
@@ -254,13 +225,9 @@ public class NotificationController {
             
             if (response.isSuccess()) {
                 return ResponseEntity.ok(response);
-            } else {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            } else {                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
             }
 
-        } catch (AuthenticationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new NotificationResponse.GenericResponse(false, null, "Unable to update notification status with invalid token"));
         } catch (io.jsonwebtoken.JwtException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new NotificationResponse.GenericResponse(false, null, "Unable to update notification status with invalid token"));

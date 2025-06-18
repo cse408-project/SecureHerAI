@@ -1,14 +1,11 @@
 package com.secureherai.secureherai_api.dto.notification;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-public class NotificationRequest {
-
-    // Update notification preferences request
+public class NotificationRequest {    // Update notification preferences request
     public static class UpdatePreferences {
-        @NotBlank(message = "User ID is required")
+        // userId is now optional since it will be extracted from JWT token
         private String userId;
         
         @Valid
