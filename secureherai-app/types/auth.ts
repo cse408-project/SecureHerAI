@@ -60,6 +60,8 @@ export interface AuthContextType {
   verifyLoginCode: (email: string, code: string) => Promise<AuthResponse>;
   register: (data: RegisterRequest) => Promise<AuthResponse>;
   handleGoogleLogin: (token: string) => Promise<AuthResponse>;
+  forgotPassword: (email: string) => Promise<AuthResponse>;
+  resetPassword: (token: string, newPassword: string) => Promise<AuthResponse>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   setToken: (token: string) => Promise<void>;

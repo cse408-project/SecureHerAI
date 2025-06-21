@@ -13,17 +13,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
-import ApiService from "../services/api";
-import { useAuth } from "../context/AuthContext";
-import type { CompleteProfileRequest } from "../types/auth";
+import ApiService from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
+import type { CompleteProfileRequest } from "../../types/auth";
 
-interface CompleteProfileScreenProps {
-  onProfileCompleted: () => void;
-}
-
-export const CompleteProfileScreen: React.FC<CompleteProfileScreenProps> = ({
-  onProfileCompleted,
-}) => {
+export default function CompleteProfileScreen() {
   const { user } = useAuth();
   const [formData, setFormData] = useState<CompleteProfileRequest>({
     phoneNumber: "",
@@ -86,7 +80,7 @@ export const CompleteProfileScreen: React.FC<CompleteProfileScreenProps> = ({
 
       if (response.success) {
         Alert.alert("Success", "Profile completed successfully!", [
-          { text: "OK", onPress: onProfileCompleted },
+          { text: "OK", onPress: () => console.log("Profile completed") },
         ]);
       } else {
         Alert.alert("Error", response.error || "Failed to complete profile");
@@ -233,6 +227,4 @@ export const CompleteProfileScreen: React.FC<CompleteProfileScreenProps> = ({
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
-};
-
-export default CompleteProfileScreen;
+}

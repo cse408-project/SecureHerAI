@@ -91,7 +91,23 @@ public class UserService {
         }
         
         if (request.getProfilePicture() != null) {
-            user.setProfilePicture(request.getProfilePicture());
+            String profilePictureUrl = request.getProfilePicture().trim();
+            
+            // Basic URL validation - ensure it's a valid HTTP(S) URL
+            if (!profilePictureUrl.isEmpty()) {
+                if (!profilePictureUrl.startsWith("http://") && !profilePictureUrl.startsWith("https://")) {
+                    return new AuthResponse.Error("Profile picture must be a valid URL starting with http:// or https://");
+                }
+                
+                // Additional basic URL validation
+                try {
+                    new java.net.URL(profilePictureUrl);
+                } catch (java.net.MalformedURLException e) {
+                    return new AuthResponse.Error("Invalid profile picture URL format");
+                }
+            }
+            
+            user.setProfilePicture(profilePictureUrl.isEmpty() ? null : profilePictureUrl);
         }
         
         // Update date of birth if provided

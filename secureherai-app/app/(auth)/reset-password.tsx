@@ -15,50 +15,55 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useAuth } from "../../context/AuthContext";
 
-export default function ForgotPasswordScreen() {
-  const [email, setEmail] = useState("");
+export default function ResetPasswordScreen() {
+  const [resetToken, setResetToken] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const { forgotPassword } = useAuth();
+  const { resetPassword } = useAuth();
 
-  const handleForgotPassword = async () => {
-    if (!email.trim()) {
-      Alert.alert("Error", "Please enter your email address");
+  const handleResetPassword = async () => {
+    if (!resetToken.trim() || !newPassword.trim() || !confirmPassword.trim()) {
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      Alert.alert("Error", "Please enter a valid email address");
+    if (newPassword !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      Alert.alert("Error", "Password must be at least 6 characters long");
       return;
     }
 
     setIsLoading(true);
     try {
-      const response = await forgotPassword(email.trim());
+      const response = await resetPassword(resetToken.trim(), newPassword);
 
       if (response.success) {
         Alert.alert(
           "Success",
-          response.message || "Password reset instructions sent to your email",
+          response.message ||
+            "Your password has been reset successfully. You can now log in with your new password.",
           [
             {
               text: "OK",
               onPress: () => {
                 // Navigate back to login
+                console.log("Navigate back to login");
                 router.push("/(auth)");
               },
             },
           ]
         );
       } else {
-        Alert.alert(
-          "Error",
-          response.error || "Failed to send reset instructions"
-        );
+        Alert.alert("Error", response.error || "Failed to reset password");
       }
     } catch (error) {
-      console.error("Forgot password error:", error);
+      console.error("Reset password error:", error);
       Alert.alert("Error", "An unexpected error occurred");
     } finally {
       setIsLoading(false);
@@ -80,29 +85,55 @@ export default function ForgotPasswordScreen() {
             {/* Header */}
             <View className="items-center mb-8">
               <Text className="text-3xl font-bold text-primary mb-2">
-                Forgot Password
+                Reset Password
               </Text>
               <Text className="text-base text-muted text-center">
-                Enter your email to receive a password reset link
+                Enter your new password
               </Text>
             </View>
 
             {/* Form */}
             <View className="mb-6">
-              <View className="mb-6">
+              <View className="mb-4">
                 <Text className="text-sm font-medium text-foreground mb-2">
-                  Email Address
+                  Reset Token
                 </Text>
                 <TextInput
                   className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground"
-                  placeholder="Enter your email"
+                  placeholder="Enter reset token from email"
                   placeholderTextColor="#9CA3AF"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
+                  value={resetToken}
+                  onChangeText={setResetToken}
                   autoFocus
+                />
+              </View>
+
+              <View className="mb-4">
+                <Text className="text-sm font-medium text-foreground mb-2">
+                  New Password
+                </Text>
+                <TextInput
+                  className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground"
+                  placeholder="Enter your new password"
+                  placeholderTextColor="#9CA3AF"
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry
+                  autoFocus
+                />
+              </View>
+
+              <View className="mb-6">
+                <Text className="text-sm font-medium text-foreground mb-2">
+                  Confirm New Password
+                </Text>
+                <TextInput
+                  className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground"
+                  placeholder="Confirm your new password"
+                  placeholderTextColor="#9CA3AF"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry
                 />
               </View>
 
@@ -112,21 +143,21 @@ export default function ForgotPasswordScreen() {
                     ? "bg-primary/50"
                     : "bg-primary active:bg-primary/90"
                 }`}
-                onPress={handleForgotPassword}
+                onPress={handleResetPassword}
                 disabled={isLoading}
               >
                 {isLoading ? (
                   <ActivityIndicator color="white" />
                 ) : (
                   <Text className="text-white text-center font-semibold text-lg">
-                    Send Reset Link
+                    Reset Password
                   </Text>
                 )}
               </TouchableOpacity>
 
               {/* Back to Login */}
               <View className="items-center">
-                <TouchableOpacity onPress={() => router.push("/(auth)")}>
+                <TouchableOpacity>
                   <Text className="text-primary font-semibold">
                     Back to Login
                   </Text>

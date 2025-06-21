@@ -84,6 +84,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await ApiService.verifyLoginCode(email, code);
 
       if (response.success && response.token) {
+        console.log("AuthContext - Setting token and user data...");
         await AsyncStorage.setItem("auth_token", response.token);
         setToken(response.token);
 
@@ -95,8 +96,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           role: response.role,
         };
 
+        console.log("AuthContext - User data:", userData);
         setUser(userData);
         await AsyncStorage.setItem("user_data", JSON.stringify(userData));
+        console.log("AuthContext - Auth state should now be true");
       }
 
       return response;
@@ -255,6 +258,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const forgotPassword = async (email: string): Promise<AuthResponse> => {
+    try {
+      const response = await ApiService.forgotPassword(email);
+      return response;
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      return {
+        success: false,
+        error: "Network error. Please try again.",
+      };
+    }
+  };
+
+  const resetPassword = async (
+    token: string,
+    newPassword: string
+  ): Promise<AuthResponse> => {
+    try {
+      const response = await ApiService.resetPassword(token, newPassword);
+      return response;
+    } catch (error) {
+      console.error("Reset password error:", error);
+      return {
+        success: false,
+        error: "Network error. Please try again.",
+      };
+    }
+  };
+
   const logout = async () => {
     // Clear state immediately for instant UI feedback
     setToken(null);
@@ -279,6 +311,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     handleGoogleLogin,
+    forgotPassword,
+    resetPassword,
     setToken: setTokenAndUpdateUser, // Expose the new method
     isAuthenticated: !!token && !!user,
   };

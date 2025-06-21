@@ -3,65 +3,43 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   Alert,
+  ActivityIndicator,
+  TouchableOpacity,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
-  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-// @ts-ignore
-import { router } from "expo-router";
 import { useAuth } from "../../context/AuthContext";
 
-export default function ForgotPasswordScreen() {
+export default function VerifyLogin() {
   const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [code, setCode] = useState("");
+  const { verifyLoginCode } = useAuth();
+  const [isVerifying, setIsVerifying] = useState(false);
 
-  const { forgotPassword } = useAuth();
-
-  const handleForgotPassword = async () => {
-    if (!email.trim()) {
-      Alert.alert("Error", "Please enter your email address");
+  const handleVerifyCode = async () => {
+    if (!email.trim() || !code.trim()) {
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      Alert.alert("Error", "Please enter a valid email address");
-      return;
-    }
-
-    setIsLoading(true);
+    setIsVerifying(true);
     try {
-      const response = await forgotPassword(email.trim());
+      const response = await verifyLoginCode(email.trim(), code.trim());
 
       if (response.success) {
-        Alert.alert(
-          "Success",
-          response.message || "Password reset instructions sent to your email",
-          [
-            {
-              text: "OK",
-              onPress: () => {
-                // Navigate back to login
-                router.push("/(auth)");
-              },
-            },
-          ]
-        );
+        Alert.alert("Success", "Login successful!");
+        // Navigation will be handled by auth context
       } else {
-        Alert.alert(
-          "Error",
-          response.error || "Failed to send reset instructions"
-        );
+        Alert.alert("Error", response.error || "Verification failed");
       }
     } catch (error) {
-      console.error("Forgot password error:", error);
+      console.error("Verification error:", error);
       Alert.alert("Error", "An unexpected error occurred");
     } finally {
-      setIsLoading(false);
+      setIsVerifying(false);
     }
   };
 
@@ -80,16 +58,16 @@ export default function ForgotPasswordScreen() {
             {/* Header */}
             <View className="items-center mb-8">
               <Text className="text-3xl font-bold text-primary mb-2">
-                Forgot Password
+                Verify Login
               </Text>
               <Text className="text-base text-muted text-center">
-                Enter your email to receive a password reset link
+                Enter your email and verification code
               </Text>
             </View>
 
             {/* Form */}
             <View className="mb-6">
-              <View className="mb-6">
+              <View className="mb-4">
                 <Text className="text-sm font-medium text-foreground mb-2">
                   Email Address
                 </Text>
@@ -102,31 +80,45 @@ export default function ForgotPasswordScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
-                  autoFocus
+                />
+              </View>
+
+              <View className="mb-6">
+                <Text className="text-sm font-medium text-foreground mb-2">
+                  Verification Code
+                </Text>
+                <TextInput
+                  className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground text-center text-xl tracking-widest"
+                  placeholder="000000"
+                  placeholderTextColor="#9CA3AF"
+                  value={code}
+                  onChangeText={setCode}
+                  keyboardType="number-pad"
+                  maxLength={6}
                 />
               </View>
 
               <TouchableOpacity
                 className={`w-full py-4 rounded-lg mb-6 ${
-                  isLoading
+                  isVerifying
                     ? "bg-primary/50"
                     : "bg-primary active:bg-primary/90"
                 }`}
-                onPress={handleForgotPassword}
-                disabled={isLoading}
+                onPress={handleVerifyCode}
+                disabled={isVerifying}
               >
-                {isLoading ? (
+                {isVerifying ? (
                   <ActivityIndicator color="white" />
                 ) : (
                   <Text className="text-white text-center font-semibold text-lg">
-                    Send Reset Link
+                    Verify & Sign In
                   </Text>
                 )}
               </TouchableOpacity>
 
               {/* Back to Login */}
               <View className="items-center">
-                <TouchableOpacity onPress={() => router.push("/(auth)")}>
+                <TouchableOpacity>
                   <Text className="text-primary font-semibold">
                     Back to Login
                   </Text>
