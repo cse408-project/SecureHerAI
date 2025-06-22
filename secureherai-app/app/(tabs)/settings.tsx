@@ -9,6 +9,7 @@ import {
   Image,
   TextInput,
   Modal,
+  Platform,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useState, useEffect } from "react";
@@ -166,14 +167,26 @@ export default function SettingsScreen() {
     setProfilePictureUrl(profile?.profilePicture || "");
     setShowEditModal(true);
   };
-
   const handleLogout = () => {
+    console.log("Log out button pressed");
+    if(Platform.OS === "web") {
+      // For web, we can use a simple confirm dialog
+      // if (confirm("Are you sure you want to logout?")) {
+      console.log("Logging out from web");
+      
+      logout();
+      // }
+      return;
+    }
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Logout",
         style: "destructive",
-        onPress: () => logout(),
+        onPress: () => {
+          console.log("Logout confirmed, calling logout function");
+          logout();
+        },
       },
     ]);
   };
@@ -337,9 +350,7 @@ export default function SettingsScreen() {
               <Text className="text-gray-800 ml-3">Help & Support</Text>
             </View>
             <MaterialIcons name="chevron-right" size={24} color="#67082F" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
+          </TouchableOpacity>          <TouchableOpacity
             className="p-4 flex-row items-center justify-between"
             onPress={handleLogout}
           >

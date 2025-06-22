@@ -1,0 +1,91 @@
+services:
+  frontend:
+    container_name: secureherai_web_prod
+    build:
+      context: ./secureherai-app
+      dockerfile: Dockerfile
+      target: production
+    ports:
+      - "80:80"
+    environment:
+      EXPO_PUBLIC_API_BASE_URL: http://api:8080
+    depends_on:
+      - api
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  api:
+    container_name: secureherai_api_prod
+    build:
+      context: ./secureherai-api
+      dockerfile: Dockerfile
+      target: production
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./secureherai-api/.env.production
+    environment:
+      # Database Configuration
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/secureherai
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_PROFILES_ACTIVE: prod
+
+      # JWT Configuration
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: 86400000
+
+      # Email Configuration
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+
+      # OAuth2 Configuration
+      OAUTH2_WEB_ORIGIN: ${OAUTH2_WEB_ORIGIN}
+      OAUTH2_WEB_REDIRECT_URI: ${OAUTH2_WEB_REDIRECT_URI}
+      OAUTH2_CLIENT_ID: ${OAUTH2_CLIENT_ID}
+      OAUTH2_CLIENT_SECRET: ${OAUTH2_CLIENT_SECRET}
+      OAUTH2_CLIENT_ID_ANDROID: ${OAUTH2_CLIENT_ID_ANDROID}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  db:
+    container_name: postgres_secureherai_prod
+    image: postgres:15-alpine
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: secureherai
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d secureherai"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge
+
+# For production deployment:
+# 1. Set environment variables in .env.production
+# 2. Configure SSL certificates
+# 3. Set up reverse proxy (nginx) for domain routing
+# 4. Configure logging and monitoring

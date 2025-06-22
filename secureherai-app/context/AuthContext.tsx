@@ -30,6 +30,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkAuthState();
   }, []);
 
+  useEffect(() => {
+    // Log auth state changes for debugging
+    console.log("AuthContext - Auth state changed:", {
+      isAuthenticated: !!token && !!user,
+      user,
+      token,
+    });
+  }, [user, token]);
+
   const checkAuthState = async () => {
     try {
       const storedToken = await AsyncStorage.getItem("auth_token");
