@@ -16,7 +16,8 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.anonymous.secureheraiapp"
     },
     "web": {
       "bundler": "metro",
@@ -32,6 +33,12 @@
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
+        }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.80250826332-k4aiil9jglrl5m95r380t1moofbnq4i6"
         }
       ]
     ],
@@ -56,6 +63,12 @@
           "reset-password": "reset-password",
           "verify-login": "verify-login"
         }
+      }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d00313db-c24f-4065-b0fb-81d1f0b86957"
       }
     }
   }
