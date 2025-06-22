@@ -109,8 +109,8 @@ public class AuthRequest {
         @Size(max = 20, message = "Phone number cannot exceed 20 characters")
         private String phoneNumber;
         
-        @Size(max = 1000000, message = "Profile picture data cannot exceed 1MB (base64 encoded)")
-        private String profilePicture;
+        @Size(max = 500, message = "Profile picture URL cannot exceed 500 characters")
+        private String profilePicture; // URL to profile picture, not base64 data
         
         // Added date of birth field
         private String dateOfBirth;

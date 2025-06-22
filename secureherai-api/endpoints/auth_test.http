@@ -229,8 +229,8 @@ Content-Type: application/json
     "fullName": "Arimotokika",
     "email": "arimotokika2005025@gmail.com",
     "phoneNumber": "+8801712345680",
-    "profilePicture": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=",
-    "dateOfBirth": "1985-07-15",
+    "profilePicture": 
+ "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ6ITuqiPK83NzNZIdIwBzkaiDYX917_OGOGvkwKYvfGW6G2IEVURVG6dXbWicujCbN4YM&usqp=CAU",   "dateOfBirth": "1985-07-15",
     "notificationPreferences": {
       "emailAlerts": true,
       "smsAlerts": true,
@@ -279,7 +279,7 @@ Content-Type: application/json
 {
   "fullName": "Arimotokika",
   "phoneNumber": "+8801712345699",
-  "profilePicture": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=",
+  "profilePicture": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ6ITuqiPK83NzNZIdIwBzkaiDYX917_OGOGvkwKYvfGW6G2IEVURVG6dXbWicujCbN4YM&usqp=CAU",
   "dateOfBirth": "1990-02-15",
   "emailAlerts": true,
   "smsAlerts": true,
@@ -321,7 +321,7 @@ Content-Type: application/json
 {
   "fullName": "Arimoto Kika",
   "phoneNumber": "+8801712345688",
-  "profilePicture": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=",
+  "profilePicture": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ6ITuqiPK83NzNZIdIwBzkaiDYX917_OGOGvkwKYvfGW6G2IEVURVG6dXbWicujCbN4YM&usqp=CAU",
   "dateOfBirth": "1985-08-16",
   "emailAlerts": true,
   "smsAlerts": true,

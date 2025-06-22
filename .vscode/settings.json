@@ -1,4 +1,6 @@
 {
   "java.compile.nullAnalysis.mode": "automatic",
-  "postman.settings.dotenv-detection-notification-visibility": false
+  "emulator.emulatorPath": "C:\\Users\\ASUS\\AppData\\Local\\Android\\Sdk",
+  "emulator.emulatorPathWindows": "C:\\Users\\ASUS\\AppData\\Local\\Android\\Sdk",
+  "emulator.androidColdBoot": true
 }

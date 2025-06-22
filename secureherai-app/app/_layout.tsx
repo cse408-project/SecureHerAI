@@ -1,5 +1,5 @@
 import { Stack } from "expo-router";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider } from "../context/AuthContext";
 import "./global.css";
 import React, { useEffect } from "react";
 import { Platform } from "react-native";
@@ -35,9 +35,12 @@ export default function RootLayout() {
         console.log("Initial URL:", initialURL);
 
         // Subscribe to URL events
-        const subscription = Linking.addEventListener("url", ({ url }) => {
-          console.log("Incoming URL event:", url);
-        });
+        const subscription = Linking.addEventListener(
+          "url",
+          ({ url }: { url: string }) => {
+            console.log("Incoming URL event:", url);
+          }
+        );
 
         return () => subscription.remove();
       };
