@@ -1,0 +1,99 @@
+version: "3.8"
+
+services:
+  api:
+    container_name: secureherai_api
+    build:
+      context: ./secureherai-api
+      dockerfile: Dockerfile
+      target: development
+    volumes:
+      - ./secureherai-api:/app
+      - maven_cache:/root/.m2
+    working_dir: /app
+    command: mvn spring-boot:run -Dspring-boot.run.profiles=dev
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      # Database Configuration
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/secureherai
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_PROFILES_ACTIVE:
+        dev
+
+        # JWT Configuration
+      JWT_SECRET: HRVu1xFYfraq/lculzNaXzMHVady85sMReuLwlSzEjcKznYOEPdbbK3F+9hq+4muGxhYfft5nNQYxbDZIGzzAA==
+      JWT_EXPIRATION: 86400000
+
+      # Email Configuration (Use environment variables for production)
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+
+      EXPO_APP_URL: ${EXPO_APP_URL:-}
+      EXPO_METRO_URL: ${EXPO_METRO_URL:-}
+      EXPO_PUBLIC_API_BASE_URL: ${EXPO_PUBLIC_API_BASE_URL:-http://localhost:8080}
+
+      OAUTH2_WEB_ORIGIN: ${OAUTH2_WEB_ORIGIN:-}
+      OAUTH2_WEB_REDIRECT_URI: ${OAUTH2_WEB_REDIRECT_URI:-}
+
+      OAUTH2_CLIENT_ID: ${OAUTH2_CLIENT_ID:-}
+      OAUTH2_CLIENT_SECRET: ${OAUTH2_CLIENT_SECRET:-}
+
+      OAUTH2_CLIENT_ID_ANDROID: ${OAUTH2_CLIENT_ID_ANDROID:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
+    networks:
+      - app-network
+
+  db:
+    container_name: postgres_secureherai
+    image: postgres:15
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: secureherai
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d secureherai"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+  maven_cache:
+
+networks:
+  app-network:
+    driver: bridge
+    name: app-network
+    external: true
+
+# For pgAdmin (http://localhost:5050):
+
+# Email: admin@admin.com
+# Password: root
+# Then add a new server with:
+
+# Name: SecureHerAI DB
+# Host: postgres_secureherai (container name)
+# Port: 5432
+# Database: secureherai
+# Username: user
+# Password: password
