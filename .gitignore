@@ -58,3 +58,7 @@ logs/
 
 # secrets
 client_secret*.json
+
+
+### VS Code ###
+.vscode/

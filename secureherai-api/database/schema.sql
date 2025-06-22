@@ -90,6 +90,18 @@ CREATE TABLE alerts (
     CHECK (status IN ('active', 'canceled', 'resolved', 'expired'))
 );
 
+
+-- Alert notifications
+CREATE TABLE alert_notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    alert_id UUID NOT NULL REFERENCES alerts(id) ON DELETE CASCADE,
+    contact_id UUID REFERENCES trusted_contacts(id) ON DELETE SET NULL,
+    recipient_type TEXT NOT NULL, -- trusted_contact, emergency_service
+    recipient_name TEXT NOT NULL,
+    status TEXT NOT NULL, -- notified, notified_of_cancellation, failed
+    notification_time TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Alert responder assignments
 CREATE TABLE alert_responders (
     alert_id UUID NOT NULL REFERENCES alerts(id) ON DELETE CASCADE,
@@ -102,16 +114,6 @@ CREATE TABLE alert_responders (
     PRIMARY KEY (alert_id, responder_id)
 );
 
--- Alert notifications
-CREATE TABLE alert_notifications (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    alert_id UUID NOT NULL REFERENCES alerts(id) ON DELETE CASCADE,
-    contact_id UUID REFERENCES trusted_contacts(id) ON DELETE SET NULL,
-    recipient_type TEXT NOT NULL, -- trusted_contact, emergency_service
-    recipient_name TEXT NOT NULL,
-    status TEXT NOT NULL, -- notified, notified_of_cancellation, failed
-    notification_time TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
 
 -- Alert verification details
 CREATE TABLE alert_verifications (

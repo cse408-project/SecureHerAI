@@ -1,7 +1,7 @@
 ### SecureHerAI Authentication API Tests
 
-@baseUrl = http://192.168.0.103:8080/api
-@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZjA2YjljOS1mY2IzLTRhYWItYTBlYy1iNDk4ZDM5MDlmZjQiLCJlbWFpbCI6ImFyaW1vdG9raWthMjAwNTAyNUBnbWFpbC5jb20iLCJyb2xlIjoiUkVTUE9OREVSIiwiaWF0IjoxNzUwMDA4MDk4LCJleHAiOjE3NTAwOTQ0OTh9.iPRhTZgC6y6Au18c945IvTrP3cAoabam-ZDCFjItunk
+@baseUrl = http://localhost:8080/api
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MTg3ZjBlYi0wZGQwLTQwZDgtOWRlMy05NjdjY2NlNjgwOTkiLCJlbWFpbCI6ImFyaW1vdG9raWthMjAwNTAyNUBnbWFpbC5jb20iLCJyb2xlIjoiUkVTUE9OREVSIiwiaWF0IjoxNzUwMjIxMjExLCJleHAiOjE3NTAzMDc2MTF9.qfCxNb_bRDUppKquGa0SGN0IjvQFxlMC9fpVK3cDvt8
 
 ### 1. Health Check
 GET {{baseUrl}}/health
@@ -180,7 +180,7 @@ Content-Type: application/json
 
 {
   "email": "arimotokika2005025@gmail.com",
-  "loginCode": "902307"
+  "loginCode": "961979"
 }
 
 ### Successful Verification Response
@@ -202,7 +202,7 @@ Content-Type: application/json
 
 {
   "email": "2005009@ugrad.cse.buet.ac.bd",
-  "loginCode": "902307"
+  "loginCode": "995842"
 }
 
 

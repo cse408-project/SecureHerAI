@@ -16,7 +16,6 @@ This module handles trusted contacts management and notification preferences for
 >
 > ```json
 > {
->   "userId": "12345",
 >   "contact": {
 >     "name": "John Doe",
 >     "phone": "+8801712345678",
@@ -66,9 +65,9 @@ This module handles trusted contacts management and notification preferences for
 | ------------- | :---------: | :------------------------------------: |
 | /api/contacts |    `GET`    | Retrieves the list of trusted contacts |
 
-> #### Request Parameters
+> #### Authentication Required
 >
-> - `userId`: The ID of the user
+> - Uses JWT token to identify the user
 
 > #### Response - Success
 >
@@ -109,7 +108,6 @@ This module handles trusted contacts management and notification preferences for
 >
 > ```json
 > {
->   "userId": "12345",
 >   "contactId": "cont123"
 > }
 > ```
@@ -159,7 +157,6 @@ This module handles trusted contacts management and notification preferences for
 >
 > ```json
 > {
->   "userId": "12345",
 >   "preferences": {
 >     "emailAlerts": true,
 >     "smsAlerts": false,
