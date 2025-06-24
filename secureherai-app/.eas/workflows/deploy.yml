@@ -1,47 +1,13 @@
-name: Expo Deploy (Manual Build)
+name: Expo Deploy
 
 on:
   push:
     branches: ['amin']
 
 jobs:
-  # Deploy Web Only (Free)
-  deploy-web:
-    name: Deploy Web
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: 🔍 Checkout repository 
-        uses: actions/checkout@v4
-
-      - name: 🟢 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18.x'
-          cache: 'npm'
-
-      - name: 🚀 Setup Expo and EAS
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: 📦 Install dependencies
-        run: npm ci
-
-      - name: 🧪 Run tests (optional)
-        run: npm test -- --coverage --watchAll=false
-        continue-on-error: true
-
-      - name: 🌐 Deploy to EAS Hosting (Web)
-        run: |
-          eas deploy --platform web --non-interactive
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-      - name: 📢 Build Instructions
-        run: |
-          echo "✅ Web deployment complete!"
-          echo "🤖 To build Android manually, run:"
-          echo "   eas build --platform android --profile preview"
-          echo "💡 Or subscribe to EAS for automated builds: https://expo.dev/accounts/cse408-project/settings/billing"
+  deploy:
+    name: Deploy
+    environment: production
+    type: deploy
+    params:
+      prod: true
