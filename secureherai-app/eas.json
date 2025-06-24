@@ -3,30 +3,16 @@
     "version": ">= 5.0.0"
   },
   "build": {
-    "development": {
-      "developmentClient": true,
+    "android-apk": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
       }
     },
-    "preview": {
-      "distribution": "internal",
-      "android": {
-        "buildType": "apk"
-      }
-    },
-    "production": {
-      "android": {
-        "buildType": "app-bundle"
-      }
-    }
-  },
-  "submit": {
-    "production": {
-      "android": {
-        "serviceAccountKeyPath": "./google-service-account.json",
-        "track": "internal"
+    "web-production": {
+      "env": {
+        "NODE_ENV": "production",
+        "EXPO_PUBLIC_API_URL": "https://api.example.com"
       }
     }
   }
