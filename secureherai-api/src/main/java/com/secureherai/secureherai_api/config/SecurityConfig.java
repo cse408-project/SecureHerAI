@@ -88,12 +88,11 @@ public class SecurityConfig {
         
         // Allow all common HTTP methods
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        
-        // Allow all headers
+          // Allow all headers
         configuration.setAllowedHeaders(Arrays.asList("*"));
         
-        // Allow credentials (for authentication)
-        configuration.setAllowCredentials(true);
+        // Don't require credentials for JWT-based authentication
+        configuration.setAllowCredentials(false);
         
         // Apply CORS configuration to all paths
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

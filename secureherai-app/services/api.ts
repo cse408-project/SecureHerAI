@@ -30,7 +30,6 @@ class ApiService {
 
     return headers;
   }
-
   async login(email: string, password: string) {
     try {
       console.log("API: Attempting login for:", email);
