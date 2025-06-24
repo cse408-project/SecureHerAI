@@ -2,16 +2,16 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Ensure API base URL works in both web and native environments
 const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL || "https://localhost:8080/api";
+  process.env.EXPO_PUBLIC_API_BASE_URL || "http://192.168.0.103:8080/api";
 
 // Debug log for API base URL
 console.log("API_BASE_URL:", API_BASE_URL);
 
-// // Test API connection on startup
-// fetch(`${API_BASE_URL}/health`)
-//   .then((response) => response.json())
-//   .then((data) => console.log("API Health Check:", data))
-//   .catch((error) => console.error("API Health Check Failed:", error));
+// Test API connection on startup
+fetch(`${API_BASE_URL}/health`)
+  .then((response) => response.json())
+  .then((data) => console.log("API Health Check:", data))
+  .catch((error) => console.error("API Health Check Failed:", error));
 
 class ApiService {
   private async getHeaders(
@@ -30,7 +30,6 @@ class ApiService {
 
     return headers;
   }
-
   async login(email: string, password: string) {
     try {
       console.log("API: Attempting login for:", email);
@@ -41,12 +40,21 @@ class ApiService {
       });
 
       console.log("API: Login response status:", response.status);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
 
       const data = await response.json();
       console.log("API: Login response data:", data);
+
+      if (!response.ok) {
+        // Return the actual error message from the server
+        return {
+          success: false,
+          error:
+            data.error ||
+            data.message ||
+            `Server returned ${response.status}: ${response.statusText}`,
+        };
+      }
+
       return data;
     } catch (error) {
       console.error("API: Network error during login:", error);
@@ -118,15 +126,34 @@ class ApiService {
   async verifyLogin(data: { email: string; loginCode: string }) {
     return this.verifyLoginCode(data.email, data.loginCode);
   }
-
   async register(data: any) {
-    const response = await fetch(`${API_BASE_URL}/auth/register`, {
-      method: "POST",
-      headers: await this.getHeaders(),
-      body: JSON.stringify(data),
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: "POST",
+        headers: await this.getHeaders(),
+        body: JSON.stringify(data),
+      });
 
-    return response.json();
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error:
+            responseData.error ||
+            responseData.message ||
+            `Server returned ${response.status}: ${response.statusText}`,
+        };
+      }
+
+      return responseData;
+    } catch (error) {
+      console.error("API: Network error during registration:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
   }
 
   async getUserProfile() {
