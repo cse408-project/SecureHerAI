@@ -1,6 +1,6 @@
 ### SecureHerAI Authentication API Tests
 
-@baseUrl = http://192.168.0.103:8080/api
+@baseUrl = https://98.70.27.208:8080/api
 @authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZjA2YjljOS1mY2IzLTRhYWItYTBlYy1iNDk4ZDM5MDlmZjQiLCJlbWFpbCI6ImFyaW1vdG9raWthMjAwNTAyNUBnbWFpbC5jb20iLCJyb2xlIjoiUkVTUE9OREVSIiwiaWF0IjoxNzUwMDA4MDk4LCJleHAiOjE3NTAwOTQ0OTh9.iPRhTZgC6y6Au18c945IvTrP3cAoabam-ZDCFjItunk
 
 ### 1. Health Check

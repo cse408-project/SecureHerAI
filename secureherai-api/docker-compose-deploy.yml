@@ -2,16 +2,9 @@ version: "3.8"
 
 services:
   api:
+    image: secureherai-api-api
     container_name: secureherai_api
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: development
-    volumes:
-      - .:/app
-      - maven_cache:/root/.m2
-    working_dir: /app
-    command: mvn spring-boot:run -Dspring-boot.run.profiles=dev
+    # no bind-mount
     ports:
       - "8080:8080"
     env_file:
@@ -43,37 +36,17 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    stdin_open: true
-    tty: true
+    restart: always
     networks:
       - app-network
 
   db:
-    container_name: postgres_secureherai
     image: postgres:15
-    restart: always
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: secureherai
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d secureherai"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
+    container_name: postgres_secureherai
+    # … keep as before
     networks:
       - app-network
-
-volumes:
-  postgres_data:
-  maven_cache:
 
 networks:
   app-network:
     driver: bridge
-    name: app-network

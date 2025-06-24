@@ -58,3 +58,6 @@ logs/
 
 # secrets
 client_secret*.json
+
+# vscode settings
+.vscode/
