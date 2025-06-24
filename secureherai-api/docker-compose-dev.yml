@@ -77,3 +77,17 @@ networks:
   app-network:
     driver: bridge
     name: app-network
+    # external: true
+
+# For pgAdmin (http://localhost:5050):
+
+# Email: admin@admin.com
+# Password: root
+# Then add a new server with:
+
+# Name: SecureHerAI DB
+# Host: postgres_secureherai (container name)
+# Port: 5432
+# Database: secureherai
+# Username: user
+# Password: password

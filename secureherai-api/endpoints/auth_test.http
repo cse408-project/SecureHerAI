@@ -180,7 +180,7 @@ Content-Type: application/json
 
 {
   "email": "arimotokika2005025@gmail.com",
-  "loginCode": "902307"
+  "loginCode": "961979"
 }
 
 ### Successful Verification Response
@@ -202,7 +202,7 @@ Content-Type: application/json
 
 {
   "email": "2005009@ugrad.cse.buet.ac.bd",
-  "loginCode": "902307"
+  "loginCode": "995842"
 }
 
 
