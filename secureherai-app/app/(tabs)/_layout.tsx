@@ -1,8 +1,15 @@
-import { Tabs } from "expo-router";
+import { Tabs, Redirect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Platform } from "react-native";
+import { useAuth } from "../../context/AuthContext";
 
 export default function TabsLayout() {
+  const { user, token, isLoading } = useAuth();
+  
+  // If user becomes unauthenticated while in this group, redirect to auth
+  if (!isLoading && (!user || !token)) {
+    return <Redirect href="/(auth)" />;
+  }
   // Add extra margin for Android to avoid overlap with back button
   const extraMargin = Platform.OS === "android" ? 24 : 0;
   return (

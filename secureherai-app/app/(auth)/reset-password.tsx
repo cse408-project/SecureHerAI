@@ -4,12 +4,12 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
   ActivityIndicator,
 } from "react-native";
+import { showAlert } from "../../utils/alertManager";
 import { SafeAreaView } from "react-native-safe-area-context";
 // @ts-ignore
 import { router } from "expo-router";
@@ -25,17 +25,19 @@ export default function ResetPasswordScreen() {
 
   const handleResetPassword = async () => {
     if (!resetToken.trim() || !newPassword.trim() || !confirmPassword.trim()) {
-      Alert.alert("Error", "Please fill in all fields");
+      showAlert("Error", "Please fill in all fields", [{ text: "OK" }]);
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
+      showAlert("Error", "Passwords do not match", [{ text: "OK" }]);
       return;
     }
 
     if (newPassword.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters long");
+      showAlert("Error", "Password must be at least 6 characters long", [
+        { text: "OK" },
+      ]);
       return;
     }
 
@@ -44,7 +46,7 @@ export default function ResetPasswordScreen() {
       const response = await resetPassword(resetToken.trim(), newPassword);
 
       if (response.success) {
-        Alert.alert(
+        showAlert(
           "Success",
           response.message ||
             "Your password has been reset successfully. You can now log in with your new password.",
@@ -60,11 +62,13 @@ export default function ResetPasswordScreen() {
           ]
         );
       } else {
-        Alert.alert("Error", response.error || "Failed to reset password");
+        showAlert("Error", response.error || "Failed to reset password", [
+          { text: "OK" },
+        ]);
       }
     } catch (error) {
       console.error("Reset password error:", error);
-      Alert.alert("Error", "An unexpected error occurred");
+      showAlert("Error", "An unexpected error occurred", [{ text: "OK" }]);
     } finally {
       setIsLoading(false);
     }

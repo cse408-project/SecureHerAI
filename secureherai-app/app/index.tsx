@@ -1,38 +1,29 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { View, ActivityIndicator } from "react-native";
-// @ts-ignore
-import { router } from "expo-router";
+import { Redirect } from "expo-router";
 import { useAuth } from "../context/AuthContext";
 
 export default function Index() {
-  const { isAuthenticated, isLoading, user, token } = useAuth();
+  const { user, token, isLoading } = useAuth();
 
-  useEffect(() => {
-    console.log("Index.tsx - Auth state changed:", {
-      isAuthenticated,
-      isLoading,
-      hasUser: !!user,
-      hasToken: !!token,
-    });
-
-    // Use router.replace instead of Redirect component for more reliable navigation
-    if (!isLoading) {
-      if (isAuthenticated) {
-        console.log("Index.tsx - User is authenticated, navigating to tabs...");
-        router.replace("/(tabs)");
-      } else {
-        console.log(
-          "Index.tsx - User is not authenticated, navigating to auth..."
-        );
-        router.replace("/(auth)");
-      }
-    }
-  }, [isAuthenticated, isLoading, user, token]);
-
-  // Always show loading while we determine where to navigate
-  return (
-    <View className="flex-1 items-center justify-center bg-background">
-      <ActivityIndicator size="large" color="#4F46E5" />
-    </View>
-  );
+  // Show loading screen while determining auth state
+  if (isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-[#FFE4D6]">
+        <ActivityIndicator size="large" color="#67082F" />
+      </View>
+    );
+  }
+  
+  // Use Redirect component instead of router.replace for smoother transitions
+  // This will be handled by Protected routes in _layout.tsx
+  const isAuthenticated = !!(user && token);
+  
+  if (isAuthenticated) {
+    console.log("Index.tsx - User is authenticated, redirecting to tabs...");
+    return <Redirect href="/(tabs)" />;
+  } else {
+    console.log("Index.tsx - User is not authenticated, redirecting to auth...");
+    return <Redirect href="/(auth)" />;
+  }
 }

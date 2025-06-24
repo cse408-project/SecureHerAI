@@ -1,11 +1,20 @@
 import { Stack } from "expo-router";
-import { AuthProvider } from "../context/AuthContext";
+import { AuthProvider, useAuth } from "../context/AuthContext";
 import "./global.css";
 import React, { useEffect } from "react";
 import { Platform } from "react-native";
 import * as Linking from "expo-linking";
+import { SplashScreenController } from "../components/SplashScreenController";
+import {
+  AlertProvider,
+  setGlobalAlertFunction,
+  useAlert,
+} from "../utils/alertManager";
 
-export default function RootLayout() {
+function RootLayoutComponent() {
+  const { user, token, isLoading } = useAuth();
+  const isAuthenticated = !!(user && token) && !isLoading;
+
   useEffect(() => {
     if (Platform.OS === "web") {
       // For web, handle initial URL
@@ -50,12 +59,44 @@ export default function RootLayout() {
   }, []);
 
   return (
+    <Stack screenOptions={{ headerShown: false }}>
+      {/* Protected tabs routes - only accessible when authenticated */}
+      <Stack.Protected guard={isAuthenticated}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack.Protected>
+
+      {/* Protected auth routes - only accessible when not authenticated */}
+      <Stack.Protected guard={!isAuthenticated}>
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      </Stack.Protected>
+
+      {/* Common index screen for initial loading */}
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+    </Stack>
+  );
+}
+
+// Setup global alert function
+function AlertWrapper() {
+  const alertContext = useAlert();
+
+  useEffect(() => {
+    // Set the global alert function so it can be used outside of components
+    setGlobalAlertFunction(alertContext.showAlert);
+  }, [alertContext]);
+
+  return null;
+}
+
+// Main Layout Component
+export default function RootLayout() {
+  return (
     <AuthProvider>
-      <Stack
-        screenOptions={{ headerShown: false }}
-        // Apply our custom linking configuration
-        initialRouteName="index"
-      />
+      <AlertProvider>
+        <AlertWrapper />
+        <SplashScreenController />
+        <RootLayoutComponent />
+      </AlertProvider>
     </AuthProvider>
   );
 }

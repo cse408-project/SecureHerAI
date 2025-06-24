@@ -3,13 +3,13 @@ import {
   View,
   Text,
   TextInput,
-  Alert,
   ActivityIndicator,
   TouchableOpacity,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
 } from "react-native";
+import { showAlert } from "../../utils/alertManager";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../context/AuthContext";
 
@@ -21,7 +21,7 @@ export default function VerifyLogin() {
 
   const handleVerifyCode = async () => {
     if (!email.trim() || !code.trim()) {
-      Alert.alert("Error", "Please fill in all fields");
+      showAlert("Error", "Please fill in all fields", [{ text: "OK" }]);
       return;
     }
 
@@ -30,14 +30,16 @@ export default function VerifyLogin() {
       const response = await verifyLoginCode(email.trim(), code.trim());
 
       if (response.success) {
-        Alert.alert("Success", "Login successful!");
+        showAlert("Success", "Login successful!", [{ text: "OK" }]);
         // Navigation will be handled by auth context
       } else {
-        Alert.alert("Error", response.error || "Verification failed");
+        showAlert("Error", response.error || "Verification failed", [
+          { text: "OK" },
+        ]);
       }
     } catch (error) {
       console.error("Verification error:", error);
-      Alert.alert("Error", "An unexpected error occurred");
+      showAlert("Error", "An unexpected error occurred", [{ text: "OK" }]);
     } finally {
       setIsVerifying(false);
     }

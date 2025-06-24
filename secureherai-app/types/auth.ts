@@ -63,7 +63,6 @@ export interface AuthContextType {
   forgotPassword: (email: string) => Promise<AuthResponse>;
   resetPassword: (token: string, newPassword: string) => Promise<AuthResponse>;
   logout: () => Promise<void>;
-  isAuthenticated: boolean;
   setToken: (token: string) => Promise<void>;
 }
 

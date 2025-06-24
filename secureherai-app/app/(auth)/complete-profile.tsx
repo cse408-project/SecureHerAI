@@ -4,13 +4,13 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
   ActivityIndicator,
   Image,
 } from "react-native";
+import { showAlert } from "../../utils/alertManager";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
 import ApiService from "../../services/api";
@@ -36,21 +36,22 @@ export default function CompleteProfileScreen() {
   const handleCompleteProfile = async () => {
     // Validation
     if (!formData.phoneNumber.trim()) {
-      Alert.alert("Error", "Please enter your phone number");
+      showAlert("Error", "Please enter your phone number", [{ text: "OK" }]);
       return;
     }
 
     if (!formData.dateOfBirth.trim()) {
-      Alert.alert("Error", "Please enter your date of birth");
+      showAlert("Error", "Please enter your date of birth", [{ text: "OK" }]);
       return;
     }
 
     // Validate phone number format
     const phoneRegex = /^\+[1-9]\d{1,14}$/;
     if (!phoneRegex.test(formData.phoneNumber.trim())) {
-      Alert.alert(
+      showAlert(
         "Error",
-        "Please enter a valid phone number with country code (e.g., +8801234567890)"
+        "Please enter a valid phone number with country code (e.g., +8801234567890)",
+        [{ text: "OK" }]
       );
       return;
     }
@@ -58,18 +59,20 @@ export default function CompleteProfileScreen() {
     // Validate date format (YYYY-MM-DD)
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(formData.dateOfBirth.trim())) {
-      Alert.alert("Error", "Please enter date in YYYY-MM-DD format");
+      showAlert("Error", "Please enter date in YYYY-MM-DD format", [
+        { text: "OK" },
+      ]);
       return;
     }
 
     // Additional validation for responder role
     if (formData.role === "RESPONDER") {
       if (!formData.responderType) {
-        Alert.alert("Error", "Please select responder type");
+        showAlert("Error", "Please select responder type", [{ text: "OK" }]);
         return;
       }
       if (!formData.badgeNumber?.trim()) {
-        Alert.alert("Error", "Please enter your badge number");
+        showAlert("Error", "Please enter your badge number", [{ text: "OK" }]);
         return;
       }
     }
@@ -79,14 +82,16 @@ export default function CompleteProfileScreen() {
       const response = await ApiService.completeProfile(formData);
 
       if (response.success) {
-        Alert.alert("Success", "Profile completed successfully!", [
+        showAlert("Success", "Profile completed successfully!", [
           { text: "OK", onPress: () => console.log("Profile completed") },
         ]);
       } else {
-        Alert.alert("Error", response.error || "Failed to complete profile");
+        showAlert("Error", response.error || "Failed to complete profile", [
+          { text: "OK" },
+        ]);
       }
     } catch {
-      Alert.alert("Error", "Network error. Please try again.");
+      showAlert("Error", "Network error. Please try again.", [{ text: "OK" }]);
     } finally {
       setIsLoading(false);
     }

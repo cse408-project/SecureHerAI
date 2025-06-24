@@ -62,3 +62,5 @@ client_secret*.json
 
 ### VS Code ###
 .vscode/
+
+Expo_Doc/

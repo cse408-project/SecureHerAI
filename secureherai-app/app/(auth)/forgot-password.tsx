@@ -4,12 +4,12 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
   ActivityIndicator,
 } from "react-native";
+import { showAlert } from "../../utils/alertManager";
 import { SafeAreaView } from "react-native-safe-area-context";
 // @ts-ignore
 import { router } from "expo-router";
@@ -23,13 +23,15 @@ export default function ForgotPasswordScreen() {
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
-      Alert.alert("Error", "Please enter your email address");
+      showAlert("Error", "Please enter your email address", [{ text: "OK" }]);
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert("Error", "Please enter a valid email address");
+      showAlert("Error", "Please enter a valid email address", [
+        { text: "OK" },
+      ]);
       return;
     }
 
@@ -38,7 +40,7 @@ export default function ForgotPasswordScreen() {
       const response = await forgotPassword(email.trim());
 
       if (response.success) {
-        Alert.alert(
+        showAlert(
           "Success",
           response.message || "Password reset instructions sent to your email",
           [
@@ -52,14 +54,15 @@ export default function ForgotPasswordScreen() {
           ]
         );
       } else {
-        Alert.alert(
+        showAlert(
           "Error",
-          response.error || "Failed to send reset instructions"
+          response.error || "Failed to send reset instructions",
+          [{ text: "OK" }]
         );
       }
     } catch (error) {
       console.error("Forgot password error:", error);
-      Alert.alert("Error", "An unexpected error occurred");
+      showAlert("Error", "An unexpected error occurred", [{ text: "OK" }]);
     } finally {
       setIsLoading(false);
     }

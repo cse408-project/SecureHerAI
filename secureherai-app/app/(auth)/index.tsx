@@ -4,12 +4,12 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
   ActivityIndicator,
 } from "react-native";
+import { showAlert } from "../../utils/alertManager";
 import { SafeAreaView } from "react-native-safe-area-context";
 // @ts-ignore
 import { router } from "expo-router";
@@ -28,7 +28,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert("Error", "Please fill in all fields");
+      showAlert("Error", "Please fill in all fields", [{ text: "OK" }]);
       return;
     }
 
@@ -41,16 +41,17 @@ export default function LoginScreen() {
         setShowCodeInput(true);
         setEmail("");
         setPassword("");
-        Alert.alert(
+        showAlert(
           "Success",
-          response.message || "Login code sent to your email"
+          response.message || "Login code sent to your email",
+          [{ text: "OK" }]
         );
       } else {
-        Alert.alert("Error", response.error || "Login failed");
+        showAlert("Error", response.error || "Login failed", [{ text: "OK" }]);
       }
     } catch (error) {
       console.error("Login error:", error);
-      Alert.alert("Error", "An unexpected error occurred");
+      showAlert("Error", "An unexpected error occurred", [{ text: "OK" }]);
     } finally {
       setIsLoadingLogin(false);
     }
@@ -58,7 +59,9 @@ export default function LoginScreen() {
 
   const handleVerifyCode = async () => {
     if (!loginCode.trim()) {
-      Alert.alert("Error", "Please enter the verification code");
+      showAlert("Error", "Please enter the verification code", [
+        { text: "OK" },
+      ]);
       return;
     }
 
@@ -67,15 +70,17 @@ export default function LoginScreen() {
       const response = await verifyLoginCode(loginEmail, loginCode.trim());
 
       if (response.success) {
-        // Don't show alert, let auth context handle navigation
-        console.log("Login successful, redirecting...");
-        // The useAuth context will update isAuthenticated and app/index.tsx will handle redirect
+        console.log("Login successful, navigating to index for re-routing...");
+        // Navigate to index to trigger auth state check and re-routing
+        router.replace("/");
       } else {
-        Alert.alert("Error", response.error || "Verification failed");
+        showAlert("Error", response.error || "Verification failed", [
+          { text: "OK" },
+        ]);
       }
     } catch (error) {
       console.error("Verification error:", error);
-      Alert.alert("Error", "An unexpected error occurred");
+      showAlert("Error", "An unexpected error occurred", [{ text: "OK" }]);
     } finally {
       setIsLoadingVerify(false);
     }

@@ -4,12 +4,12 @@ import {
   TouchableOpacity,
   Switch,
   ScrollView,
-  Alert,
   ActivityIndicator,
   Image,
   TextInput,
   Modal,
 } from "react-native";
+import { showAlert } from "../../utils/alertManager";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
@@ -45,6 +45,8 @@ export default function SettingsScreen() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [profilePictureUrl, setProfilePictureUrl] = useState("");
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  // No longer need this state since we use the universal alert system
+  // const [showLogoutAlert, setShowLogoutAlert] = useState(false);
   const { logout } = useAuth();
 
   useEffect(() => {
@@ -67,7 +69,7 @@ export default function SettingsScreen() {
       }
     } catch (error) {
       console.error("Failed to load user profile:", error);
-      Alert.alert("Error", "Failed to load profile data");
+      showAlert("Error", "Failed to load profile data", [{ text: "OK" }]);
     } finally {
       setIsLoading(false);
     }
@@ -97,7 +99,9 @@ export default function SettingsScreen() {
             break;
         }
       } else {
-        Alert.alert("Error", "Failed to update notification settings");
+        showAlert("Error", "Failed to update notification settings", [
+          { text: "OK" },
+        ]);
         // Revert the change if it failed
         switch (type) {
           case "emailAlerts":
@@ -113,7 +117,9 @@ export default function SettingsScreen() {
       }
     } catch (error) {
       console.error("Failed to update notification settings:", error);
-      Alert.alert("Error", "Failed to update notification settings");
+      showAlert("Error", "Failed to update notification settings", [
+        { text: "OK" },
+      ]);
     }
   };
 
@@ -127,9 +133,10 @@ export default function SettingsScreen() {
         !trimmedUrl.startsWith("http://") &&
         !trimmedUrl.startsWith("https://")
       ) {
-        Alert.alert(
+        showAlert(
           "Invalid URL",
-          "Profile picture URL must start with http:// or https://"
+          "Profile picture URL must start with http:// or https://",
+          [{ text: "OK" }]
         );
         return;
       }
@@ -147,16 +154,19 @@ export default function SettingsScreen() {
         );
         setShowEditModal(false);
         setProfilePictureUrl("");
-        Alert.alert("Success", "Profile picture updated successfully!");
+        showAlert("Success", "Profile picture updated successfully!", [
+          { text: "OK" },
+        ]);
       } else {
-        Alert.alert(
+        showAlert(
           "Error",
-          response.message || "Failed to update profile picture"
+          response.message || "Failed to update profile picture",
+          [{ text: "OK" }]
         );
       }
     } catch (error) {
       console.error("Failed to update profile picture:", error);
-      Alert.alert("Error", "Failed to update profile picture");
+      showAlert("Error", "Failed to update profile picture", [{ text: "OK" }]);
     } finally {
       setIsUpdatingProfile(false);
     }
@@ -168,14 +178,27 @@ export default function SettingsScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
+    // Use our platform-agnostic alert system
+    showAlert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Logout",
         style: "destructive",
-        onPress: () => logout(),
+        onPress: executeLogout,
       },
     ]);
+  };
+
+  const executeLogout = async () => {
+    try {
+      await logout();
+      // Protected routes will handle redirection automatically
+    } catch (error) {
+      console.error("Logout error:", error);
+      showAlert("Error", "Failed to log out. Please try again.", [
+        { text: "OK" },
+      ]);
+    }
   };
 
   if (isLoading) {
@@ -316,7 +339,9 @@ export default function SettingsScreen() {
           <TouchableOpacity
             className="p-4 flex-row items-center justify-between border-b border-gray-100"
             onPress={() =>
-              Alert.alert("Info", "Privacy Policy feature coming soon!")
+              showAlert("Info", "Privacy Policy feature coming soon!", [
+                { text: "OK" },
+              ])
             }
           >
             <View className="flex-row items-center">
@@ -329,7 +354,9 @@ export default function SettingsScreen() {
           <TouchableOpacity
             className="p-4 flex-row items-center justify-between border-b border-gray-100"
             onPress={() =>
-              Alert.alert("Info", "Help & Support feature coming soon!")
+              showAlert("Info", "Help & Support feature coming soon!", [
+                { text: "OK" },
+              ])
             }
           >
             <View className="flex-row items-center">
@@ -372,9 +399,10 @@ export default function SettingsScreen() {
                   className="w-20 h-20 rounded-full"
                   style={{ backgroundColor: "#67082F10" }}
                   onError={() => {
-                    Alert.alert(
+                    showAlert(
                       "Error",
-                      "Invalid image URL. Please check the URL and try again."
+                      "Invalid image URL. Please check the URL and try again.",
+                      [{ text: "OK" }]
                     );
                   }}
                 />
@@ -445,6 +473,7 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
+      {/* Note: We've removed the custom WebAlert component since we now use the universal alert system */}
     </View>
   );
 }
