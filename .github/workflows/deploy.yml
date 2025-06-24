@@ -3,7 +3,7 @@ name: Deploy SecureHerAI API to Azure VM
 on:
   push:
     branches:
-      - main
+      - ans2003
   workflow_dispatch:
 
 jobs:
@@ -51,7 +51,7 @@ jobs:
         run: |
           cat <<EOF > .env
           MAIL_HOST=${{ secrets.MAIL_HOST }}
-          MAIL_PORT=${{ secrets.MAIL_PORT }}
+          MAIL_PORT=${{ secrets.MAIL_PORT }}          
           MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}
           MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}
 
@@ -65,13 +65,28 @@ jobs:
       - name: Deploy SecureHerAI API
         working-directory: secureherai-api
         run: |
-          docker compose -f docker-compose-deploy.yml down || true
-          docker compose -f docker-compose-deploy.yml pull
-          docker compose -f docker-compose-deploy.yml up --build -d
+          # Copy .env file to Azure VM
+          scp -o StrictHostKeyChecking=no .env "${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}:/home/${{ secrets.AZURE_VM_USER }}/"
+
+          # Stop existing containers gracefully
+          docker compose -f docker-compose-deploy.yml down --timeout 30 || true
+
+          # Clean up old images (optional, saves space)
+          docker image prune -f || true
+
+          # Build and deploy
+          docker compose -f docker-compose-deploy.yml up --build -d --remove-orphans
+            # Wait for services to be healthy
+          echo "Waiting for services to start..."
+          timeout 300 bash -c 'while [[ "$(docker compose -f docker-compose-deploy.yml ps --services --filter "status=running" | wc -l)" != "2" ]]; do sleep 5; done' || echo "Timeout waiting for services"
 
       - name: Verify API deployment
         working-directory: secureherai-api
-        run: docker compose -f docker-compose-deploy.yml ps
+        run: |
+          docker compose -f docker-compose-deploy.yml ps
+          echo "Checking API health..."
+          sleep 30
+          curl -f http://${{ secrets.AZURE_VM_HOST }}:8080/actuator/health || echo "API health check failed"
 
       - name: Reset Docker context
         if: always()

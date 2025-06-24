@@ -1,0 +1,34 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Maven
+target/
+!target/*.jar
+
+# Environment
+.env
+.env.*
+
+# Docker
+Dockerfile*
+docker-compose*
+
+# Logs
+*.log
+
+# Test files
+src/test/

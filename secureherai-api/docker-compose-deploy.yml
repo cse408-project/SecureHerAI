@@ -2,9 +2,11 @@ version: "3.8"
 
 services:
   api:
-    image: secureherai-api-api
     container_name: secureherai_api
-    # no bind-mount
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
     ports:
       - "8080:8080"
     env_file:
@@ -15,11 +17,13 @@ services:
       SPRING_DATASOURCE_USERNAME: user
       SPRING_DATASOURCE_PASSWORD: password
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
-      SPRING_PROFILES_ACTIVE: dev
+      SPRING_PROFILES_ACTIVE: prod
 
-        # JWT Configuration
+      # JWT Configuration
       JWT_SECRET: HRVu1xFYfraq/lculzNaXzMHVady85sMReuLwlSzEjcKznYOEPdbbK3F+9hq+4muGxhYfft5nNQYxbDZIGzzAA==
-      JWT_EXPIRATION: 86400000 # Email Configuration (Use environment variables for production)
+      JWT_EXPIRATION: 86400000
+
+      # Email Configuration (Use environment variables for production)
       MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
@@ -28,24 +32,48 @@ services:
       # OAuth2 Configuration
       OAUTH2_WEB_ORIGIN: ${OAUTH2_WEB_ORIGIN:-}
       OAUTH2_WEB_REDIRECT_URI: ${OAUTH2_WEB_REDIRECT_URI:-}
-
       OAUTH2_CLIENT_ID: ${OAUTH2_CLIENT_ID:-}
       OAUTH2_CLIENT_SECRET: ${OAUTH2_CLIENT_SECRET:-}
-
       OAUTH2_CLIENT_ID_ANDROID: ${OAUTH2_CLIENT_ID_ANDROID:-}
     depends_on:
       db:
         condition: service_healthy
-    restart: always
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - app-network
 
   db:
-    image: postgres:15
+    image: postgres:15-alpine
     container_name: postgres_secureherai
-    # … keep as before
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: secureherai
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d secureherai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - app-network
+
+volumes:
+  postgres_data:
+    driver: local
 
 networks:
   app-network:
