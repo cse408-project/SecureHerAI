@@ -9,8 +9,8 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - /etc/ssl/certs/secureherai/server.crt:/etc/nginx/ssl/fullchain.pem:ro
-      - /etc/ssl/private/secureherai/server.key:/etc/nginx/ssl/privkey.pem:ro
+      - /etc/letsencrypt/live/secureherai.me/fullchain.pem:/etc/nginx/ssl/fullchain.pem:ro
+      - /etc/letsencrypt/live/secureherai.me/privkey.pem:/etc/nginx/ssl/privkey.pem:ro
     depends_on:
       api:
         condition: service_healthy
