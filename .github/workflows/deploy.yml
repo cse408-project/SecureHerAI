@@ -1,4 +1,4 @@
-name: Deploy to Azure VM
+name: Deploy SecureHerAI API to Azure VM
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  deploy-api:
     runs-on: ubuntu-latest
 
     steps:
@@ -28,13 +28,7 @@ jobs:
       - name: Add Azure VM to known hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.AZURE_VM_HOST }} >> ~/.ssh/known_hosts
-
-      - name: Ensure remote Docker network exists
-        run: |
-          ssh -o StrictHostKeyChecking=no \
-            ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} \
-            "docker network create app-network || true"
+          ssh-keyscan -H "${{ secrets.AZURE_VM_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Create & use Docker context for Azure VM
         run: |
@@ -42,13 +36,15 @@ jobs:
             --docker "host=ssh://${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}"
           docker context use azure-vm
 
-      - name: Deploy with Docker Compose
+      - name: Deploy SecureHerAI API
+        working-directory: secureherai-api
         run: |
           docker compose -f docker-compose-dev.yml down || true
           docker compose -f docker-compose-dev.yml pull
           docker compose -f docker-compose-dev.yml up --build -d
 
-      - name: Verify deployment
+      - name: Verify API deployment
+        working-directory: secureherai-api
         run: docker compose -f docker-compose-dev.yml ps
 
       - name: Reset Docker context
