@@ -57,6 +57,12 @@
           "verify-login": "verify-login"
         }
       }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d00313db-c24f-4065-b0fb-81d1f0b86957"
+      }
     }
   }
 }

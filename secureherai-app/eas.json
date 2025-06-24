@@ -18,7 +18,7 @@
     },
     "production": {
       "android": {
-        "buildType": "aab"
+        "buildType": "apk"
       }
     }
   },

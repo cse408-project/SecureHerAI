@@ -1,0 +1,13 @@
+name: Expo Deploy
+
+on:
+  push:
+    branches: ['amin']
+
+jobs:
+  deploy:
+    name: Deploy
+    environment: production
+    type: deploy
+    params:
+      prod: true
