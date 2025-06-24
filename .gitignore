@@ -64,3 +64,7 @@ client_secret*.json
 .vscode/
 
 Expo_Doc/
+
+### Expo Doc ###
+Expo_Doc/
+!Expo_Doc.zip
