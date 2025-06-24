@@ -1,14 +1,31 @@
 version: "3.8"
 
 services:
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/ssl/certs/secureherai/server.crt:/etc/nginx/ssl/fullchain.pem:ro
+      - /etc/ssl/private/secureherai/server.key:/etc/nginx/ssl/privkey.pem:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
   api:
     container_name: secureherai_api
     build:
       context: .
       dockerfile: Dockerfile
       target: production
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
     env_file:
       - .env
     environment:
