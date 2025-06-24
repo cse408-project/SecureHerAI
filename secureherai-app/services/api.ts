@@ -1,10 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Ensure API base URL works in both web and native environments
+//Ensure API base URL works in both web and native environments
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL || "http://192.168.0.103:8080/api";
 
-// Debug log for API base URL
+//Debug log for API base URL
 console.log("API_BASE_URL:", API_BASE_URL);
 
 // Test API connection on startup
