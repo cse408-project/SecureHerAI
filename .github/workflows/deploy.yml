@@ -65,13 +65,13 @@ jobs:
       - name: Deploy SecureHerAI API
         working-directory: secureherai-api
         run: |
-          docker compose -f docker-compose-dev.yml down || true
-          docker compose -f docker-compose-dev.yml pull
-          docker compose -f docker-compose-dev.yml up --build -d
+          docker compose -f docker-compose-deploy.yml down || true
+          docker compose -f docker-compose-deploy.yml pull
+          docker compose -f docker-compose-deploy.yml up --build -d
 
       - name: Verify API deployment
         working-directory: secureherai-api
-        run: docker compose -f docker-compose-dev.yml ps
+        run: docker compose -f docker-compose-deploy.yml ps
 
       - name: Reset Docker context
         if: always()

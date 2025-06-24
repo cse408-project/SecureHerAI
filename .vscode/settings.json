@@ -1,6 +1,0 @@
-{
-  "java.compile.nullAnalysis.mode": "automatic",
-  "emulator.emulatorPath": "C:\\Users\\ASUS\\AppData\\Local\\Android\\Sdk",
-  "emulator.emulatorPathWindows": "C:\\Users\\ASUS\\AppData\\Local\\Android\\Sdk",
-  "emulator.androidColdBoot": true
-}
