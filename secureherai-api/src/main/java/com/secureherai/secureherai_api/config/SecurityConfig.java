@@ -77,14 +77,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        
-        // Allow specific origins (React Native Web, mobile app, etc.)
-        configuration.setAllowedOrigins(Arrays.asList(
-            "http://localhost:8081",     // React Native Web dev server
-            "http://localhost:3000",     // Alternative web dev server
-            "http://localhost:19006",    // Expo web dev server
-            "https://secureherai-app.expo.app" // Production domain (replace with actual)
-        ));
+          // Allow all origins - no CORS restrictions
+        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
         
         // Allow all common HTTP methods
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
