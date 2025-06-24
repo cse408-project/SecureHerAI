@@ -3,7 +3,7 @@ name: Deploy SecureHerAI API to Azure VM
 on:
   push:
     branches:
-      - ans2003
+      - main
   workflow_dispatch:
 
 jobs:
@@ -76,7 +76,8 @@ jobs:
 
           # Build and deploy
           docker compose -f docker-compose-deploy.yml up --build -d --remove-orphans
-            # Wait for services to be healthy
+          
+          # Wait for services to be healthy
           echo "Waiting for services to start..."
           timeout 300 bash -c 'while [[ "$(docker compose -f docker-compose-deploy.yml ps --services --filter "status=running" | wc -l)" != "2" ]]; do sleep 5; done' || echo "Timeout waiting for services"
 
