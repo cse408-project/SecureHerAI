@@ -1,18 +1,14 @@
-name: Expo Build and Deploy
+name: Expo Deploy (Manual Build)
 
 on:
   push:
     branches: ['amin']
 
-env:
-  NODE_VERSION: '18.x'
-
 jobs:
-  # Job 1: Build and Deploy Web
+  # Deploy Web Only (Free)
   deploy-web:
     name: Deploy Web
     runs-on: ubuntu-latest
-    environment: production
     
     steps:
       - name: 🔍 Checkout repository 
@@ -21,7 +17,7 @@ jobs:
       - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: '18.x'
           cache: 'npm'
 
       - name: 🚀 Setup Expo and EAS
@@ -43,125 +39,9 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-  # Job 2: Build Android
-  build-android:
-    name: Build Android
-    runs-on: ubuntu-latest
-    environment: production
-    
-    steps:
-      - name: 🔍 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🟢 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: 🚀 Setup Expo and EAS
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: 📦 Install dependencies
-        run: npm ci
-
-      - name: 🔧 Setup EAS local builds (optional for faster builds)
+      - name: 📢 Build Instructions
         run: |
-          eas build:configure --platform android --non-interactive || true
-
-      - name: 🤖 Build Android APK (Preview)
-        run: |
-          eas build --platform android --profile preview --non-interactive
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-      - name: 🤖 Build Android AAB (Production)
-        run: |
-          eas build --platform android --profile production --non-interactive
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-  # Job 3: Create OTA Update (for existing apps)
-  create-update:
-    name: Create OTA Update
-    runs-on: ubuntu-latest
-    environment: production
-    needs: [deploy-web, build-android]
-    if: github.ref == 'refs/heads/amin' || github.ref == 'refs/heads/main'
-    
-    steps:
-      - name: 🔍 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🟢 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: 🚀 Setup Expo and EAS
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: 📦 Install dependencies
-        run: npm ci
-
-      - name: 🔄 Create EAS Update
-        run: |
-          eas update --branch production --message "Production deploy from GitHub Actions - ${{ github.sha }}"
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-  # Job 4: Deploy to Google Play (Optional)
-  deploy-play-store:
-    name: Deploy to Google Play
-    runs-on: ubuntu-latest
-    environment: production
-    needs: [build-android]
-    if: github.ref == 'refs/heads/amin' && github.event_name == 'push'
-    
-    steps:
-      - name: 🔍 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🚀 Setup Expo and EAS
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: 🏪 Submit to Google Play Store
-        run: |
-          eas submit --platform android --latest --non-interactive
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
-
-  # Job 5: Notify on Success/Failure
-  notify:
-    name: Notify Results
-    runs-on: ubuntu-latest
-    needs: [deploy-web, build-android, create-update]
-    if: always()
-    
-    steps:
-      - name: 📢 Notify Success
-        if: needs.deploy-web.result == 'success' && needs.build-android.result == 'success'
-        run: |
-          echo "✅ Deployment successful!"
-          echo "🌐 Web deployed to EAS Hosting"
-          echo "🤖 Android builds completed"
-          echo "🔄 OTA update created"
-
-      - name: 🚨 Notify Failure  
-        if: needs.deploy-web.result == 'failure' || needs.build-android.result == 'failure'
-        run: |
-          echo "❌ Deployment failed!"
-          echo "Web deploy status: ${{ needs.deploy-web.result }}"
-          echo "Android build status: ${{ needs.build-android.result }}"
-          exit 1
+          echo "✅ Web deployment complete!"
+          echo "🤖 To build Android manually, run:"
+          echo "   eas build --platform android --profile preview"
+          echo "💡 Or subscribe to EAS for automated builds: https://expo.dev/accounts/cse408-project/settings/billing"
