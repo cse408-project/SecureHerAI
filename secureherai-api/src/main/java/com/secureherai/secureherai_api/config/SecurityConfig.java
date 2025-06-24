@@ -83,7 +83,7 @@ public class SecurityConfig {
             "http://localhost:8081",     // React Native Web dev server
             "http://localhost:3000",     // Alternative web dev server
             "http://localhost:19006",    // Expo web dev server
-            "https://your-app-domain.com" // Production domain (replace with actual)
+            "https://secureherai-app.expo.app" // Production domain (replace with actual)
         ));
         
         // Allow all common HTTP methods
