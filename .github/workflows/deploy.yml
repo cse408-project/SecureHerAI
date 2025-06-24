@@ -10,6 +10,9 @@ jobs:
   deploy-api:
     runs-on: ubuntu-latest
 
+    # ← ties this job to your "development" environment in Settings → Environments
+    environment: development
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -35,6 +38,22 @@ jobs:
           docker context create azure-vm \
             --docker "host=ssh://${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}"
           docker context use azure-vm
+      
+      - name: Generate .env for API
+        working-directory: secureherai-api
+        run: |
+          cat <<EOF > .env
+MAIL_HOST=${{ secrets.MAIL_HOST }}
+MAIL_PORT=${{ secrets.MAIL_PORT }}
+MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}
+MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}
+
+OAUTH2_CLIENT_ID=${{ vars.OAUTH2_CLIENT_ID }}
+OAUTH2_CLIENT_ID_ANDROID=${{ vars.OAUTH2_CLIENT_ID_ANDROID }}
+OAUTH2_CLIENT_SECRET=${{ secrets.OAUTH2_CLIENT_SECRET }}
+OAUTH2_WEB_ORIGIN=${{ vars.OAUTH2_WEB_ORIGIN }}
+OAUTH2_WEB_REDIRECT_URI=${{ vars.OAUTH2_WEB_REDIRECT_URI }}
+EOF
 
       - name: Deploy SecureHerAI API
         working-directory: secureherai-api
@@ -52,3 +71,4 @@ jobs:
         run: |
           docker context use default
           docker context rm azure-vm
+          
