@@ -1,13 +1,19 @@
-name: Expo Deploy
+name: Create Production Builds and Deploy Web
 
 on:
   push:
     branches: ['amin']
 
 jobs:
-  deploy:
-    name: Deploy
-    environment: production
+  build_android:
+    name: Build Android
+    type: build
+    params:
+      platform: android
+
+  deploy_web:
+    name: Deploy Web
     type: deploy
+    environment: production
     params:
       prod: true
