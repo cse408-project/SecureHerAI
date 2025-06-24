@@ -83,7 +83,7 @@ networks:
   app-network:
     driver: bridge
     name: app-network
-    external: true
+    # external: true
 
 # For pgAdmin (http://localhost:5050):
 
