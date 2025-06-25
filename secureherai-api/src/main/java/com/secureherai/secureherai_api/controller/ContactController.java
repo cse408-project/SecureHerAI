@@ -22,14 +22,14 @@ import com.secureherai.secureherai_api.service.JwtService;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/contacts")
 public class ContactController {
 
     @Autowired
     private ContactService contactService;
 
     @Autowired
-    private JwtService jwtService;    @PostMapping("/contacts/add")
+    private JwtService jwtService;    @PostMapping("/add")
     public ResponseEntity<ContactResponse.GenericResponse> addTrustedContact(
             @RequestHeader("Authorization") String authHeader,
             @Valid @RequestBody ContactRequest.AddTrustedContact request) {
@@ -65,7 +65,7 @@ public class ContactController {
         }
     }
 
-    @GetMapping("/contacts")
+    @GetMapping("/")
     public ResponseEntity<Object> getTrustedContacts(
             @RequestHeader("Authorization") String authHeader) {
         try {
@@ -100,7 +100,7 @@ public class ContactController {
         }
     }
 
-    @DeleteMapping("/contacts/delete")
+    @DeleteMapping("/delete")
     public ResponseEntity<ContactResponse.GenericResponse> deleteTrustedContact(
             @RequestHeader("Authorization") String authHeader,
             @Valid @RequestBody ContactRequest.DeleteTrustedContact request) {
@@ -141,7 +141,7 @@ public class ContactController {
         }
     }
 
-    @PutMapping("/contacts/update")
+    @PutMapping("/update")
     public ResponseEntity<ContactResponse.GenericResponse> updateTrustedContact(
             @RequestHeader("Authorization") String authHeader,
             @Valid @RequestBody ContactRequest.UpdateTrustedContact request) {

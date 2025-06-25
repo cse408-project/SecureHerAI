@@ -70,13 +70,6 @@ export default function SettingsScreen() {
       const response = await ApiService.getUserProfile();
       if (response.success && response.data) {
         setProfile(response.data);
-        // Set notification preferences
-        if (response.data.notificationPreferences) {
-          const prefs = response.data.notificationPreferences;
-          setEmailAlerts(prefs.emailAlerts);
-          setSmsAlerts(prefs.smsAlerts);
-          setPushNotifications(prefs.pushNotifications);
-        }
       }
     } catch (error) {
       console.error("Failed to load user profile:", error);
@@ -86,20 +79,45 @@ export default function SettingsScreen() {
     }
   }, [showAlert]);
 
+  const loadNotificationPreferences = useCallback(async () => {
+    try {
+      const response = await ApiService.getNotificationPreferences();
+      if (response.success && response.data) {
+        const prefs = response.data.preferences;
+        setEmailAlerts(prefs.emailAlerts);
+        setSmsAlerts(prefs.smsAlerts);
+        setPushNotifications(prefs.pushNotifications);
+      } else {
+        // If no preferences exist, keep defaults
+        console.log("No notification preferences found, using defaults");
+      }
+    } catch (error) {
+      console.error("Failed to load notification preferences:", error);
+      // Keep defaults if loading fails
+    }
+  }, []);
+
   useEffect(() => {
     loadUserProfile();
-  }, [loadUserProfile]);
+    loadNotificationPreferences();
+  }, [loadUserProfile, loadNotificationPreferences]);
 
   const updateNotificationSettings = async (
     type: "emailAlerts" | "smsAlerts" | "pushNotifications",
     value: boolean
   ) => {
     try {
-      const updateData = {
-        [type]: value,
+      // Create the preferences object with current values and the updated value
+      const preferences = {
+        emailAlerts: type === "emailAlerts" ? value : emailAlerts,
+        smsAlerts: type === "smsAlerts" ? value : smsAlerts,
+        pushNotifications:
+          type === "pushNotifications" ? value : pushNotifications,
       };
 
-      const response = await ApiService.updateProfile(updateData);
+      const response = await ApiService.updateNotificationPreferences(
+        preferences
+      );
       if (response.success) {
         // Update local state
         switch (type) {
@@ -113,8 +131,13 @@ export default function SettingsScreen() {
             setPushNotifications(value);
             break;
         }
+        showAlert("Success", "Notification preferences updated", "success");
       } else {
-        showAlert("Error", "Failed to update notification settings", "error");
+        showAlert(
+          "Error",
+          response.error || "Failed to update notification settings",
+          "error"
+        );
         // Revert the change if it failed
         switch (type) {
           case "emailAlerts":
@@ -131,6 +154,19 @@ export default function SettingsScreen() {
     } catch (error) {
       console.error("Failed to update notification settings:", error);
       showAlert("Error", "Failed to update notification settings", "error");
+
+      // Revert the change if it failed
+      switch (type) {
+        case "emailAlerts":
+          setEmailAlerts(!value);
+          break;
+        case "smsAlerts":
+          setSmsAlerts(!value);
+          break;
+        case "pushNotifications":
+          setPushNotifications(!value);
+          break;
+      }
     }
   };
 
