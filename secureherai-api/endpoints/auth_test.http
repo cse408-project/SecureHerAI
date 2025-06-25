@@ -1,6 +1,6 @@
 ### SecureHerAI Authentication API Tests
 
-@baseUrl = http://localhost:8080/api
+@baseUrl = https://secureherai.me/api
 @authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MTg3ZjBlYi0wZGQwLTQwZDgtOWRlMy05NjdjY2NlNjgwOTkiLCJlbWFpbCI6ImFyaW1vdG9raWthMjAwNTAyNUBnbWFpbC5jb20iLCJyb2xlIjoiUkVTUE9OREVSIiwiaWF0IjoxNzUwMjIxMjExLCJleHAiOjE3NTAzMDc2MTF9.qfCxNb_bRDUppKquGa0SGN0IjvQFxlMC9fpVK3cDvt8
 
 ### 1. Health Check
@@ -202,7 +202,7 @@ Content-Type: application/json
 
 {
   "email": "2005009@ugrad.cse.buet.ac.bd",
-  "loginCode": "995842"
+  "loginCode": "403328"
 }
 
 
