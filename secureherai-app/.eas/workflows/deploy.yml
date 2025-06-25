@@ -1,0 +1,19 @@
+name: Create Production Builds and Deploy Web
+
+on:
+  push:
+    branches: ['main']
+
+jobs:
+  build_android:
+    name: Build Android
+    type: build
+    params:
+      platform: android
+
+  deploy_web:
+    name: Deploy Web
+    type: deploy
+    environment: production
+    params:
+      prod: true

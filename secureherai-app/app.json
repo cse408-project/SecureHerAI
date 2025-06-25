@@ -1,5 +1,6 @@
 {
   "expo": {
+    "owner": "cse408-project",
     "name": "secureherai-app",
     "slug": "secureherai-app",
     "version": "1.0.0",
