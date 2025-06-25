@@ -1,23 +1,44 @@
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, Image } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 
 interface HeaderProps {
   title: string;
   onNotificationPress?: () => void;
   showNotificationDot?: boolean;
+  showLogo?: boolean;
 }
 
-export default function Header({ title, onNotificationPress, showNotificationDot = true }: HeaderProps) {
+export default function Header({
+  title,
+  onNotificationPress,
+  showNotificationDot = true,
+  showLogo = true,
+}: HeaderProps) {
   return (
-    <View style={{ backgroundColor: '#67082F', paddingHorizontal: 16, paddingTop: 48, paddingBottom: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-      <Text style={{ color: 'white', fontSize: 20, fontWeight: 'bold' }}>{title}</Text>
+    <View className="bg-[#67082F] px-4 pt-12 pb-6 flex-row justify-between items-center max-w-screen-md mx-auto w-full">
+      <View className="flex-row items-center flex-1">
+        {showLogo && (
+          <Image
+            source={require("../../assets/images/secureherai_logo.png")}
+            style={{
+              width: 32,
+              height: 32,
+              resizeMode: "contain",
+            }}
+            className="mr-3"
+          />
+        )}
+        <Text className="text-white text-xl font-bold flex-1" numberOfLines={1}>
+          {title}
+        </Text>
+      </View>
       <TouchableOpacity
-        style={{ width: 40, height: 40, backgroundColor: 'rgba(185, 28, 28, 0.3)', borderRadius: 20, alignItems: 'center', justifyContent: 'center', position: 'relative' }}
+        className="w-10 h-10 bg-red-700/30 rounded-full items-center justify-center relative"
         onPress={onNotificationPress}
       >
         <MaterialIcons name="notifications" size={24} color="white" />
         {showNotificationDot && (
-          <View style={{ position: 'absolute', top: 4, right: 4, width: 12, height: 12, backgroundColor: '#ef4444', borderRadius: 6 }} />
+          <View className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full" />
         )}
       </TouchableOpacity>
     </View>

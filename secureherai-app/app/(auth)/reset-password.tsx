@@ -8,8 +8,9 @@ import {
   ScrollView,
   Platform,
   ActivityIndicator,
+  Image,
 } from "react-native";
-import { showAlert } from "../../utils/alertManager";
+import { useAlert } from "../../context/AlertContext";
 import { SafeAreaView } from "react-native-safe-area-context";
 // @ts-ignore
 import { router } from "expo-router";
@@ -20,24 +21,27 @@ export default function ResetPasswordScreen() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const { showAlert } = useAlert();
 
   const { resetPassword } = useAuth();
 
   const handleResetPassword = async () => {
     if (!resetToken.trim() || !newPassword.trim() || !confirmPassword.trim()) {
-      showAlert("Error", "Please fill in all fields", [{ text: "OK" }]);
+      showAlert("Error", "Please fill in all fields", "error");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      showAlert("Error", "Passwords do not match", [{ text: "OK" }]);
+      showAlert("Error", "Passwords do not match", "error");
       return;
     }
 
     if (newPassword.length < 6) {
-      showAlert("Error", "Password must be at least 6 characters long", [
-        { text: "OK" },
-      ]);
+      showAlert(
+        "Error",
+        "Password must be at least 6 characters long",
+        "error"
+      );
       return;
     }
 
@@ -50,25 +54,22 @@ export default function ResetPasswordScreen() {
           "Success",
           response.message ||
             "Your password has been reset successfully. You can now log in with your new password.",
-          [
-            {
-              text: "OK",
-              onPress: () => {
-                // Navigate back to login
-                console.log("Navigate back to login");
-                router.push("/(auth)");
-              },
-            },
-          ]
+          "success"
         );
+        // Navigate back to login after showing success
+        setTimeout(() => {
+          router.push("/(auth)");
+        }, 2000);
       } else {
-        showAlert("Error", response.error || "Failed to reset password", [
-          { text: "OK" },
-        ]);
+        showAlert(
+          "Error",
+          response.error || "Failed to reset password",
+          "error"
+        );
       }
     } catch (error) {
       console.error("Reset password error:", error);
-      showAlert("Error", "An unexpected error occurred", [{ text: "OK" }]);
+      showAlert("Error", "An unexpected error occurred", "error");
     } finally {
       setIsLoading(false);
     }
@@ -86,12 +87,24 @@ export default function ResetPasswordScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View className="flex-1 justify-center px-6 py-8">
-            {/* Header */}
+            {/* Header with Logo */}
             <View className="items-center mb-8">
+              {/* Logo */}
+              <View className="w-24 h-24 rounded-full bg-white items-center justify-center mb-6 shadow-lg">
+                <Image
+                  source={require("../../assets/images/secureherai_logo.png")}
+                  style={{
+                    width: 60,
+                    height: 60,
+                    resizeMode: "contain",
+                  }}
+                />
+              </View>
+
               <Text className="text-3xl font-bold text-primary mb-2">
                 Reset Password
               </Text>
-              <Text className="text-base text-muted text-center">
+              <Text className="text-base text-muted text-center leading-relaxed">
                 Enter your new password
               </Text>
             </View>
@@ -103,7 +116,7 @@ export default function ResetPasswordScreen() {
                   Reset Token
                 </Text>
                 <TextInput
-                  className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground"
+                  className="w-full px-4 py-4 border border-border rounded-xl bg-background text-foreground text-base shadow-sm"
                   placeholder="Enter reset token from email"
                   placeholderTextColor="#9CA3AF"
                   value={resetToken}
@@ -117,13 +130,12 @@ export default function ResetPasswordScreen() {
                   New Password
                 </Text>
                 <TextInput
-                  className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground"
+                  className="w-full px-4 py-4 border border-border rounded-xl bg-background text-foreground text-base shadow-sm"
                   placeholder="Enter your new password"
                   placeholderTextColor="#9CA3AF"
                   value={newPassword}
                   onChangeText={setNewPassword}
                   secureTextEntry
-                  autoFocus
                 />
               </View>
 
@@ -132,7 +144,7 @@ export default function ResetPasswordScreen() {
                   Confirm New Password
                 </Text>
                 <TextInput
-                  className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground"
+                  className="w-full px-4 py-4 border border-border rounded-xl bg-background text-foreground text-base shadow-sm"
                   placeholder="Confirm your new password"
                   placeholderTextColor="#9CA3AF"
                   value={confirmPassword}
@@ -142,7 +154,7 @@ export default function ResetPasswordScreen() {
               </View>
 
               <TouchableOpacity
-                className={`w-full py-4 rounded-lg mb-6 ${
+                className={`w-full py-4 rounded-xl mb-6 shadow-sm ${
                   isLoading
                     ? "bg-primary/50"
                     : "bg-primary active:bg-primary/90"
@@ -151,7 +163,12 @@ export default function ResetPasswordScreen() {
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <ActivityIndicator color="white" />
+                  <View className="flex-row items-center justify-center">
+                    <ActivityIndicator color="white" size="small" />
+                    <Text className="text-white ml-2 font-semibold text-lg">
+                      Resetting...
+                    </Text>
+                  </View>
                 ) : (
                   <Text className="text-white text-center font-semibold text-lg">
                     Reset Password
@@ -161,9 +178,12 @@ export default function ResetPasswordScreen() {
 
               {/* Back to Login */}
               <View className="items-center">
-                <TouchableOpacity>
-                  <Text className="text-primary font-semibold">
-                    Back to Login
+                <TouchableOpacity
+                  onPress={() => router.push("/(auth)")}
+                  className="py-2 px-4 rounded-lg"
+                >
+                  <Text className="text-primary font-semibold text-base">
+                    ← Back to Login
                   </Text>
                 </TouchableOpacity>
               </View>

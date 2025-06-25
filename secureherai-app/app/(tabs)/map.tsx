@@ -1,12 +1,15 @@
-import { View, Text } from 'react-native';
+import { View, Text } from "react-native";
+import Header from "../../src/components/Header";
 
 export default function MapScreen() {
   return (
-    <View className="flex-1 bg-[#FFE4D6]">
-      <View className="bg-[#67082F] px-4 py-6 flex-row justify-between items-center pt-12">
-        <Text className="text-white text-xl font-bold">Safety Map</Text>
-      </View>
-      <View className="flex-1 items-center justify-center">
+    <View className="flex-1 bg-[#FFE4D6] max-w-screen-md mx-auto w-full">
+      <Header
+        title="Safety Map"
+        onNotificationPress={() => {}}
+        showNotificationDot={false}
+      />
+      <View className="flex-1 items-center justify-center pb-28">
         <Text className="text-gray-600">Map View Coming Soon</Text>
       </View>
     </View>
