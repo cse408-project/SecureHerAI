@@ -17,7 +17,8 @@
         "foregroundImage": "./assets/images/secureherai_logo.png",
         "backgroundColor": "#67082F"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.cse408project.secureheraiapp"
     },
     "web": {
       "bundler": "metro",
@@ -58,6 +59,12 @@
           "reset-password": "reset-password",
           "verify-login": "verify-login"
         }
+      }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d00313db-c24f-4065-b0fb-81d1f0b86957"
       }
     }
   }
