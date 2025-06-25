@@ -1,19 +1,16 @@
 import { Stack } from "expo-router";
 import { AuthProvider, useAuth } from "../context/AuthContext";
+import { AlertProvider } from "../context/AlertContext";
 import "./global.css";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Platform } from "react-native";
 import * as Linking from "expo-linking";
-import { SplashScreenController } from "../components/SplashScreenController";
-import {
-  AlertProvider,
-  setGlobalAlertFunction,
-  useAlert,
-} from "../utils/alertManager";
+import SplashScreen from "../components/SplashScreen";
 
 function RootLayoutComponent() {
   const { user, token, isLoading } = useAuth();
   const isAuthenticated = !!(user && token) && !isLoading;
+  const [splashFinished, setSplashFinished] = useState(false);
 
   useEffect(() => {
     if (Platform.OS === "web") {
@@ -58,6 +55,11 @@ function RootLayoutComponent() {
     }
   }, []);
 
+  // Show custom splash until auth resolves and minimum time passes
+  if (isLoading || !splashFinished) {
+    return <SplashScreen onFinish={() => setSplashFinished(true)} />;
+  }
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
       {/* Protected tabs routes - only accessible when authenticated */}
@@ -76,25 +78,11 @@ function RootLayoutComponent() {
   );
 }
 
-// Setup global alert function
-function AlertWrapper() {
-  const alertContext = useAlert();
-
-  useEffect(() => {
-    // Set the global alert function so it can be used outside of components
-    setGlobalAlertFunction(alertContext.showAlert);
-  }, [alertContext]);
-
-  return null;
-}
-
 // Main Layout Component
 export default function RootLayout() {
   return (
     <AuthProvider>
       <AlertProvider>
-        <AlertWrapper />
-        <SplashScreenController />
         <RootLayoutComponent />
       </AlertProvider>
     </AuthProvider>

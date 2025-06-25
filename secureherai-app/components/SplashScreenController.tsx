@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
-import { SplashScreen } from 'expo-router';
-import { useAuth } from '../context/AuthContext';
+import { useEffect } from "react";
+import { SplashScreen } from "expo-router";
+import { useAuth } from "../context/AuthContext";
 
 export function SplashScreenController() {
   const { isLoading } = useAuth();
