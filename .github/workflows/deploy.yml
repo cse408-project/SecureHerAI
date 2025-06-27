@@ -62,6 +62,9 @@ jobs:
           OAUTH2_CLIENT_SECRET=${{ secrets.OAUTH2_CLIENT_SECRET }}
           OAUTH2_WEB_ORIGIN=${{ vars.OAUTH2_WEB_ORIGIN }}
           OAUTH2_WEB_REDIRECT_URI=${{ vars.OAUTH2_WEB_REDIRECT_URI }}
+          
+          JWT_SECRET=${{ vars.JWT_SECRET }}
+          JWT_EXPIRATION=${{ vars.JWT_EXPIRATION }}
           EOF
 
       - name: Deploy SecureHerAI API

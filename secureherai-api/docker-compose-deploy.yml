@@ -37,8 +37,8 @@ services:
       SPRING_PROFILES_ACTIVE: prod
 
       # JWT Configuration
-      JWT_SECRET: HRVu1xFYfraq/lculzNaXzMHVady85sMReuLwlSzEjcKznYOEPdbbK3F+9hq+4muGxhYfft5nNQYxbDZIGzzAA==
-      JWT_EXPIRATION: 86400000
+      JWT_SECRET: ${JWT_SECRET:-}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-}
 
       # Email Configuration (Use environment variables for production)
       MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
