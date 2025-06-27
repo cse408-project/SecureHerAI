@@ -73,6 +73,15 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="reports"
+        options={{
+          title: "Reports",
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="assignment" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="sos"
         options={{
           title: "Emergency",

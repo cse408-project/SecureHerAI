@@ -1,8 +1,16 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  SubmitReportRequest,
+  GenericReportResponse,
+  UserReportsResponse,
+  ReportDetailsResponse,
+  UploadEvidenceRequest,
+  UpdateReportRequest
+} from "../types/report";
 
 // Ensure API base URL works in both web and native environments
 const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL || "http://192.168.0.103:8080/api";
+  process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
 // Debug log for API base URL
 console.log("API_BASE_URL:", API_BASE_URL);
@@ -412,6 +420,139 @@ class ApiService {
       return {
         success: false,
         error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  // Report API Methods
+  async submitReport(reportData: SubmitReportRequest): Promise<GenericReportResponse> {
+    try {
+      console.log("API: Submitting report:", reportData);
+      const response = await fetch(`${API_BASE_URL}/report/submit`, {
+        method: "POST",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify(reportData),
+      });
+
+      const data = await response.json();
+      console.log("API: Submit report response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Submit report error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while submitting report",
+      };
+    }
+  }
+
+  async getUserReports(): Promise<UserReportsResponse> {
+    try {
+      console.log("API: Fetching user reports");
+      const response = await fetch(`${API_BASE_URL}/report/user-reports`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+      console.log("API: User reports response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Get user reports error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while fetching reports",
+      };
+    }
+  }
+
+  async getReportDetails(reportId: string): Promise<ReportDetailsResponse> {
+    try {
+      console.log("API: Fetching report details for:", reportId);
+      const response = await fetch(
+        `${API_BASE_URL}/report/details?reportId=${reportId}`,
+        {
+          method: "GET",
+          headers: await this.getHeaders(true),
+        }
+      );
+
+      const data = await response.json();
+      console.log("API: Report details response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Get report details error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while fetching report details",
+      };
+    }
+  }
+
+  async uploadEvidence(evidenceData: UploadEvidenceRequest): Promise<GenericReportResponse> {
+    try {
+      console.log("API: Uploading evidence for report:", evidenceData.reportId);
+      const response = await fetch(`${API_BASE_URL}/report/upload-evidence`, {
+        method: "POST",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify(evidenceData),
+      });
+
+      const data = await response.json();
+      console.log("API: Upload evidence response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Upload evidence error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while uploading evidence",
+      };
+    }
+  }
+
+  async updateReport(updateData: UpdateReportRequest): Promise<GenericReportResponse> {
+    try {
+      console.log("API: Updating report:", updateData.reportId);
+      const response = await fetch(`${API_BASE_URL}/report/update`, {
+        method: "PUT",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify(updateData),
+      });
+
+      const data = await response.json();
+      console.log("API: Update report response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Update report error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while updating report",
+      };
+    }
+  }
+
+  async getPublicReports(): Promise<UserReportsResponse> {
+    try {
+      console.log("API: Fetching public reports");
+      const response = await fetch(`${API_BASE_URL}/report/public-reports`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+      console.log("API: Public reports response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Get public reports error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while fetching public reports",
       };
     }
   }

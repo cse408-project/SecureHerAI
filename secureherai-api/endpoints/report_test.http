@@ -353,3 +353,27 @@ Authorization: Bearer {{authToken}}
   "success": false
 }
 ###
+
+
+### Upload Evidence
+POST {{baseUrl}}/report/upload-evidence
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "reportId": "eb8671f7-dab8-4366-8b6b-bdc761beede9",
+  "evidence": [
+    "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD...",
+    "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD..."
+  ],
+  "description": "Photos taken at the incident location"
+}
+
+###response 200 
+{
+  "success": true,
+  "message": "Evidence uploaded successfully",
+  "error": null,
+  "reportId": null
+}
+###

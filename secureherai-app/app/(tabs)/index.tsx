@@ -233,22 +233,32 @@ export default function Home() {
           </View>
         )}
 
-        <View className="w-full mt-8 flex-row justify-around px-4">
-          <QuickAction
-            icon="location-on"
-            label="Share Location"
-            onPress={handleQuickLocationShare}
-          />
-          <QuickAction
-            icon="record-voice-over"
-            label="Record Audio"
-            onPress={handleQuickAudioRecord}
-          />
-          <QuickAction
-            icon="phone"
-            label="Emergency Call"
-            onPress={handleQuickEmergencyCall}
-          />
+        <View className="w-full mt-8 px-4">
+          <View className="flex-row justify-around mb-4">
+            <QuickAction
+              icon="location-on"
+              label="Share Location"
+              onPress={handleQuickLocationShare}
+            />
+            <QuickAction
+              icon="record-voice-over"
+              label="Record Audio"
+              onPress={handleQuickAudioRecord}
+            />
+            <QuickAction
+              icon="phone"
+              label="Emergency Call"
+              onPress={handleQuickEmergencyCall}
+            />
+          </View>
+          
+          <View className="flex-row justify-center">
+            <QuickAction
+              icon="description"
+              label="Report Incident"
+              onPress={() => router.push("/report-submit" as any)}
+            />
+          </View>
         </View>
       </View>
       <NotificationModal
