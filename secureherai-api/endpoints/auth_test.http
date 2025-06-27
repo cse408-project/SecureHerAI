@@ -1,7 +1,7 @@
 ### SecureHerAI Authentication API Tests
 
-@baseUrl = https://secureherai.me/api
-@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZDZkMDY4Yi0wNzc3LTRlMTUtYmMyMy1iOWRlNjVlODMzZjMiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc1MDgyMDA0NywiZXhwIjoxNzUwOTA2NDQ3fQ.n5me94blDNu7IXML46nnWBJMyAqpQ8w4giHSzRU1PZ0
+@baseUrl = http://localhost:8080/api
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI5MzZlZTRkYS1mN2VkLTQzODItOTMwOC1iYzc2YWNkODg2NjkiLCJlbWFpbCI6ImFyaW1vdG9raWthMjAwNTAyNUBnbWFpbC5jb20iLCJyb2xlIjoiUkVTUE9OREVSIiwiaWF0IjoxNzUxMDM0MDUzLCJleHAiOjE3NTE4OTgwNTN9.tNy_5L4Fk81eI-H2tdEyxAM3XnAwLRlkaLPZ6NTLp0M
 
 ### 1. Health Check
 GET {{baseUrl}}/health
@@ -180,7 +180,7 @@ Content-Type: application/json
 
 {
   "email": "arimotokika2005025@gmail.com",
-  "loginCode": "961979"
+  "loginCode": "040818"
 }
 
 ### Successful Verification Response

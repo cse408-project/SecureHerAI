@@ -1,0 +1,138 @@
+# Incident Report API Testing
+@baseUrl = http://localhost:8080/api
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI5MzZlZTRkYS1mN2VkLTQzODItOTMwOC1iYzc2YWNkODg2NjkiLCJlbWFpbCI6ImFyaW1vdG9raWthMjAwNTAyNUBnbWFpbC5jb20iLCJyb2xlIjoiUkVTUE9OREVSIiwiaWF0IjoxNzUxMDMyMjk5LCJleHAiOjE3NTE4OTYyOTl9.d1j-G_R8KcLRrHw_pY8YMCDmS1G86UrQPJuJqV8BUEU
+
+### Test Authentication - Check if token is valid
+GET {{baseUrl}}/user/profile
+Authorization: Bearer {{authToken}}
+
+### Test Health Check (No auth required)
+GET {{baseUrl}}/health
+
+
+
+
+### Submit Incident Report
+POST {{baseUrl}}/report/submit
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "incidentType": "harassment",
+  "description": "I was followed by a suspicious person on my way home from work. They kept a distance but followed me for about 3 blocks.",
+  "location": {
+    "latitude": "23.8103",
+    "longitude": "90.4125"
+  },
+  "address": "Gulshan Avenue, Dhaka",
+  "incidentTime": "2023-10-01T18:30:00",
+  "visibility": "public",
+  "anonymous": false,
+  "involvedParties": "{\"suspect\": {\"description\": \"Male, approximately 30-35 years old, wearing dark clothing\"}}"
+}
+
+### Submit Report with Alert ID
+POST {{baseUrl}}/report/submit
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "incidentType": "theft",
+  "description": "My phone was snatched while I was walking near the market area.",
+  "location": {
+    "latitude": "23.8103",
+    "longitude": "90.4125"
+  },
+  "address": "New Market, Dhaka",
+  "incidentTime": "2023-10-01T14:15:00",
+  "visibility": "officials_only",
+  "anonymous": true,
+  "alertId": "550e8400-e29b-41d4-a716-446655440000"
+}
+
+### Get User Reports
+GET {{baseUrl}}/report/user-reports
+Authorization: Bearer {{authToken}}
+
+### Get Report Details
+GET {{baseUrl}}/report/details?reportId=eb8671f7-dab8-4366-8b6b-bdc761beede9
+Authorization: Bearer {{authToken}}
+
+### Upload Evidence
+POST {{baseUrl}}/report/upload-evidence
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "reportId": "eb8671f7-dab8-4366-8b6b-bdc761beede9",
+  "evidence": [
+    "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD...",
+    "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD..."
+  ],
+  "description": "Photos taken at the incident location"
+}
+
+### Update Report Visibility
+PUT {{baseUrl}}/report/update-visibility
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "reportId": "eb8671f7-dab8-4366-8b6b-bdc761beede9",
+  "visibility": "private"
+}
+
+### Get Public Reports (Admin/Responder only)
+GET {{baseUrl}}/report/public-reports
+Authorization: Bearer {{authToken}}
+
+### Test with Invalid Token
+GET {{baseUrl}}/report/user-reports
+Authorization: Bearer invalid_token
+
+### Test Submit Report with Missing Fields
+POST {{baseUrl}}/report/submit
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "incidentType": "harassment",
+  "description": "",
+  "location": {
+    "latitude": "23.8103"
+  }
+}
+
+### Test Invalid Incident Type
+POST {{baseUrl}}/report/submit
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "incidentType": "invalid_type",
+  "description": "Test description that is long enough to pass validation",
+  "location": {
+    "latitude": "23.8103",
+    "longitude": "90.4125"
+  },
+  "incidentTime": "2023-10-01T18:30:00",
+  "visibility": "public",
+  "anonymous": false
+}
+
+### Test Invalid Visibility
+POST {{baseUrl}}/report/submit
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "incidentType": "theft",
+  "description": "Test description that is long enough to pass validation",
+  "location": {
+    "latitude": "23.8103",
+    "longitude": "90.4125"
+  },
+  "incidentTime": "2023-10-01T18:30:00",
+  "visibility": "invalid_visibility",
+  "anonymous": false
+}
