@@ -14,7 +14,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
 import ApiService from "../../services/api";
-import Header from "../../src/components/Header";
+import Header from "../../components/Header";
 import DatePicker from "../../components/DatePicker";
 
 interface UserProfile {
