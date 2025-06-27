@@ -198,30 +198,67 @@ public class ReportService {
     }
     
     /**
-     * Update report visibility
+     * Update report (comprehensive update for all fields)
      */
-    public ReportResponse.GenericResponse updateReportVisibility(UUID userId, ReportRequest.UpdateVisibility request) {
+    public ReportResponse.GenericResponse updateReport(UUID userId, ReportRequest.UpdateReport request) {
         try {
-            logger.debug("Updating visibility for report: {} by user: {} to: {}", request.getReportId(), userId, request.getVisibility());
+            logger.debug("Updating report: {} by user: {}", request.getReportId(), userId);
             
             // Verify report exists and user owns it
             Optional<IncidentReport> reportOpt = reportRepository.findByIdAndUserId(request.getReportId(), userId);
             if (reportOpt.isEmpty()) {
-                logger.warn("Report not found or access denied for visibility update - Report: {}, User: {}", request.getReportId(), userId);
+                logger.warn("Report not found or access denied for update - Report: {}, User: {}", request.getReportId(), userId);
                 return new ReportResponse.GenericResponse(false, null, "Report not found or access denied");
             }
             
             IncidentReport report = reportOpt.get();
-            String oldVisibility = report.getVisibility();
-            report.setVisibility(request.getVisibility());
+            
+            // Update fields if they are provided
+            if (request.getDescription() != null && !request.getDescription().trim().isEmpty()) {
+                report.setDescription(request.getDescription().trim());
+            }
+            
+            if (request.getLocation() != null) {
+                if (request.getLocation().getLatitude() != null) {
+                    report.setLatitude(request.getLocation().getLatitude());
+                }
+                if (request.getLocation().getLongitude() != null) {
+                    report.setLongitude(request.getLocation().getLongitude());
+                }
+            }
+            
+            if (request.getAddress() != null) {
+                report.setAddress(request.getAddress().trim());
+            }
+            
+            if (request.getIncidentTime() != null) {
+                report.setIncidentTime(request.getIncidentTime());
+            }
+            
+            if (request.getVisibility() != null && !request.getVisibility().trim().isEmpty()) {
+                report.setVisibility(request.getVisibility().trim());
+            }
+            
+            if (request.getAnonymous() != null) {
+                report.setAnonymous(request.getAnonymous());
+            }
+            
+            if (request.getActionTaken() != null) {
+                report.setActionTaken(request.getActionTaken().trim());
+            }
+            
+            if (request.getInvolvedParties() != null) {
+                report.setInvolvedParties(request.getInvolvedParties());
+            }
+            
             reportRepository.save(report);
             
-            logger.info("Report visibility updated from {} to {} for report: {}", oldVisibility, request.getVisibility(), request.getReportId());
-            return new ReportResponse.GenericResponse(true, "Report visibility updated successfully", null);
+            logger.info("Report updated successfully: {}", request.getReportId());
+            return new ReportResponse.GenericResponse(true, "Report updated successfully", null);
             
         } catch (Exception e) {
-            logger.error("Error updating visibility for report {}: {}", request.getReportId(), e.getMessage(), e);
-            return new ReportResponse.GenericResponse(false, null, "An error occurred while updating report visibility: " + e.getMessage());
+            logger.error("Error updating report {}: {}", request.getReportId(), e.getMessage(), e);
+            return new ReportResponse.GenericResponse(false, null, "An error occurred while updating the report: " + e.getMessage());
         }
     }
     

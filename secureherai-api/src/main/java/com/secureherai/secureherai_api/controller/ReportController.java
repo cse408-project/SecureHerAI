@@ -175,13 +175,13 @@ public class ReportController {
     }
     
     /**
-     * Update report visibility
-     * PUT /api/report/update-visibility
+     * Update incident report (comprehensive update for all fields)
+     * PUT /api/report/update
      */
-    @PutMapping("/update-visibility")
-    public ResponseEntity<ReportResponse.GenericResponse> updateReportVisibility(
+    @PutMapping("/update")
+    public ResponseEntity<ReportResponse.GenericResponse> updateReport(
             @RequestHeader("Authorization") String authHeader,
-            @Valid @RequestBody ReportRequest.UpdateVisibility request) {
+            @Valid @RequestBody ReportRequest.UpdateReport request) {
         
         try {
             String token = authHeader.replace("Bearer ", "");
@@ -193,7 +193,7 @@ public class ReportController {
             }
             
             UUID userId = jwtService.extractUserId(token);
-            ReportResponse.GenericResponse response = reportService.updateReportVisibility(userId, request);
+            ReportResponse.GenericResponse response = reportService.updateReport(userId, request);
             
             if (response.isSuccess()) {
                 return ResponseEntity.ok(response);

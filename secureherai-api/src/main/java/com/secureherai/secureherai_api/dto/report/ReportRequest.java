@@ -174,22 +174,32 @@ public class ReportRequest {
         }
     }
     
-    // Update visibility request
-    public static class UpdateVisibility {
+    // Update report request (comprehensive update for all fields)
+    public static class UpdateReport {
         @NotNull(message = "Report ID is required")
         private UUID reportId;
         
-        @NotBlank(message = "Visibility setting is required")
+        @Size(min = 10, max = 2000, message = "Description must be between 10 and 2000 characters")
+        private String description;
+        
+        @Valid
+        private Location location;
+        
+        private String address;
+        
+        private LocalDateTime incidentTime;
+        
         @Pattern(regexp = "public|officials_only|private", 
                  message = "Visibility must be one of: public, officials_only, private")
         private String visibility;
         
-        public UpdateVisibility() {}
+        private Boolean anonymous;
         
-        public UpdateVisibility(UUID reportId, String visibility) {
-            this.reportId = reportId;
-            this.visibility = visibility;
-        }
+        private String actionTaken;
+        
+        private String involvedParties; // JSON string
+        
+        public UpdateReport() {}
         
         // Getters and Setters
         public UUID getReportId() {
@@ -200,12 +210,68 @@ public class ReportRequest {
             this.reportId = reportId;
         }
         
+        public String getDescription() {
+            return description;
+        }
+        
+        public void setDescription(String description) {
+            this.description = description;
+        }
+        
+        public Location getLocation() {
+            return location;
+        }
+        
+        public void setLocation(Location location) {
+            this.location = location;
+        }
+        
+        public String getAddress() {
+            return address;
+        }
+        
+        public void setAddress(String address) {
+            this.address = address;
+        }
+        
+        public LocalDateTime getIncidentTime() {
+            return incidentTime;
+        }
+        
+        public void setIncidentTime(LocalDateTime incidentTime) {
+            this.incidentTime = incidentTime;
+        }
+        
         public String getVisibility() {
             return visibility;
         }
         
         public void setVisibility(String visibility) {
             this.visibility = visibility;
+        }
+        
+        public Boolean getAnonymous() {
+            return anonymous;
+        }
+        
+        public void setAnonymous(Boolean anonymous) {
+            this.anonymous = anonymous;
+        }
+        
+        public String getActionTaken() {
+            return actionTaken;
+        }
+        
+        public void setActionTaken(String actionTaken) {
+            this.actionTaken = actionTaken;
+        }
+        
+        public String getInvolvedParties() {
+            return involvedParties;
+        }
+        
+        public void setInvolvedParties(String involvedParties) {
+            this.involvedParties = involvedParties;
         }
     }
     

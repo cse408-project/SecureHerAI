@@ -31,6 +31,16 @@ Authorization: Bearer {{authToken}}
   "involvedParties": "{\"suspect\": {\"description\": \"Male, approximately 30-35 years old, wearing dark clothing\"}}"
 }
 
+### response 200
+{
+  "success": true,
+  "message": "Incident report submitted successfully",
+  "error": null,
+  "reportId": "ed123c7c-883b-488a-9e48-e3e706a7348f"
+}
+###
+
+
 ### Submit Report with Alert ID
 POST {{baseUrl}}/report/submit
 Content-Type: application/json
@@ -49,14 +59,104 @@ Authorization: Bearer {{authToken}}
   "anonymous": true,
   "alertId": "550e8400-e29b-41d4-a716-446655440000"
 }
-
+### response 400
+{
+  "success": false,
+  "message": null,
+  "error": "An incident report already exists for this alert",
+  "reportId": null
+}
+###
 ### Get User Reports
 GET {{baseUrl}}/report/user-reports
 Authorization: Bearer {{authToken}}
 
+### response 200 
+{
+  "success": true,
+  "reports": [
+    {
+      "reportId": "ed123c7c-883b-488a-9e48-e3e706a7348f",
+      "incidentType": "harassment",
+      "description": "I was followed by a suspicious person on my way home from work. They kept a distance but followed me...",
+      "location": {
+        "latitude": 23.810300,
+        "longitude": 90.412500,
+        "address": "Gulshan Avenue, Dhaka"
+      },
+      "incidentTime": "2023-10-01T18:30:00",
+      "status": "submitted",
+      "visibility": "public",
+      "anonymous": false,
+      "createdAt": "2025-06-27T14:25:46.942773"
+    },
+    {
+      "reportId": "eb8671f7-dab8-4366-8b6b-bdc761beede9",
+      "incidentType": "theft",
+      "description": "My phone was snatched while I was walking near the market area.",
+      "location": {
+        "latitude": 23.810300,
+        "longitude": 90.412500,
+        "address": "New Market, Dhaka"
+      },
+      "incidentTime": "2023-10-01T14:15:00",
+      "status": "submitted",
+      "visibility": "private",
+      "anonymous": true,
+      "createdAt": "2025-06-27T13:59:14.66664"
+    },
+    {
+      "reportId": "812bebbf-a8a7-4ae5-ad04-46f48a59c071",
+      "incidentType": "harassment",
+      "description": "I was followed by a suspicious person on my way home from work. They kept a distance but followed me...",
+      "location": {
+        "latitude": 23.810300,
+        "longitude": 90.412500,
+        "address": "Gulshan Avenue, Dhaka"
+      },
+      "incidentTime": "2023-10-01T18:30:00",
+      "status": "submitted",
+      "visibility": "public",
+      "anonymous": false,
+      "createdAt": "2025-06-27T13:59:02.226413"
+    }
+  ],
+  "error": null
+}
+
+###
+
 ### Get Report Details
 GET {{baseUrl}}/report/details?reportId=eb8671f7-dab8-4366-8b6b-bdc761beede9
 Authorization: Bearer {{authToken}}
+###response 200 
+
+{
+  "success": true,
+  "report": {
+    "reportId": "eb8671f7-dab8-4366-8b6b-bdc761beede9",
+    "alertId": "550e8400-e29b-41d4-a716-446655440000",
+    "incidentType": "theft",
+    "description": "My phone was snatched while I was walking near the market area.",
+    "location": {
+      "latitude": 23.810300,
+      "longitude": 90.412500,
+      "address": "New Market, Dhaka"
+    },
+    "address": "New Market, Dhaka",
+    "incidentTime": "2023-10-01T14:15:00",
+    "status": "submitted",
+    "visibility": "private",
+    "anonymous": true,
+    "actionTaken": null,
+    "involvedParties": null,
+    "evidence": [],
+    "createdAt": "2025-06-27T13:59:14.66664",
+    "updatedAt": "2025-06-27T14:01:07.16895"
+  },
+  "error": null
+}
+###
 
 ### Upload Evidence
 POST {{baseUrl}}/report/upload-evidence
@@ -72,8 +172,46 @@ Authorization: Bearer {{authToken}}
   "description": "Photos taken at the incident location"
 }
 
-### Update Report Visibility
-PUT {{baseUrl}}/report/update-visibility
+###response 200 
+{
+  "success": true,
+  "message": "Evidence uploaded successfully",
+  "error": null,
+  "reportId": null
+}
+###
+
+### Update Report (Comprehensive)
+PUT {{baseUrl}}/report/update
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "reportId": "eb8671f7-dab8-4366-8b6b-bdc761beede9",
+  "description": "Updated: My phone was snatched while I was walking near the market area. The suspect ran towards the main road after the incident.",
+  "location": {
+    "latitude": "23.8105",
+    "longitude": "90.4130"
+  },
+  "address": "New Market Area, Dhaka",
+  "incidentTime": "2023-10-01T14:20:00",
+  "visibility": "public",
+  "anonymous": false,
+  "actionTaken": "Police report filed, CCTV footage requested",
+  "involvedParties": "{\"suspect\": {\"description\": \"Male, approximately 25-30 years old, wearing jeans and dark shirt, fled on foot\"}, \"witnesses\": [{\"description\": \"Shop owner who saw the incident\"}]}"
+}
+
+###response 200
+{
+  "success": true,
+  "message": "Report updated successfully",
+  "error": null,
+  "reportId": null
+}
+###
+
+### Update Report Visibility Only
+PUT {{baseUrl}}/report/update
 Content-Type: application/json
 Authorization: Bearer {{authToken}}
 
@@ -82,13 +220,71 @@ Authorization: Bearer {{authToken}}
   "visibility": "private"
 }
 
+###response 200
+
+###
+{
+  "success": true,
+  "message": "Report updated successfully",
+  "error": null,
+  "reportId": null
+}
+###
+
 ### Get Public Reports (Admin/Responder only)
 GET {{baseUrl}}/report/public-reports
 Authorization: Bearer {{authToken}}
 
+
+###
+{
+  "success": true,
+  "reports": [
+    {
+      "reportId": "812bebbf-a8a7-4ae5-ad04-46f48a59c071",
+      "incidentType": "harassment",
+      "description": "I was followed by a suspicious person on my way home from work. They kept a distance but followed me...",
+      "location": {
+        "latitude": 23.810300,
+        "longitude": 90.412500,
+        "address": "Gulshan Avenue, Dhaka"
+      },
+      "incidentTime": "2023-10-01T18:30:00",
+      "status": "submitted",
+      "visibility": "public",
+      "anonymous": false,
+      "createdAt": "2025-06-27T13:59:02.226413"
+    },
+    {
+      "reportId": "ed123c7c-883b-488a-9e48-e3e706a7348f",
+      "incidentType": "harassment",
+      "description": "I was followed by a suspicious person on my way home from work. They kept a distance but followed me...",
+      "location": {
+        "latitude": 23.810300,
+        "longitude": 90.412500,
+        "address": "Gulshan Avenue, Dhaka"
+      },
+      "incidentTime": "2023-10-01T18:30:00",
+      "status": "submitted",
+      "visibility": "public",
+      "anonymous": false,
+      "createdAt": "2025-06-27T14:25:46.942773"
+    }
+  ],
+  "error": null
+}
+###
+
 ### Test with Invalid Token
 GET {{baseUrl}}/report/user-reports
 Authorization: Bearer invalid_token
+
+### response 401
+{
+  "success": false,
+  "error": "User not authenticated"
+}
+###
 
 ### Test Submit Report with Missing Fields
 POST {{baseUrl}}/report/submit
@@ -102,6 +298,13 @@ Authorization: Bearer {{authToken}}
     "latitude": "23.8103"
   }
 }
+
+###response 400 
+{
+  "error": "Validation failed: incidentTime Incident time is required; anonymous Anonymous setting is required; description Description is required; description Description must be between 10 and 2000 characters; visibility Visibility setting is required; location.longitude Longitude is required; ",
+  "success": false
+}
+###
 
 ### Test Invalid Incident Type
 POST {{baseUrl}}/report/submit
@@ -120,6 +323,13 @@ Authorization: Bearer {{authToken}}
   "anonymous": false
 }
 
+### response 400
+{
+  "error": "Validation failed: incidentType Incident type must be one of: harassment, theft, assault, other; ",
+  "success": false
+}
+###
+
 ### Test Invalid Visibility
 POST {{baseUrl}}/report/submit
 Content-Type: application/json
@@ -136,3 +346,10 @@ Authorization: Bearer {{authToken}}
   "visibility": "invalid_visibility",
   "anonymous": false
 }
+
+### response 400
+{
+  "error": "Validation failed: visibility Visibility must be one of: public, officials_only, private; ",
+  "success": false
+}
+###
