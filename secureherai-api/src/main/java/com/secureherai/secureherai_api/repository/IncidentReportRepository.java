@@ -64,4 +64,28 @@ public interface IncidentReportRepository extends JpaRepository<IncidentReport, 
                                           @Param("maxLat") Double maxLat,
                                           @Param("minLon") Double minLon, 
                                           @Param("maxLon") Double maxLon);
+    
+    // Additional methods for search and filter functionality
+    
+    // Find reports by visibility ordered by creation date
+    List<IncidentReport> findByVisibilityOrderByCreatedAtDesc(String visibility);
+    
+    // Find user's reports by visibility
+    List<IncidentReport> findByUserIdAndVisibilityOrderByCreatedAtDesc(UUID userId, String visibility);
+    
+    // Find user's reports by incident type
+    List<IncidentReport> findByUserIdAndIncidentTypeOrderByCreatedAtDesc(UUID userId, String incidentType);
+    
+    // Search in description and address for a user
+    @Query("SELECT ir FROM IncidentReport ir WHERE ir.userId = :userId AND " +
+           "(LOWER(ir.description) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(ir.address) LIKE LOWER(CONCAT('%', :query, '%'))) " +
+           "ORDER BY ir.createdAt DESC")
+    List<IncidentReport> findByUserIdAndSearchQuery(@Param("userId") UUID userId, @Param("query") String query);
+    
+    // Find all reports ordered by creation date (for admins)
+    List<IncidentReport> findAllByOrderByCreatedAtDesc();
+    
+    // Find reports by user and incident time range
+    List<IncidentReport> findByUserIdAndIncidentTimeBetween(UUID userId, LocalDateTime startTime, LocalDateTime endTime);
 }

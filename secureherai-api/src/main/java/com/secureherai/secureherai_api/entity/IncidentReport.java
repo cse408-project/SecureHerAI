@@ -9,7 +9,10 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "incident_reports")
+@Table(name = "incident_reports", 
+       uniqueConstraints = {
+           @UniqueConstraint(columnNames = {"user_id", "incident_time", "incident_type"})
+       })
 public class IncidentReport {
     
     @Id
@@ -28,10 +31,10 @@ public class IncidentReport {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String description;
     
-    @Column(nullable = false, precision = 9, scale = 6)
+    @Column(precision = 9, scale = 6)
     private BigDecimal latitude;
     
-    @Column(nullable = false, precision = 9, scale = 6)
+    @Column(precision = 9, scale = 6)
     private BigDecimal longitude;
     
     private String address;
@@ -76,6 +79,18 @@ public class IncidentReport {
         this.incidentTime = incidentTime;
         this.visibility = visibility;
         this.anonymous = anonymous;
+    }
+    
+    // Constructor without location (for optional location reports)
+    public IncidentReport(UUID userId, String incidentType, String description, 
+                         LocalDateTime incidentTime, String visibility, Boolean anonymous) {
+        this.userId = userId;
+        this.incidentType = incidentType;
+        this.description = description;
+        this.incidentTime = incidentTime;
+        this.visibility = visibility;
+        this.anonymous = anonymous;
+        // latitude and longitude remain null
     }
     
     // Getters and Setters

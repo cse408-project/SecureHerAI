@@ -427,4 +427,187 @@ public class ReportResponse {
             this.address = address;
         }
     }
+    
+    // Categories response for filter options
+    public static class CategoriesResponse {
+        private boolean success;
+        private Categories categories;
+        private String error;
+        
+        public CategoriesResponse() {}
+        
+        public CategoriesResponse(boolean success, Categories categories, String error) {
+            this.success = success;
+            this.categories = categories;
+            this.error = error;
+        }
+        
+        // Getters and Setters
+        public boolean isSuccess() {
+            return success;
+        }
+        
+        public void setSuccess(boolean success) {
+            this.success = success;
+        }
+        
+        public Categories getCategories() {
+            return categories;
+        }
+        
+        public void setCategories(Categories categories) {
+            this.categories = categories;
+        }
+        
+        public String getError() {
+            return error;
+        }
+        
+        public void setError(String error) {
+            this.error = error;
+        }
+    }
+    
+    // Categories class
+    public static class Categories {
+        private List<String> incidentTypes;
+        private List<String> visibilityOptions;
+        private List<String> statusOptions;
+        
+        public Categories() {}
+        
+        public Categories(List<String> incidentTypes, List<String> visibilityOptions, List<String> statusOptions) {
+            this.incidentTypes = incidentTypes;
+            this.visibilityOptions = visibilityOptions;
+            this.statusOptions = statusOptions;
+        }
+        
+        // Getters and Setters
+        public List<String> getIncidentTypes() {
+            return incidentTypes;
+        }
+        
+        public void setIncidentTypes(List<String> incidentTypes) {
+            this.incidentTypes = incidentTypes;
+        }
+        
+        public List<String> getVisibilityOptions() {
+            return visibilityOptions;
+        }
+        
+        public void setVisibilityOptions(List<String> visibilityOptions) {
+            this.visibilityOptions = visibilityOptions;
+        }
+        
+        public List<String> getStatusOptions() {
+            return statusOptions;
+        }
+        
+        public void setStatusOptions(List<String> statusOptions) {
+            this.statusOptions = statusOptions;
+        }
+    }
+    
+    // Stats response
+    public static class StatsResponse {
+        private boolean success;
+        private ReportStats stats;
+        private String error;
+        
+        public StatsResponse() {}
+        
+        public StatsResponse(boolean success, ReportStats stats, String error) {
+            this.success = success;
+            this.stats = stats;
+            this.error = error;
+        }
+        
+        // Getters and Setters
+        public boolean isSuccess() {
+            return success;
+        }
+        
+        public void setSuccess(boolean success) {
+            this.success = success;
+        }
+        
+        public ReportStats getStats() {
+            return stats;
+        }
+        
+        public void setStats(ReportStats stats) {
+            this.stats = stats;
+        }
+        
+        public String getError() {
+            return error;
+        }
+        
+        public void setError(String error) {
+            this.error = error;
+        }
+    }
+    
+    // Report statistics
+    public static class ReportStats {
+        private int totalReports;
+        private java.util.Map<String, Integer> reportsByType;
+        private java.util.Map<String, Integer> reportsByStatus;
+        private java.util.Map<String, Integer> reportsByVisibility;
+        private int recentReports;
+        
+        public ReportStats() {}
+        
+        public ReportStats(int totalReports, java.util.Map<String, Integer> reportsByType,
+                          java.util.Map<String, Integer> reportsByStatus, 
+                          java.util.Map<String, Integer> reportsByVisibility,
+                          int recentReports) {
+            this.totalReports = totalReports;
+            this.reportsByType = reportsByType;
+            this.reportsByStatus = reportsByStatus;
+            this.reportsByVisibility = reportsByVisibility;
+            this.recentReports = recentReports;
+        }
+        
+        // Getters and Setters
+        public int getTotalReports() {
+            return totalReports;
+        }
+        
+        public void setTotalReports(int totalReports) {
+            this.totalReports = totalReports;
+        }
+        
+        public java.util.Map<String, Integer> getReportsByType() {
+            return reportsByType;
+        }
+        
+        public void setReportsByType(java.util.Map<String, Integer> reportsByType) {
+            this.reportsByType = reportsByType;
+        }
+        
+        public java.util.Map<String, Integer> getReportsByStatus() {
+            return reportsByStatus;
+        }
+        
+        public void setReportsByStatus(java.util.Map<String, Integer> reportsByStatus) {
+            this.reportsByStatus = reportsByStatus;
+        }
+        
+        public java.util.Map<String, Integer> getReportsByVisibility() {
+            return reportsByVisibility;
+        }
+        
+        public void setReportsByVisibility(java.util.Map<String, Integer> reportsByVisibility) {
+            this.reportsByVisibility = reportsByVisibility;
+        }
+        
+        public int getRecentReports() {
+            return recentReports;
+        }
+        
+        public void setRecentReports(int recentReports) {
+            this.recentReports = recentReports;
+        }
+    }
 }

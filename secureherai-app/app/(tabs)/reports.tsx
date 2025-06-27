@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
+  Modal,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
@@ -21,9 +22,18 @@ const { width } = Dimensions.get('window');
 export default function ReportsTabScreen() {
   const { user } = useAuth();
   const [reports, setReports] = useState<ReportSummary[]>([]);
+  const [allReports, setAllReports] = useState<ReportSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Filter state
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<{
+    incidentType?: string;
+    visibility?: string;
+    status?: string;
+  }>({});
 
   // Reload reports when screen comes into focus
   useFocusEffect(
@@ -38,6 +48,7 @@ export default function ReportsTabScreen() {
       const response = await apiService.getUserReports();
       if (response.success && response.reports) {
         setReports(response.reports);
+        setAllReports(response.reports); // Keep original for filtering
       } else {
         const errorMessage = response.error || 'Failed to load reports';
         setError(errorMessage);
@@ -57,6 +68,100 @@ export default function ReportsTabScreen() {
     setRefreshing(true);
     await loadReports();
     setRefreshing(false);
+  };
+
+  // Filter functionality
+  const handleFilter = async (filters: {
+    incidentType?: string;
+    visibility?: string;
+    status?: string;
+  }) => {
+    setLoading(true);
+    try {
+      if (Object.keys(filters).length === 0) {
+        setReports(allReports);
+        setActiveFilters({});
+        return;
+      }
+
+      // Try API filter first
+      const response = await apiService.filterReports(filters);
+      if (response.success && response.reports) {
+        setReports(response.reports);
+      } else {
+        // Fallback to local filtering
+        let filteredReports = [...allReports];
+        
+        if (filters.incidentType) {
+          filteredReports = filteredReports.filter(report => 
+            report.incidentType === filters.incidentType
+          );
+        }
+        
+        if (filters.visibility) {
+          filteredReports = filteredReports.filter(report => 
+            report.visibility === filters.visibility
+          );
+        }
+        
+        if (filters.status) {
+          filteredReports = filteredReports.filter(report => 
+            report.status === filters.status
+          );
+        }
+        
+        setReports(filteredReports);
+      }
+      
+      setActiveFilters(filters);
+    } catch (error) {
+      console.error('Filter error:', error);
+      Alert.alert('Error', 'Failed to apply filters');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const clearFilters = () => {
+    setActiveFilters({});
+    setReports(allReports);
+  };
+
+  const handleDeleteReport = async (reportId: string) => {
+    Alert.alert(
+      'Delete Report',
+      'Are you sure you want to delete this report? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              const response = await apiService.deleteReport(reportId);
+              
+              if (response.success) {
+                // Remove the report from the local state
+                setReports(reports.filter(report => report.reportId !== reportId));
+                setAllReports(allReports.filter(report => report.reportId !== reportId));
+                Alert.alert('Success', 'Report deleted successfully');
+              } else {
+                Alert.alert('Error', response.error || 'Failed to delete report');
+              }
+            } catch (error) {
+              console.error('Delete report error:', error);
+              Alert.alert('Error', 'An unexpected error occurred while deleting the report');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const getIncidentTypeIcon = (type: string) => {
@@ -164,6 +269,13 @@ export default function ReportsTabScreen() {
               {report.status.replace('_', ' ')}
             </Text>
           </View>
+          <TouchableOpacity
+            onPress={() => handleDeleteReport(report.reportId)}
+            className="p-1 rounded-full"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <MaterialIcons name="delete" size={18} color="#EF4444" />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -245,21 +357,14 @@ export default function ReportsTabScreen() {
             <View className="flex-row justify-between">
               <TouchableOpacity 
                 className="flex-1 mr-2 p-3 bg-gray-50 rounded-lg border border-gray-200"
-                onPress={() => {/* TODO: Add filter functionality */}}
+                onPress={() => setShowFilterModal(true)}
               >
                 <View className="items-center">
                   <MaterialIcons name="filter-list" size={20} color="#67082F" />
                   <Text className="text-[#67082F] text-xs font-medium mt-1">Filter</Text>
-                </View>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                className="flex-1 mx-1 p-3 bg-gray-50 rounded-lg border border-gray-200"
-                onPress={() => {/* TODO: Add search functionality */}}
-              >
-                <View className="items-center">
-                  <MaterialIcons name="search" size={20} color="#67082F" />
-                  <Text className="text-[#67082F] text-xs font-medium mt-1">Search</Text>
+                  {Object.keys(activeFilters).length > 0 && (
+                    <View className="w-2 h-2 bg-red-500 rounded-full absolute top-0 right-2" />
+                  )}
                 </View>
               </TouchableOpacity>
               
@@ -318,24 +423,138 @@ export default function ReportsTabScreen() {
                 Your Reports ({reports.length})
               </Text>
               
-              {/* Quick Add Button */}
-              <TouchableOpacity
-                className="flex-row items-center justify-between p-3 bg-white rounded-lg mb-4 shadow-sm border border-gray-200"
-                onPress={navigateToSubmit}
-              >
-                <View className="flex-row items-center">
-                  <MaterialIcons name="add" size={20} color="#67082F" />
-                  <Text className="text-[#67082F] font-semibold ml-3">Add New Report</Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={24} color="#67082F" />
-              </TouchableOpacity>
-
               {/* Reports List */}
               {reports.map(renderReportCard)}
             </>
           )}
         </ScrollView>
       )}
+
+      {/* Filter Modal */}
+      <Modal
+        visible={showFilterModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowFilterModal(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-center items-center">
+          <View className="bg-white rounded-lg p-6 m-4 w-11/12 max-w-md">
+            <Text className="text-lg font-bold text-[#67082F] mb-4">Filter Reports</Text>
+            
+            {/* Incident Type Filter */}
+            <Text className="text-sm font-semibold text-gray-700 mb-2">Incident Type</Text>
+            <View className="flex-row flex-wrap mb-4">
+              {['harassment', 'theft', 'assault', 'other'].map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  className={`px-3 py-2 rounded-lg mr-2 mb-2 ${
+                    activeFilters.incidentType === type
+                      ? 'bg-[#67082F]'
+                      : 'bg-gray-200'
+                  }`}
+                  onPress={() => {
+                    const newFilters = { ...activeFilters };
+                    if (newFilters.incidentType === type) {
+                      delete newFilters.incidentType;
+                    } else {
+                      newFilters.incidentType = type;
+                    }
+                    setActiveFilters(newFilters);
+                  }}
+                >
+                  <Text className={`capitalize ${
+                    activeFilters.incidentType === type ? 'text-white' : 'text-gray-700'
+                  }`}>
+                    {type}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Visibility Filter */}
+            <Text className="text-sm font-semibold text-gray-700 mb-2">Visibility</Text>
+            <View className="flex-row flex-wrap mb-4">
+              {['public', 'officials_only', 'private'].map((visibility) => (
+                <TouchableOpacity
+                  key={visibility}
+                  className={`px-3 py-2 rounded-lg mr-2 mb-2 ${
+                    activeFilters.visibility === visibility
+                      ? 'bg-[#67082F]'
+                      : 'bg-gray-200'
+                  }`}
+                  onPress={() => {
+                    const newFilters = { ...activeFilters };
+                    if (newFilters.visibility === visibility) {
+                      delete newFilters.visibility;
+                    } else {
+                      newFilters.visibility = visibility;
+                    }
+                    setActiveFilters(newFilters);
+                  }}
+                >
+                  <Text className={`capitalize ${
+                    activeFilters.visibility === visibility ? 'text-white' : 'text-gray-700'
+                  }`}>
+                    {visibility.replace('_', ' ')}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Status Filter */}
+            <Text className="text-sm font-semibold text-gray-700 mb-2">Status</Text>
+            <View className="flex-row flex-wrap mb-6">
+              {['submitted', 'under_review', 'resolved'].map((status) => (
+                <TouchableOpacity
+                  key={status}
+                  className={`px-3 py-2 rounded-lg mr-2 mb-2 ${
+                    activeFilters.status === status
+                      ? 'bg-[#67082F]'
+                      : 'bg-gray-200'
+                  }`}
+                  onPress={() => {
+                    const newFilters = { ...activeFilters };
+                    if (newFilters.status === status) {
+                      delete newFilters.status;
+                    } else {
+                      newFilters.status = status;
+                    }
+                    setActiveFilters(newFilters);
+                  }}
+                >
+                  <Text className={`capitalize ${
+                    activeFilters.status === status ? 'text-white' : 'text-gray-700'
+                  }`}>
+                    {status.replace('_', ' ')}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            <View className="flex-row justify-end space-x-3">
+              <TouchableOpacity
+                className="px-4 py-2 bg-gray-200 rounded-lg mr-3"
+                onPress={() => {
+                  clearFilters();
+                  setShowFilterModal(false);
+                }}
+              >
+                <Text className="text-gray-700">Clear All</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                className="px-4 py-2 bg-[#67082F] rounded-lg"
+                onPress={() => {
+                  handleFilter(activeFilters);
+                  setShowFilterModal(false);
+                }}
+              >
+                <Text className="text-white font-semibold">Apply Filter</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

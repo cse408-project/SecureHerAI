@@ -43,30 +43,17 @@ export default function SubmitReportScreen() {
     const now = new Date();
     setIncidentDate(now.toISOString().split('T')[0]);
     setIncidentTime(now.toTimeString().slice(0, 5));
-    
-    getCurrentLocation();
   }, []);
 
   const getCurrentLocation = async () => {
     setGettingLocation(true);
     try {
-      // For demo purposes, use a default location
-      Alert.alert(
-        'Location Required',
-        'For demo purposes, using default location (Dhaka, Bangladesh). In production, this would get your actual GPS location.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              setCurrentLocation({
-                latitude: '23.8103',
-                longitude: '90.4125',
-              });
-              setAddress('Dhaka, Bangladesh');
-            },
-          },
-        ]
-      );
+      // Set fixed location
+      setCurrentLocation({
+        latitude: '23.8103',
+        longitude: '90.4125',
+      });
+      setAddress('Dhaka, Bangladesh');
     } catch (error) {
       console.error('Error getting location:', error);
       Alert.alert('Error', 'Could not get current location');
@@ -80,10 +67,6 @@ export default function SubmitReportScreen() {
 
     if (!description.trim() || description.length < 10) {
       newErrors.description = 'Description must be at least 10 characters long';
-    }
-
-    if (!currentLocation) {
-      newErrors.location = 'Location is required';
     }
 
     if (!incidentDate) {
@@ -103,11 +86,6 @@ export default function SubmitReportScreen() {
       return;
     }
 
-    if (!currentLocation) {
-      Alert.alert('Error', 'Location is required to submit a report');
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -117,7 +95,7 @@ export default function SubmitReportScreen() {
       const reportData: SubmitReportRequest = {
         incidentType,
         description: description.trim(),
-        location: currentLocation,
+        ...(currentLocation && { location: currentLocation }),
         address: address.trim() || undefined,
         incidentTime: incidentDateTime,
         visibility,
@@ -230,7 +208,7 @@ export default function SubmitReportScreen() {
 
         {/* Location */}
         <View className="bg-white rounded-lg p-4 mb-4 shadow-sm">
-          <Text className="text-base font-semibold text-gray-800 mb-3">Location</Text>
+          <Text className="text-base font-semibold text-gray-800 mb-3">Location (Optional)</Text>
           
           <TouchableOpacity
             className="flex-row items-center justify-between p-3 bg-gray-100 rounded-lg mb-3"
@@ -262,6 +240,12 @@ export default function SubmitReportScreen() {
 
           {errors.location && (
             <Text className="text-red-500 text-sm mt-1">{errors.location}</Text>
+          )}
+          
+          {!currentLocation && (
+            <Text className="text-gray-500 text-xs mt-2">
+              💡 Location helps authorities respond faster, but you can submit without it if needed.
+            </Text>
           )}
         </View>
 

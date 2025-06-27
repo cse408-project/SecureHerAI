@@ -6,7 +6,7 @@ export interface Location {
 export interface SubmitReportRequest {
   incidentType: 'harassment' | 'theft' | 'assault' | 'other';
   description: string;
-  location: Location;
+  location?: Location;
   address?: string;
   incidentTime: string; // ISO string
   visibility: 'public' | 'officials_only' | 'private';

@@ -39,7 +39,11 @@ public class ReportService {
             // Log the incoming request
             logger.info("Submitting report for user: {}", userId);
             logger.debug("Incident type: {}", request.getIncidentType());
-            logger.debug("Location: {}, {}", request.getLocation().getLatitude(), request.getLocation().getLongitude());
+            if (request.getLocation() != null) {
+                logger.debug("Location: {}, {}", request.getLocation().getLatitude(), request.getLocation().getLongitude());
+            } else {
+                logger.debug("No location provided");
+            }
             
             // Verify user exists
             Optional<User> userOpt = userRepository.findById(userId);
@@ -60,19 +64,57 @@ public class ReportService {
                 }
             }
             
+            // Check for potential duplicate reports (same user, time, location, type within 5 minutes)
+            // Only check location-based duplicates if location is provided
+            if (request.getLocation() != null) {
+                java.time.LocalDateTime reportTime = request.getIncidentTime();
+                java.time.LocalDateTime startTime = reportTime.minusMinutes(5);
+                java.time.LocalDateTime endTime = reportTime.plusMinutes(5);
+                
+                List<IncidentReport> recentReports = reportRepository.findByUserIdAndIncidentTimeBetween(userId, startTime, endTime);
+                for (IncidentReport existing : recentReports) {
+                    // Check if it's very similar (same type and close location)
+                    if (existing.getIncidentType().equals(request.getIncidentType()) 
+                        && existing.getLatitude() != null && existing.getLongitude() != null) {
+                        // Calculate distance between coordinates (simple approximation)
+                        double latDiff = Math.abs(existing.getLatitude().doubleValue() - request.getLocation().getLatitude().doubleValue());
+                        double lonDiff = Math.abs(existing.getLongitude().doubleValue() - request.getLocation().getLongitude().doubleValue());
+                        
+                        // If within ~100 meters (approximately 0.001 degrees)
+                        if (latDiff < 0.001 && lonDiff < 0.001) {
+                            logger.warn("Potential duplicate report detected for user: {} at similar time and location", userId);
+                            return new ReportResponse.GenericResponse(false, null, 
+                                "A similar report already exists for this time and location. Please check your recent reports.");
+                        }
+                    }
+                }
+            }
+            
             logger.debug("Creating new incident report...");
             
-            // Create new incident report
-            IncidentReport report = new IncidentReport(
-                userId,
-                request.getIncidentType(),
-                request.getDescription(),
-                request.getLocation().getLatitude(),
-                request.getLocation().getLongitude(),
-                request.getIncidentTime(),
-                request.getVisibility(),
-                request.getAnonymous()
-            );
+            // Create new incident report with or without location
+            IncidentReport report;
+            if (request.getLocation() != null) {
+                report = new IncidentReport(
+                    userId,
+                    request.getIncidentType(),
+                    request.getDescription(),
+                    request.getLocation().getLatitude(),
+                    request.getLocation().getLongitude(),
+                    request.getIncidentTime(),
+                    request.getVisibility(),
+                    request.getAnonymous()
+                );
+            } else {
+                report = new IncidentReport(
+                    userId,
+                    request.getIncidentType(),
+                    request.getDescription(),
+                    request.getIncidentTime(),
+                    request.getVisibility(),
+                    request.getAnonymous()
+                );
+            }
             
             logger.debug("Report created, setting optional fields...");
             
@@ -270,21 +312,28 @@ public class ReportService {
             logger.debug("Retrieving public reports for user role: {}", userRole);
             List<IncidentReport> reports;
             
-            switch (userRole) {
-                case "ADMIN":
+            reports = switch (userRole) {
+                case "ADMIN" -> {
                     // Admins can see all reports
-                    reports = reportRepository.findAll();
-                    logger.debug("Admin access: Retrieved {} total reports", reports.size());
-                    break;
-                case "RESPONDER":
+                    List<IncidentReport> adminReports = reportRepository.findAll();
+                    logger.debug("Admin access: Retrieved {} total reports", adminReports.size());
+                    yield adminReports;
+                }
+                case "RESPONDER" -> {
                     // Responders can see public and officials_only reports
-                    reports = reportRepository.findPublicReports();
-                    logger.debug("Responder access: Retrieved {} public/officials_only reports", reports.size());
-                    break;
-                default:
+                    List<IncidentReport> responderReports = reportRepository.findPublicReports();
+                    logger.debug("Responder access: Retrieved {} public/officials_only reports", responderReports.size());
+                    yield responderReports;
+                }
+                default -> {
                     // Regular users should not access this endpoint
                     logger.warn("Access denied for user role: {}", userRole);
-                    return new ReportResponse.UserReportsResponse(false, null, "Access denied");
+                    yield null;
+                }
+            };
+            
+            if (reports == null) {
+                return new ReportResponse.UserReportsResponse(false, null, "Access denied");
             }
             
             List<ReportResponse.ReportSummary> reportSummaries = reports.stream()
@@ -358,5 +407,317 @@ public class ReportService {
         details.setEvidence(new ArrayList<>());
         
         return details;
+    }
+    
+    /**
+     * Search reports by query
+     */
+    public ReportResponse.UserReportsResponse searchReports(String query, UUID userId, String userRole, int page, int size) {
+        try {
+            logger.info("Searching reports for user: {}, query: '{}', role: {}", userId, query, userRole);
+            
+            List<IncidentReport> reports;
+            
+            // Handle special search queries
+            if ("public-reports".equalsIgnoreCase(query)) {
+                // For public reports, check if user has appropriate role
+                if ("ADMIN".equals(userRole) || "RESPONDER".equals(userRole)) {
+                    reports = reportRepository.findByVisibilityOrderByCreatedAtDesc("public");
+                } else {
+                    reports = new ArrayList<>();
+                }
+            } else if ("private-reports".equalsIgnoreCase(query)) {
+                // Only show user's own private reports
+                reports = reportRepository.findByUserIdAndVisibilityOrderByCreatedAtDesc(userId, "private");
+            } else if (isValidIncidentType(query)) {
+                // Search by incident type (only user's own reports)
+                reports = reportRepository.findByUserIdAndIncidentTypeOrderByCreatedAtDesc(userId, query.toLowerCase());
+            } else {
+                // General text search in descriptions and addresses
+                reports = reportRepository.findByUserIdAndSearchQuery(userId, query);
+            }
+            
+            // Apply pagination manually (simple approach)
+            int startIndex = page * size;
+            int endIndex = Math.min(startIndex + size, reports.size());
+            if (startIndex >= reports.size()) {
+                reports = new ArrayList<>();
+            } else {
+                reports = reports.subList(startIndex, endIndex);
+            }
+            
+            List<ReportResponse.ReportSummary> summaries = reports.stream()
+                .map(this::convertToReportSummary)
+                .collect(Collectors.toList());
+            
+            logger.info("Found {} reports for search query: '{}'", summaries.size(), query);
+            return new ReportResponse.UserReportsResponse(true, summaries, null);
+            
+        } catch (Exception e) {
+            logger.error("Error searching reports for user: {}, query: '{}'", userId, query, e);
+            return new ReportResponse.UserReportsResponse(false, null, "Failed to search reports");
+        }
+    }
+    
+    /**
+     * Filter reports by criteria
+     */
+    public ReportResponse.UserReportsResponse filterReports(String incidentType, String visibility, String status, 
+                                                           UUID userId, String userRole, int page, int size) {
+        try {
+            logger.info("Filtering reports for user: {}, type: {}, visibility: {}, status: {}", 
+                       userId, incidentType, visibility, status);
+            
+            List<IncidentReport> reports;
+            
+            // Start with user's reports
+            reports = reportRepository.findByUserIdOrderByCreatedAtDesc(userId);
+            
+            // Apply filters
+            if (incidentType != null && !incidentType.isEmpty()) {
+                reports = reports.stream()
+                    .filter(r -> incidentType.equals(r.getIncidentType()))
+                    .collect(Collectors.toList());
+            }
+            
+            if (visibility != null && !visibility.isEmpty()) {
+                reports = reports.stream()
+                    .filter(r -> visibility.equals(r.getVisibility()))
+                    .collect(Collectors.toList());
+            }
+            
+            if (status != null && !status.isEmpty()) {
+                reports = reports.stream()
+                    .filter(r -> status.equals(r.getStatus()))
+                    .collect(Collectors.toList());
+            }
+            
+            // Apply pagination
+            int startIndex = page * size;
+            int endIndex = Math.min(startIndex + size, reports.size());
+            if (startIndex >= reports.size()) {
+                reports = new ArrayList<>();
+            } else {
+                reports = reports.subList(startIndex, endIndex);
+            }
+            
+            List<ReportResponse.ReportSummary> summaries = reports.stream()
+                .map(this::convertToReportSummary)
+                .collect(Collectors.toList());
+            
+            logger.info("Found {} reports after filtering", summaries.size());
+            return new ReportResponse.UserReportsResponse(true, summaries, null);
+            
+        } catch (Exception e) {
+            logger.error("Error filtering reports for user: {}", userId, e);
+            return new ReportResponse.UserReportsResponse(false, null, "Failed to filter reports");
+        }
+    }
+    
+    /**
+     * Combined search and filter reports with advanced query support
+     */
+    public ReportResponse.UserReportsResponse searchAndFilterReports(
+            String query, String incidentType, String visibility, String status, 
+            UUID userId, String userRole, int page, int size) {
+        try {
+            logger.info("Searching and filtering reports for user: {}, query: '{}', type: {}, visibility: {}, status: {}, role: {}", 
+                        userId, query, incidentType, visibility, status, userRole);
+            
+            List<IncidentReport> reports;
+            
+            // Handle special search queries first
+            if (query != null && "public-reports".equalsIgnoreCase(query)) {
+                if ("ADMIN".equals(userRole) || "RESPONDER".equals(userRole)) {
+                    reports = reportRepository.findByVisibilityOrderByCreatedAtDesc("public");
+                } else {
+                    reports = new ArrayList<>();
+                }
+            } else if (query != null && "private-reports".equalsIgnoreCase(query)) {
+                reports = reportRepository.findByUserIdAndVisibilityOrderByCreatedAtDesc(userId, "private");
+            } else {
+                // Start with user's reports or all reports based on role
+                if ("ADMIN".equals(userRole) || "RESPONDER".equals(userRole)) {
+                    reports = reportRepository.findAllByOrderByCreatedAtDesc();
+                } else {
+                    reports = reportRepository.findByUserIdOrderByCreatedAtDesc(userId);
+                }
+                
+                // Apply query filter
+                if (query != null && !query.trim().isEmpty()) {
+                    final String searchQuery = query.toLowerCase();
+                    reports = reports.stream()
+                        .filter(report -> 
+                            report.getDescription().toLowerCase().contains(searchQuery) ||
+                            report.getIncidentType().toLowerCase().contains(searchQuery) ||
+                            (report.getAddress() != null && report.getAddress().toLowerCase().contains(searchQuery)))
+                        .collect(Collectors.toList());
+                }
+            }
+            
+            // Apply additional filters
+            if (incidentType != null) {
+                final String filterType = incidentType.toLowerCase();
+                reports = reports.stream()
+                    .filter(report -> report.getIncidentType().equalsIgnoreCase(filterType))
+                    .collect(Collectors.toList());
+            }
+            
+            if (visibility != null) {
+                reports = reports.stream()
+                    .filter(report -> report.getVisibility().equalsIgnoreCase(visibility))
+                    .collect(Collectors.toList());
+            }
+            
+            if (status != null) {
+                reports = reports.stream()
+                    .filter(report -> report.getStatus().equalsIgnoreCase(status))
+                    .collect(Collectors.toList());
+            }
+            
+            // Apply pagination
+            int startIndex = page * size;
+            int endIndex = Math.min(startIndex + size, reports.size());
+            if (startIndex >= reports.size()) {
+                reports = new ArrayList<>();
+            } else {
+                reports = reports.subList(startIndex, endIndex);
+            }
+            
+            List<ReportResponse.ReportSummary> summaries = reports.stream()
+                .map(this::convertToReportSummary)
+                .collect(Collectors.toList());
+            
+            logger.info("Found {} reports after search and filter", summaries.size());
+            return new ReportResponse.UserReportsResponse(true, summaries, null);
+            
+        } catch (Exception e) {
+            logger.error("Error searching and filtering reports: {}", e.getMessage(), e);
+            return new ReportResponse.UserReportsResponse(false, null, "Failed to search and filter reports: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Delete a report
+     */
+    public ReportResponse.GenericResponse deleteReport(UUID reportId, UUID userId, String userRole) {
+        try {
+            logger.info("Attempting to delete report: {} by user: {} with role: {}", reportId, userId, userRole);
+            
+            Optional<IncidentReport> reportOpt = reportRepository.findById(reportId);
+            if (reportOpt.isEmpty()) {
+                return new ReportResponse.GenericResponse(false, null, "Report not found");
+            }
+            
+            IncidentReport report = reportOpt.get();
+            
+            // Check permissions: users can only delete their own reports, admins can delete any
+            if (!report.getUserId().equals(userId) && !"ADMIN".equals(userRole)) {
+                return new ReportResponse.GenericResponse(false, null, "You don't have permission to delete this report");
+            }
+            
+            // Delete the report
+            reportRepository.delete(report);
+            
+            logger.info("Successfully deleted report: {}", reportId);
+            return new ReportResponse.GenericResponse(true, "Report deleted successfully", null);
+            
+        } catch (Exception e) {
+            logger.error("Error deleting report {}: {}", reportId, e.getMessage(), e);
+            return new ReportResponse.GenericResponse(false, null, "Failed to delete report: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Get report categories for filtering
+     */
+    public ReportResponse.CategoriesResponse getReportCategories() {
+        try {
+            ReportResponse.Categories categories = new ReportResponse.Categories();
+            
+            categories.setIncidentTypes(List.of("harassment", "theft", "assault", "other"));
+            categories.setVisibilityOptions(List.of("public", "officials_only", "private"));
+            categories.setStatusOptions(List.of("submitted", "under_review", "resolved", "closed"));
+            
+            return new ReportResponse.CategoriesResponse(true, categories, null);
+            
+        } catch (Exception e) {
+            logger.error("Error getting report categories", e);
+            return new ReportResponse.CategoriesResponse(false, null, "Failed to get categories");
+        }
+    }
+    
+    /**
+     * Get report statistics for user
+     */
+    public ReportResponse.StatsResponse getReportStats(UUID userId, String userRole) {
+        try {
+            logger.info("Getting report stats for user: {}, role: {}", userId, userRole);
+            
+            List<IncidentReport> userReports = reportRepository.findByUserIdOrderByCreatedAtDesc(userId);
+            
+            ReportResponse.ReportStats stats = new ReportResponse.ReportStats();
+            stats.setTotalReports(userReports.size());
+            
+            // Count by type
+            java.util.Map<String, Integer> reportsByType = new java.util.HashMap<>();
+            reportsByType.put("harassment", 0);
+            reportsByType.put("theft", 0);
+            reportsByType.put("assault", 0);
+            reportsByType.put("other", 0);
+            
+            for (IncidentReport report : userReports) {
+                String type = report.getIncidentType();
+                reportsByType.put(type, reportsByType.getOrDefault(type, 0) + 1);
+            }
+            stats.setReportsByType(reportsByType);
+            
+            // Count by status
+            java.util.Map<String, Integer> reportsByStatus = new java.util.HashMap<>();
+            reportsByStatus.put("submitted", 0);
+            reportsByStatus.put("under_review", 0);
+            reportsByStatus.put("resolved", 0);
+            reportsByStatus.put("closed", 0);
+            
+            for (IncidentReport report : userReports) {
+                String status = report.getStatus();
+                reportsByStatus.put(status, reportsByStatus.getOrDefault(status, 0) + 1);
+            }
+            stats.setReportsByStatus(reportsByStatus);
+            
+            // Count by visibility
+            java.util.Map<String, Integer> reportsByVisibility = new java.util.HashMap<>();
+            reportsByVisibility.put("public", 0);
+            reportsByVisibility.put("officials_only", 0);
+            reportsByVisibility.put("private", 0);
+            
+            for (IncidentReport report : userReports) {
+                String visibility = report.getVisibility();
+                reportsByVisibility.put(visibility, reportsByVisibility.getOrDefault(visibility, 0) + 1);
+            }
+            stats.setReportsByVisibility(reportsByVisibility);
+            
+            // Recent reports (last 30 days)
+            java.time.LocalDateTime thirtyDaysAgo = java.time.LocalDateTime.now().minusDays(30);
+            int recentReports = (int) userReports.stream()
+                .filter(r -> r.getCreatedAt().isAfter(thirtyDaysAgo))
+                .count();
+            stats.setRecentReports(recentReports);
+            
+            return new ReportResponse.StatsResponse(true, stats, null);
+            
+        } catch (Exception e) {
+            logger.error("Error getting report stats for user: {}", userId, e);
+            return new ReportResponse.StatsResponse(false, null, "Failed to get report statistics");
+        }
+    }
+
+    // Helper method to validate incident type
+    private boolean isValidIncidentType(String incidentType) {
+        return incidentType != null && 
+               (incidentType.equalsIgnoreCase("harassment") || 
+                incidentType.equalsIgnoreCase("theft") || 
+                incidentType.equalsIgnoreCase("assault") || 
+                incidentType.equalsIgnoreCase("other"));
     }
 }

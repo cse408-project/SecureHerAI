@@ -556,6 +556,141 @@ class ApiService {
       };
     }
   }
+
+  async searchReports(query: string, page = 0, size = 50): Promise<UserReportsResponse> {
+    try {
+      console.log("API: Searching reports with query:", query);
+      const params = new URLSearchParams({
+        query,
+        page: page.toString(),
+        size: size.toString(),
+        sortBy: 'createdAt',
+        sortDir: 'desc'
+      });
+      
+      const response = await fetch(`${API_BASE_URL}/report/search?${params}`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+      console.log("API: Search reports response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Search reports error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while searching reports",
+      };
+    }
+  }
+
+  async filterReports(filters: {
+    incidentType?: string;
+    visibility?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<UserReportsResponse> {
+    try {
+      console.log("API: Filtering reports with filters:", filters);
+      const params = new URLSearchParams();
+      
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) {
+          params.append(key, value);
+        }
+      });
+      
+      const response = await fetch(`${API_BASE_URL}/report/filter?${params}`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+      console.log("API: Filter reports response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Filter reports error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while filtering reports",
+      };
+    }
+  }
+
+  async getReportCategories(): Promise<{
+    success: boolean;
+    categories?: string[];
+    error?: string;
+  }> {
+    try {
+      console.log("API: Fetching report categories");
+      const response = await fetch(`${API_BASE_URL}/report/categories`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+      console.log("API: Report categories response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Get report categories error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while fetching categories",
+      };
+    }
+  }
+
+  async getReportStats(): Promise<{
+    success: boolean;
+    stats?: any;
+    error?: string;
+  }> {
+    try {
+      console.log("API: Fetching report statistics");
+      const response = await fetch(`${API_BASE_URL}/report/stats`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+      console.log("API: Report stats response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Get report stats error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while fetching statistics",
+      };
+    }
+  }
+
+  async deleteReport(reportId: string): Promise<GenericReportResponse> {
+    try {
+      console.log("API: Deleting report:", reportId);
+      const response = await fetch(`${API_BASE_URL}/report/delete?reportId=${reportId}`, {
+        method: "DELETE",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+      console.log("API: Delete report response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Delete report error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while deleting report",
+      };
+    }
+  }
 }
 
 export default new ApiService();

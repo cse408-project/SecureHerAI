@@ -23,9 +23,8 @@ public class ReportRequest {
         @Size(min = 10, max = 2000, message = "Description must be between 10 and 2000 characters")
         private String description;
         
-        @NotNull(message = "Location is required")
         @Valid
-        private Location location;
+        private Location location; // Optional - location can be null
         
         private String address;
         
