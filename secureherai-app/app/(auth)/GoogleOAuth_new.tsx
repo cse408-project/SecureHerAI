@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -26,32 +26,73 @@ export const GoogleOAuth: React.FC<GoogleOAuthProps> = ({
   const API_BASE_URL =
     process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
+  // Handle deep link authentication response
+  useEffect(() => {
+    const handleDeepLink = (url: string) => {
+      if (url.includes("secureheraiapp://") || url.includes("secureherai://")) {
+        const urlParams = new URLSearchParams(url.split("?")[1]);
+        const token = urlParams.get("token");
+
+        if (token) {
+          setIsLoading(false);
+          onSuccess(token);
+        }
+      }
+    };
+
+    const subscription = Linking.addEventListener("url", (event) => {
+      handleDeepLink(event.url);
+    });
+
+    return () => subscription?.remove();
+  }, [onSuccess]);
+
   const handleGoogleAuth = async () => {
     try {
       setIsLoading(true);
 
-      // Simply redirect to the backend OAuth endpoint
-      // The backend will handle the OAuth flow and redirect back to our frontend
+      // Open the backend OAuth endpoint in a web browser
       const authUrl = `${API_BASE_URL.replace(
         "/api",
         ""
       )}/oauth2/authorize/google`;
 
-      console.log("Redirecting to auth URL:", authUrl);
+      console.log("Opening auth URL:", authUrl);
 
-      // Use Linking to open the URL
-      const supported = await Linking.canOpenURL(authUrl);
+      const result = await WebBrowser.openAuthSessionAsync(
+        authUrl,
+        "secureheraiapp://oauth-callback"
+      );
 
-      if (supported) {
-        await Linking.openURL(authUrl);
+      if (result.type === "success" && result.url) {
+        // Handle the redirect URL
+        const urlParams = new URLSearchParams(result.url.split("?")[1]);
+        const token = urlParams.get("token");
+
+        if (token) {
+          onSuccess(token);
+        } else {
+          Alert.alert(
+            "Authentication Error",
+            "No token received from authentication."
+          );
+        }
+      } else if (result.type === "cancel") {
+        Alert.alert(
+          "Authentication Cancelled",
+          "You cancelled the authentication process."
+        );
       } else {
-        Alert.alert("Error", "Cannot open authentication URL");
+        Alert.alert(
+          "Authentication Error",
+          "An error occurred during authentication."
+        );
       }
     } catch (error) {
       console.error("Google Auth Error:", error);
       Alert.alert(
         "Authentication Error",
-        "Failed to start Google authentication."
+        "Failed to authenticate with Google."
       );
     } finally {
       setIsLoading(false);

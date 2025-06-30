@@ -28,40 +28,55 @@ public class OAuthService {
      * @return JWT token for the user
      */
     public String processOAuth2Login(OAuth2User oAuth2User, String provider) {
-        Map<String, Object> attributes = oAuth2User.getAttributes();
-        String email = (String) attributes.get("email");
-        String name = (String) attributes.get("name");
-        
-        Optional<User> existingUser = userRepository.findByEmail(email);
-        User user;
-        
-        if (existingUser.isEmpty()) {
-            // Create new user
-            user = new User();
-            user.setEmail(email);
-            user.setFullName(name);
-            user.setPasswordHash(""); // OAuth users don't have passwords
-            user.setOauthProvider(provider);
-            user.setIsProfileComplete(false); // Mark as incomplete profile
-            user.setIsVerified(true); // OAuth users are already verified through the provider
-            userRepository.save(user);
+        try {
+            Map<String, Object> attributes = oAuth2User.getAttributes();
+            String email = (String) attributes.get("email");
+            String name = (String) attributes.get("name");
             
-            // Send welcome email for new users
-            emailService.sendWelcomeEmailForOAuth(email, name, provider);
-        } else {
-            user = existingUser.get();
-            // Update user if needed
-            if (user.getOauthProvider() == null) {
-                user.setOauthProvider(provider);
-                userRepository.save(user);
+            if (email == null || email.isEmpty()) {
+                throw new RuntimeException("Email not provided by OAuth provider");
             }
+            
+            Optional<User> existingUser = userRepository.findByEmail(email);
+            User user;
+            
+            if (existingUser.isEmpty()) {
+                // Create new user
+                user = new User();
+                user.setEmail(email);
+                user.setFullName(name != null ? name : "");
+                user.setPasswordHash(""); // OAuth users don't have passwords
+                user.setOauthProvider(provider);
+                user.setIsProfileComplete(false); // Mark as incomplete profile
+                user.setIsVerified(true); // OAuth users are already verified through the provider
+                userRepository.save(user);
+                
+                // Try to send welcome email, but don't fail if it doesn't work
+                try {
+                    emailService.sendWelcomeEmailForOAuth(email, name, provider);
+                } catch (Exception e) {
+                    System.err.println("Failed to send welcome email: " + e.getMessage());
+                    // Continue without failing the whole process
+                }
+            } else {
+                user = existingUser.get();
+                // Update user if needed
+                if (user.getOauthProvider() == null) {
+                    user.setOauthProvider(provider);
+                    userRepository.save(user);
+                }
+            }
+            
+            return jwtService.generateTokenWithProfileStatus(
+                user.getId(), 
+                user.getEmail(), 
+                user.getRole().name(),
+                user.getIsProfileComplete() != null ? user.getIsProfileComplete() : true
+            );
+        } catch (Exception e) {
+            System.err.println("Error processing OAuth2 login: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to process OAuth2 login: " + e.getMessage());
         }
-        
-        return jwtService.generateTokenWithProfileStatus(
-            user.getId(), 
-            user.getEmail(), 
-            user.getRole().name(),
-            user.getIsProfileComplete() != null ? user.getIsProfileComplete() : true
-        );
     }
 }

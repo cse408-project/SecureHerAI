@@ -19,7 +19,7 @@ export default function Header({
       <View className="flex-row items-center flex-1">
         {showLogo && (
           <Image
-            source={require("../../assets/images/secureherai_logo.png")}
+            source={require("../assets/images/secureherai_logo.png")}
             style={{
               width: 32,
               height: 32,
