@@ -465,3 +465,46 @@ Content-Type: application/json
   "responderType": "POLICE",
   "badgeNumber": "POL-2023"
 }
+
+### 15. Delete Account
+DELETE {{baseUrl}}/auth/delete-account
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "password": "password123",
+  "confirmationText": "DELETE MY ACCOUNT"
+}
+
+### Successful Delete Account Response
+HTTP/1.1 200
+Content-Type: application/json
+
+{
+  "success": true,
+  "token": null,
+  "userId": null,
+  "fullName": null,
+  "role": null,
+  "message": "Account deleted successfully"
+}
+
+### Delete Account - Wrong Password (should fail)
+DELETE {{baseUrl}}/auth/delete-account
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "password": "wrongpassword",
+  "confirmationText": "DELETE MY ACCOUNT"
+}
+
+### Delete Account - Wrong Confirmation Text (should fail)
+DELETE {{baseUrl}}/auth/delete-account
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "password": "password123",
+  "confirmationText": "delete my account"
+}

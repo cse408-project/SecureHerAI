@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Ensure API base URL works in both web and native environments
 const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL || "http://192.168.0.103:8080/api";
+  process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
 // Debug log for API base URL
 console.log("API_BASE_URL:", API_BASE_URL);
@@ -409,6 +409,33 @@ class ApiService {
       return { success: true, data: data };
     } catch (error) {
       console.error("API: Error updating notification preferences:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  async deleteAccount(password: string, confirmationText: string) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/delete-account`, {
+        method: "DELETE",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({ password, confirmationText }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to delete account",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error deleting account:", error);
       return {
         success: false,
         error: "Network error. Please check your connection and try again.",

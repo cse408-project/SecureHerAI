@@ -43,6 +43,12 @@ public class AuthService {    @Autowired
         }
         
         User user = userOpt.get();
+        
+        // Check if user registered with Google OAuth
+        if ("GOOGLE".equals(user.getOauthProvider())) {
+            return new AuthResponse.Error("This email is registered with Google. Please sign in with Google instead.");
+        }
+        
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             return new AuthResponse.Error("Invalid email or password");
         }
@@ -70,8 +76,14 @@ public class AuthService {    @Autowired
     @Transactional(rollbackFor = Exception.class)
     public Object register(AuthRequest.Register request) {
         // Check if email already exists
-        if (userRepository.existsByEmail(request.getEmail())) {
-            return new AuthResponse.Error("Email already registered");
+        Optional<User> existingUser = userRepository.findByEmail(request.getEmail());
+        if (existingUser.isPresent()) {
+            User user = existingUser.get();
+            if ("GOOGLE".equals(user.getOauthProvider())) {
+                return new AuthResponse.Error("This email is registered with Google. Please sign in with Google instead.");
+            } else {
+                return new AuthResponse.Error("Email already registered");
+            }
         }
         
         // Check if phone already exists
@@ -170,6 +182,113 @@ public class AuthService {    @Autowired
             return true;
         } catch (IllegalArgumentException e) {
             return false;
+        }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Object completeOAuthRegistration(AuthRequest.CompleteOAuthRegistration request) {
+        try {
+            // Extract and validate the temporary token
+            String token = request.getToken();
+            if (!jwtService.isTokenValid(token)) {
+                return new AuthResponse.Error("Invalid or expired registration token");
+            }
+            
+            // Extract claims from token
+            var claims = jwtService.extractAllClaims(token);
+            String tokenType = claims.get("type", String.class);
+            String provider = claims.get("provider", String.class);
+            String email = claims.get("oauth_email", String.class);
+            String name = claims.get("oauth_name", String.class);
+            String picture = claims.get("oauth_picture", String.class);
+            
+            if (!"oauth_registration".equals(tokenType)) {
+                return new AuthResponse.Error("Invalid registration token type");
+            }
+            
+            // Check if user already exists (shouldn't happen, but safety check)
+            if (userRepository.existsByEmail(email)) {
+                return new AuthResponse.Error("Email already registered");
+            }
+            
+            // Check if phone already exists (if provided)
+            if (request.getPhoneNumber() != null && !request.getPhoneNumber().isEmpty() && 
+                userRepository.existsByPhone(request.getPhoneNumber())) {
+                return new AuthResponse.Error("Phone number already registered");
+            }
+            
+            // Validate role
+            User.Role userRole;
+            try {
+                userRole = User.Role.valueOf(request.getRole().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return new AuthResponse.Error("Invalid role. Must be USER or RESPONDER");
+            }
+            
+            // Create new user
+            User user = new User();
+            user.setEmail(email);
+            user.setFullName(name != null ? name : "");
+            user.setPasswordHash(""); // OAuth users don't need passwords
+            user.setPhone(request.getPhoneNumber());
+            user.setOauthProvider(provider);
+            user.setProfilePicture(picture);
+            user.setIsVerified(true); // OAuth users are pre-verified
+            user.setRole(userRole);
+            
+            // Parse date of birth
+            if (request.getDateOfBirth() != null && !request.getDateOfBirth().isEmpty()) {
+                try {
+                    user.setDateOfBirth(LocalDate.parse(request.getDateOfBirth()));
+                } catch (Exception e) {
+                    return new AuthResponse.Error("Invalid date format. Use YYYY-MM-DD");
+                }
+            }
+            
+            userRepository.save(user);
+            
+            // Create responder profile if role is RESPONDER
+            if (userRole == User.Role.RESPONDER) {
+                // Validate responder-specific fields
+                if (request.getResponderType() == null || request.getResponderType().isEmpty()) {
+                    return new AuthResponse.Error("Responder type is required for responder role");
+                }
+                if (request.getBadgeNumber() == null || request.getBadgeNumber().isEmpty()) {
+                    return new AuthResponse.Error("Badge number is required for responder role");
+                }
+                
+                // Validate responder type
+                Responder.ResponderType responderType;
+                try {
+                    responderType = Responder.ResponderType.valueOf(request.getResponderType().toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    return new AuthResponse.Error("Invalid responder type");
+                }
+                
+                // Create responder profile
+                Responder responder = new Responder();
+                responder.setUser(user);
+                responder.setResponderType(responderType);
+                responder.setBadgeNumber(request.getBadgeNumber());
+                responder.setIsActive(true);
+                
+                responderRepository.save(responder);
+            }
+            
+            // Send welcome email
+            try {
+                emailService.sendWelcomeEmailForOAuth(email, name, provider);
+            } catch (Exception e) {
+                // Log error but don't fail registration
+                System.err.println("Failed to send welcome email: " + e.getMessage());
+            }
+            
+            return new AuthResponse.Success("Registration completed successfully! You can now sign in.");
+            
+        } catch (Exception e) {
+            System.err.println("Error completing OAuth registration: " + e.getMessage());
+            e.printStackTrace();
+            return new AuthResponse.Error("Failed to complete registration. Please try again.");
         }
     }
 
@@ -277,5 +396,55 @@ public class AuthService {    @Autowired
         
         String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole().name());
         return new AuthResponse.Success(token, user.getId().toString(), user.getFullName(), user.getRole().name());
+    }
+    
+    @Transactional(rollbackFor = Exception.class)
+    public Object deleteAccount(AuthRequest.DeleteAccount request, String currentUserEmail) {
+        try {
+            // Find the user
+            Optional<User> userOpt = userRepository.findByEmail(currentUserEmail);
+            if (userOpt.isEmpty()) {
+                return new AuthResponse.Error("User not found");
+            }
+            
+            User user = userOpt.get();
+            
+            // Check confirmation text
+            if (!"DELETE MY ACCOUNT".equals(request.getConfirmationText())) {
+                return new AuthResponse.Error("Confirmation text must be exactly 'DELETE MY ACCOUNT'");
+            }
+            
+            // For OAuth users (Google), skip password verification
+            if (user.getOauthProvider() == null || user.getOauthProvider().isEmpty()) {
+                // Regular user - verify password
+                if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+                    return new AuthResponse.Error("Invalid password");
+                }
+            }
+            // OAuth users don't need password verification
+            
+            // Delete associated responder record if exists
+            if (user.getRole() == User.Role.RESPONDER) {
+                responderRepository.deleteByUserId(user.getId());
+            }
+            
+            // Delete the user account
+            userRepository.delete(user);
+            
+            // Send account deletion confirmation email
+            try {
+                emailService.sendAccountDeletionConfirmation(user.getEmail(), user.getFullName());
+            } catch (Exception e) {
+                // Log error but don't fail the deletion
+                System.err.println("Failed to send account deletion confirmation email: " + e.getMessage());
+            }
+            
+            return new AuthResponse.Success("Account deleted successfully");
+            
+        } catch (Exception e) {
+            System.err.println("Error deleting account: " + e.getMessage());
+            e.printStackTrace();
+            return new AuthResponse.Error("Failed to delete account. Please try again.");
+        }
     }
 }

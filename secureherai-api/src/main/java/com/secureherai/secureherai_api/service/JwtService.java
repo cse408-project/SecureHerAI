@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.security.Key;
 import java.util.Date;
 import java.util.UUID;
+import java.util.Map;
 
 @Service
 public class JwtService {
@@ -45,6 +46,26 @@ public class JwtService {
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    public String generateTokenWithClaims(UUID userId, String email, String role, boolean isProfileComplete, Map<String, Object> additionalClaims) {
+        var builder = Jwts.builder()
+                .setSubject(userId.toString())
+                .claim("email", email)
+                .claim("role", role)
+                .claim("profileComplete", isProfileComplete)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration));
+        
+        // Add additional claims
+        if (additionalClaims != null) {
+            for (Map.Entry<String, Object> entry : additionalClaims.entrySet()) {
+                builder.claim(entry.getKey(), entry.getValue());
+            }
+        }
+        
+        return builder.signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 

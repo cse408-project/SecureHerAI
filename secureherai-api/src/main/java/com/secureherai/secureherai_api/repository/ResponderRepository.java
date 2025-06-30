@@ -29,4 +29,6 @@ public interface ResponderRepository extends JpaRepository<Responder, UUID> {
         @Param("status") Responder.Status status, 
         @Param("type") Responder.ResponderType type
     );
+    
+    void deleteByUserId(UUID userId);
 }

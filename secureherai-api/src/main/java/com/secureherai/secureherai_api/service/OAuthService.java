@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.HashMap;
 
 @Service
 public class OAuthService {
@@ -77,6 +79,48 @@ public class OAuthService {
             System.err.println("Error processing OAuth2 login: " + e.getMessage());
             e.printStackTrace();
             throw new RuntimeException("Failed to process OAuth2 login: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Generate a temporary token for OAuth registration containing user info
+     * @param oAuth2User OAuth2User object from Spring Security
+     * @param provider OAuth provider (e.g., "GOOGLE")
+     * @return Temporary JWT token containing OAuth user info
+     */
+    public String generateTempTokenForRegistration(OAuth2User oAuth2User, String provider) {
+        try {
+            Map<String, Object> attributes = oAuth2User.getAttributes();
+            String email = (String) attributes.get("email");
+            String name = (String) attributes.get("name");
+            String picture = (String) attributes.get("picture");
+            
+            if (email == null || email.isEmpty()) {
+                throw new RuntimeException("Email not provided by OAuth provider");
+            }
+            
+            // Create a temp user ID for the token
+            UUID tempUserId = UUID.randomUUID();
+            
+            // Generate token with registration info
+            Map<String, Object> claims = new HashMap<>();
+            claims.put("type", "oauth_registration");
+            claims.put("provider", provider);
+            claims.put("oauth_email", email);
+            claims.put("oauth_name", name != null ? name : "");
+            claims.put("oauth_picture", picture != null ? picture : "");
+            
+            return jwtService.generateTokenWithClaims(
+                tempUserId,
+                email,
+                "USER",
+                false, // profile not complete
+                claims
+            );
+        } catch (Exception e) {
+            System.err.println("Error generating temp token for registration: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to generate registration token: " + e.getMessage());
         }
     }
 }

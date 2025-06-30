@@ -252,4 +252,52 @@ public class EmailService {
             System.err.println("Failed to send welcome email: " + e.getMessage());
         }
     }
+
+    public void sendAccountDeletionConfirmation(String toEmail, String name) {
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            
+            helper.setFrom(fromEmail);
+            helper.setTo(toEmail);
+            helper.setSubject("SecureHerAI - Account Deletion Confirmation");
+            
+            StringBuilder emailBody = new StringBuilder();
+            emailBody.append(createEmailHeader("Account Successfully Deleted"));
+            emailBody.append("<p>Dear " + (name != null ? name : "User") + ",</p>");
+            emailBody.append("<p>Your <b>SecureHerAI</b> account has been successfully deleted as requested.</p>");
+            
+            // Add deletion confirmation details
+            emailBody.append("<div style='background-color: #f8f9fa; border-left: 4px solid #dc3545; padding: 15px; margin: 20px 0; border-radius: 4px;'>");
+            emailBody.append("<h3 style='color: #dc3545; margin-top: 0;'>⚠️ Account Deletion Summary</h3>");
+            emailBody.append("<ul style='margin: 10px 0;'>");
+            emailBody.append("<li>Your account and all associated data have been permanently removed</li>");
+            emailBody.append("<li>All emergency contacts and safety settings have been cleared</li>");
+            emailBody.append("<li>Location history and personal data have been deleted</li>");
+            emailBody.append("<li>This action cannot be undone</li>");
+            emailBody.append("</ul>");
+            emailBody.append("</div>");
+            
+            emailBody.append("<p><b>What happens next?</b></p>");
+            emailBody.append("<ul>");
+            emailBody.append("<li>🚫 You will no longer be able to access SecureHerAI services</li>");
+            emailBody.append("<li>📧 You will not receive any further communications from us</li>");
+            emailBody.append("<li>🔄 If you wish to use SecureHerAI again, you'll need to create a new account</li>");
+            emailBody.append("</ul>");
+            
+            emailBody.append("<p>We're sorry to see you go. If you have any feedback about your experience or would like to share why you decided to delete your account, we'd appreciate hearing from you.</p>");
+            
+            emailBody.append("<p>Thank you for trusting SecureHerAI with your safety and security.</p>");
+            
+            emailBody.append("<p>Best regards,<br><b>SecureHerAI Team</b></p>");
+            emailBody.append(createEmailFooter());
+            
+            helper.setText(emailBody.toString(), true);
+            mailSender.send(mimeMessage);
+            
+        } catch (MessagingException e) {
+            // Log error but don't fail the deletion process
+            System.err.println("Failed to send account deletion confirmation email: " + e.getMessage());
+        }
+    }
 }

@@ -9,41 +9,59 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { useAlert } from "../context/AlertContext";
+import { useAuth } from "../context/AuthContext";
 
 export default function OAuthSuccessScreen() {
-  const { token, email, name, picture, error } = useLocalSearchParams();
+  const { token, error } = useLocalSearchParams();
   const { showAlert } = useAlert();
-  const [countdown, setCountdown] = useState(10);
+  const { setToken } = useAuth();
+  const [countdown, setCountdown] = useState(5);
 
   useEffect(() => {
-    if (error) {
-      showAlert("Authentication Error", error as string, "error");
-      return;
-    }
+    const handleOAuthSuccess = async () => {
+      if (error) {
+        showAlert("Authentication Error", error as string, "error");
+        return;
+      }
 
-    if (!token) {
-      showAlert("Authentication Error", "No token received", "error");
-      return;
-    }
+      if (!token) {
+        showAlert("Authentication Error", "No token received", "error");
+        return;
+      }
 
-    // Success case - show success message
-    showAlert("Success", "Successfully authenticated with Google!", "success");
+      try {
+        // Use the AuthContext's setToken method which handles JWT parsing and user profile extraction
+        await setToken(token as string);
 
-    // Start countdown
-    const countdownInterval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(countdownInterval);
-          // Navigate to home after countdown
-          router.replace("/");
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+        // Success case - show success message
+        showAlert(
+          "Success",
+          "Successfully authenticated with Google!",
+          "success"
+        );
 
-    return () => clearInterval(countdownInterval);
-  }, [token, email, name, picture, error, showAlert]);
+        // Start countdown
+        const countdownInterval = setInterval(() => {
+          setCountdown((prev) => {
+            if (prev <= 1) {
+              clearInterval(countdownInterval);
+              // Navigate to home after countdown
+              router.replace("/(tabs)");
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+
+        return () => clearInterval(countdownInterval);
+      } catch (error) {
+        console.error("Error processing OAuth success:", error);
+        showAlert("Error", "Failed to process authentication", "error");
+      }
+    };
+
+    handleOAuthSuccess();
+  }, [token, error, showAlert, setToken]);
 
   const handleContinue = () => {
     router.replace("/");
@@ -90,24 +108,6 @@ export default function OAuthSuccessScreen() {
               <Text className="text-lg font-semibold text-gray-800 mb-2">
                 Authentication Details:
               </Text>
-
-              {email && (
-                <View className="mb-2">
-                  <Text className="text-sm font-medium text-gray-600">
-                    Email:
-                  </Text>
-                  <Text className="text-gray-800">{email}</Text>
-                </View>
-              )}
-
-              {name && (
-                <View className="mb-2">
-                  <Text className="text-sm font-medium text-gray-600">
-                    Name:
-                  </Text>
-                  <Text className="text-gray-800">{name}</Text>
-                </View>
-              )}
 
               <View className="mb-2">
                 <Text className="text-sm font-medium text-gray-600">
