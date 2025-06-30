@@ -78,6 +78,7 @@ export interface UploadEvidenceRequest {
 
 export interface UpdateReportRequest {
   reportId: string;
+  incidentType?: 'harassment' | 'theft' | 'assault' | 'other';
   description?: string;
   location?: Location;
   address?: string;
@@ -86,4 +87,5 @@ export interface UpdateReportRequest {
   anonymous?: boolean;
   actionTaken?: string;
   involvedParties?: string;
+  status?: 'submitted' | 'under_review' | 'resolved';
 }

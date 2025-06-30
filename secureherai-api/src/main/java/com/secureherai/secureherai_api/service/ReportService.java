@@ -64,12 +64,12 @@ public class ReportService {
                 }
             }
             
-            // Check for potential duplicate reports (same user, time, location, type within 5 minutes)
+            // Check for potential duplicate reports (same user, time, location, type within 15 minutes)
             // Only check location-based duplicates if location is provided
             if (request.getLocation() != null) {
                 java.time.LocalDateTime reportTime = request.getIncidentTime();
-                java.time.LocalDateTime startTime = reportTime.minusMinutes(5);
-                java.time.LocalDateTime endTime = reportTime.plusMinutes(5);
+                java.time.LocalDateTime startTime = reportTime.minusMinutes(15);
+                java.time.LocalDateTime endTime = reportTime.plusMinutes(15);
                 
                 List<IncidentReport> recentReports = reportRepository.findByUserIdAndIncidentTimeBetween(userId, startTime, endTime);
                 for (IncidentReport existing : recentReports) {
@@ -80,11 +80,12 @@ public class ReportService {
                         double latDiff = Math.abs(existing.getLatitude().doubleValue() - request.getLocation().getLatitude().doubleValue());
                         double lonDiff = Math.abs(existing.getLongitude().doubleValue() - request.getLocation().getLongitude().doubleValue());
                         
-                        // If within ~100 meters (approximately 0.001 degrees)
-                        if (latDiff < 0.001 && lonDiff < 0.001) {
+                        // If within ~50 meters (approximately 0.0005 degrees) and exactly same type
+                        if (latDiff < 0.0005 && lonDiff < 0.0005 && 
+                            existing.getDescription().toLowerCase().contains(request.getDescription().toLowerCase().substring(0, Math.min(20, request.getDescription().length())))) {
                             logger.warn("Potential duplicate report detected for user: {} at similar time and location", userId);
                             return new ReportResponse.GenericResponse(false, null, 
-                                "A similar report already exists for this time and location. Please check your recent reports.");
+                                "A very similar report already exists. If this is a different incident, please wait 15 minutes or provide more details.");
                         }
                     }
                 }
@@ -242,20 +243,52 @@ public class ReportService {
     /**
      * Update report (comprehensive update for all fields)
      */
-    public ReportResponse.GenericResponse updateReport(UUID userId, ReportRequest.UpdateReport request) {
+    public ReportResponse.GenericResponse updateReport(UUID userId, String userRole, ReportRequest.UpdateReport request) {
         try {
-            logger.debug("Updating report: {} by user: {}", request.getReportId(), userId);
+            logger.debug("Updating report: {} by user: {} with role: {}", request.getReportId(), userId, userRole);
             
-            // Verify report exists and user owns it
-            Optional<IncidentReport> reportOpt = reportRepository.findByIdAndUserId(request.getReportId(), userId);
+            // Verify report exists and user owns it (or user is a responder for status updates)
+            Optional<IncidentReport> reportOpt = reportRepository.findById(request.getReportId());
             if (reportOpt.isEmpty()) {
-                logger.warn("Report not found or access denied for update - Report: {}, User: {}", request.getReportId(), userId);
-                return new ReportResponse.GenericResponse(false, null, "Report not found or access denied");
+                logger.warn("Report not found - Report: {}", request.getReportId());
+                return new ReportResponse.GenericResponse(false, null, "Report not found");
             }
             
             IncidentReport report = reportOpt.get();
             
-            // Update fields if they are provided
+            // Check if user can modify this report
+            boolean isOwner = report.getUserId().equals(userId);
+            boolean isResponder = "RESPONDER".equals(userRole) || "ADMIN".equals(userRole);
+            
+            // Regular users can only modify their own reports
+            // Responders can modify status of any report
+            if (!isOwner && !isResponder) {
+                logger.warn("Access denied for report update - Report: {}, User: {}, Role: {}", request.getReportId(), userId, userRole);
+                return new ReportResponse.GenericResponse(false, null, "Access denied");
+            }
+            
+            // Check status update authorization
+            if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
+                if (!isResponder && !request.getStatus().equals("submitted")) {
+                    logger.warn("Only responders can change status to under_review or resolved - User: {}, Role: {}", userId, userRole);
+                    return new ReportResponse.GenericResponse(false, null, "Only responders can change status to under_review or resolved");
+                }
+            }
+            
+            // For non-owners (responders), only allow status updates
+            if (!isOwner && isResponder) {
+                if (request.getStatus() == null || request.getStatus().trim().isEmpty()) {
+                    logger.warn("Responders can only update status - User: {}, Report: {}", userId, request.getReportId());
+                    return new ReportResponse.GenericResponse(false, null, "Responders can only update report status");
+                }
+                // Only update status for responders
+                report.setStatus(request.getStatus().trim());
+                reportRepository.save(report);
+                logger.info("Report status updated by responder: {} to {}", userId, request.getStatus());
+                return new ReportResponse.GenericResponse(true, "Report status updated successfully", null);
+            }
+            
+            // Update fields if they are provided (for report owners)
             if (request.getDescription() != null && !request.getDescription().trim().isEmpty()) {
                 report.setDescription(request.getDescription().trim());
             }
@@ -291,6 +324,10 @@ public class ReportService {
             
             if (request.getInvolvedParties() != null) {
                 report.setInvolvedParties(request.getInvolvedParties());
+            }
+            
+            if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
+                report.setStatus(request.getStatus().trim());
             }
             
             reportRepository.save(report);

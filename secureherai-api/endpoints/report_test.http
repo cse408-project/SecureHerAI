@@ -1,7 +1,6 @@
 # Incident Report API Testing
 @baseUrl = http://localhost:8080/api
-@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI5MzZlZTRkYS1mN2VkLTQzODItOTMwOC1iYzc2YWNkODg2NjkiLCJlbWFpbCI6ImFyaW1vdG9raWthMjAwNTAyNUBnbWFpbC5jb20iLCJyb2xlIjoiUkVTUE9OREVSIiwiaWF0IjoxNzUxMDMyMjk5LCJleHAiOjE3NTE4OTYyOTl9.d1j-G_R8KcLRrHw_pY8YMCDmS1G86UrQPJuJqV8BUEU
-
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIzNDYxZTlhMC00OTc4LTQwZjYtOTYwMi03YWNkYzQ0YWJiMWEiLCJlbWFpbCI6ImFyaW1vdG9raWthMjAwNTAyNUBnbWFpbC5jb20iLCJyb2xlIjoiUkVTUE9OREVSIiwiaWF0IjoxNzUxMjY2MTA4LCJleHAiOjE3NTIxMzAxMDh9.fFaKDMlbJg5bJtifvU6hiEYd-k-XrCtKIPlUFr_FJbQ
 ### Test Authentication - Check if token is valid
 GET {{baseUrl}}/user/profile
 Authorization: Bearer {{authToken}}
@@ -403,7 +402,7 @@ Authorization: Bearer {{authToken}}
 ###
 
 ### Delete Report
-DELETE {{baseUrl}}/report/delete?reportId=eb8671f7-dab8-4366-8b6b-bdc761beede9
+DELETE {{baseUrl}}/report/delete?reportId=e599e9ad-d5e6-49c2-8326-a5ca1f24d622
 Authorization: Bearer {{authToken}}
 
 ### response 200
@@ -413,11 +412,7 @@ Authorization: Bearer {{authToken}}
   "error": null,
   "reportId": null
 }
-###
 
-### Delete Report - Not Found
-
-### Delete Report - Unauthorized (Another User's Report)
 
 ### Search Reports - General Search (Combined with filters)
 GET {{baseUrl}}/report/search?query=harassment
@@ -704,5 +699,43 @@ Authorization: Bearer {{authToken}}
   "message": "Incident report submitted successfully",
   "error": null,
   "reportId": "some-uuid-here"
+}
+###
+
+### Update Report Status (Responder Action)
+PUT {{baseUrl}}/report/update
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "reportId": "eb8671f7-dab8-4366-8b6b-bdc761beede9",
+  "status": "under_review"
+}
+
+### response 200 (expected)
+{
+  "success": true,
+  "message": "Report status updated successfully",
+  "error": null,
+  "reportId": null
+}
+###
+
+### Update Report Status to Resolved
+PUT {{baseUrl}}/report/update
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "reportId": "eb8671f7-dab8-4366-8b6b-bdc761beede9",
+  "status": "resolved"
+}
+
+### response 200 (expected)
+{
+  "success": true,
+  "message": "Report status updated successfully",
+  "error": null,
+  "reportId": null
 }
 ###

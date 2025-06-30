@@ -150,10 +150,10 @@ export default function SubmitReportScreen() {
   };
 
   const incidentTypes = [
-    { value: 'harassment', label: 'Harassment', icon: 'warning' },
-    { value: 'theft', label: 'Theft', icon: 'remove-circle' },
-    { value: 'assault', label: 'Assault', icon: 'dangerous' },
-    { value: 'other', label: 'Other', icon: 'help' },
+    { value: 'harassment', label: 'Harassment', icon: 'person-off', color: '#DC2626' },
+    { value: 'theft', label: 'Theft', icon: 'money-off', color: '#7C2D12' },
+    { value: 'assault', label: 'Assault', icon: 'pan-tool', color: '#B91C1C' },
+    { value: 'other', label: 'Other', icon: 'category', color: '#6B7280' },
   ] as const;
 
   const visibilityOptions = [
@@ -183,22 +183,32 @@ export default function SubmitReportScreen() {
             {incidentTypes.map((type) => (
               <TouchableOpacity
                 key={type.value}
-                className={`flex-row items-center px-3 py-2 rounded-full border ${
+                className={`flex-row items-center px-4 py-3 rounded-xl border-2 ${
                   incidentType === type.value
-                    ? 'bg-[#67082F] border-[#67082F]'
-                    : 'bg-gray-100 border-gray-300'
+                    ? 'border-2'
+                    : 'bg-gray-50 border-gray-200'
                 }`}
+                style={incidentType === type.value ? {
+                  backgroundColor: `${type.color}15`,
+                  borderColor: type.color
+                } : {}}
                 onPress={() => setIncidentType(type.value)}
               >
-                <MaterialIcons
-                  name={type.icon as any}
-                  size={16}
-                  color={incidentType === type.value ? 'white' : '#6B7280'}
-                />
+                <View 
+                  className="w-8 h-8 rounded-full items-center justify-center mr-3"
+                  style={{ backgroundColor: incidentType === type.value ? type.color : `${type.color}20` }}
+                >
+                  <MaterialIcons
+                    name={type.icon as any}
+                    size={18}
+                    color={incidentType === type.value ? 'white' : type.color}
+                  />
+                </View>
                 <Text
-                  className={`ml-2 text-sm font-medium ${
-                    incidentType === type.value ? 'text-white' : 'text-gray-600'
+                  className={`text-sm font-semibold ${
+                    incidentType === type.value ? 'text-gray-800' : 'text-gray-600'
                   }`}
+                  style={incidentType === type.value ? { color: type.color } : {}}
                 >
                   {type.label}
                 </Text>

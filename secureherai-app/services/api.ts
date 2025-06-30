@@ -674,13 +674,68 @@ class ApiService {
   async deleteReport(reportId: string): Promise<GenericReportResponse> {
     try {
       console.log("API: Deleting report:", reportId);
-      const response = await fetch(`${API_BASE_URL}/report/delete?reportId=${reportId}`, {
+      
+      // Check if we have auth token
+      const token = await AsyncStorage.getItem("auth_token");
+      if (!token) {
+        console.error("API: No auth token found");
+        return {
+          success: false,
+          error: "Authentication required. Please log in again.",
+        };
+      }
+      
+      const headers = await this.getHeaders(true);
+      console.log("API: Request headers:", headers);
+      
+      const url = `${API_BASE_URL}/report/delete?reportId=${reportId}`;
+      console.log("API: Delete URL:", url);
+      
+      const response = await fetch(url, {
         method: "DELETE",
-        headers: await this.getHeaders(true),
+        headers: headers,
       });
 
+      console.log("API: Delete report response status:", response.status);
+      console.log("API: Delete report response ok:", response.ok);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("API: Delete report error response:", errorText);
+        
+        if (response.status === 401) {
+          return {
+            success: false,
+            error: "Authentication failed. Please log in again.",
+          };
+        } else if (response.status === 403) {
+          return {
+            success: false,
+            error: "You don't have permission to delete this report.",
+          };
+        } else if (response.status === 404) {
+          return {
+            success: false,
+            error: "Report not found.",
+          };
+        }
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          return {
+            success: false,
+            error: errorData.error || errorData.message || `Server error: ${response.status}`,
+          };
+        } catch {
+          return {
+            success: false,
+            error: `Server error: ${response.status} - ${errorText}`,
+          };
+        }
+      }
+
       const data = await response.json();
-      console.log("API: Delete report response:", data);
+      console.log("API: Delete report response data:", data);
 
       return data;
     } catch (error) {

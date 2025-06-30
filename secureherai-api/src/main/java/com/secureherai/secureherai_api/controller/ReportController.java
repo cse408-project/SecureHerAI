@@ -194,7 +194,8 @@ public class ReportController {
             }
             
             UUID userId = jwtService.extractUserId(token);
-            ReportResponse.GenericResponse response = reportService.updateReport(userId, request);
+            String userRole = jwtService.extractRole(token);
+            ReportResponse.GenericResponse response = reportService.updateReport(userId, userRole, request);
             
             if (response.isSuccess()) {
                 return ResponseEntity.ok(response);

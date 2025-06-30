@@ -128,6 +128,32 @@ export default function ReportDetailsScreen() {
     }
   };
 
+  const getIncidentTypeIcon = (type: string) => {
+    switch (type) {
+      case 'harassment':
+        return 'person-off';
+      case 'theft':
+        return 'money-off';
+      case 'assault':
+        return 'pan-tool';
+      default:
+        return 'category';
+    }
+  };
+
+  const getIncidentTypeColor = (type: string) => {
+    switch (type) {
+      case 'harassment':
+        return '#DC2626'; // Red
+      case 'theft':
+        return '#7C2D12'; // Brown
+      case 'assault':
+        return '#B91C1C'; // Dark Red
+      default:
+        return '#6B7280'; // Gray
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -178,9 +204,21 @@ export default function ReportDetailsScreen() {
         {/* Status and Basic Info */}
         <View className="bg-white rounded-lg p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center mb-3">
-            <Text className="text-xl font-bold text-gray-800 capitalize">
-              {report.incidentType}
-            </Text>
+            <View className="flex-row items-center flex-1">
+              <View 
+                className="w-12 h-12 rounded-full items-center justify-center mr-3 shadow-sm"
+                style={{ backgroundColor: `${getIncidentTypeColor(report.incidentType)}15` }}
+              >
+                <MaterialIcons
+                  name={getIncidentTypeIcon(report.incidentType) as any}
+                  size={24}
+                  color={getIncidentTypeColor(report.incidentType)}
+                />
+              </View>
+              <Text className="text-xl font-bold text-gray-800 capitalize flex-1">
+                {report.incidentType}
+              </Text>
+            </View>
             <View
               className="px-3 py-1 rounded-full"
               style={{ backgroundColor: `${getStatusColor(report.status)}20` }}

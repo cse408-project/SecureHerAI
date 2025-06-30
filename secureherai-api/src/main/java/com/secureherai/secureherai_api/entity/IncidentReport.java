@@ -54,7 +54,7 @@ public class IncidentReport {
     @Column(name = "action_taken", columnDefinition = "TEXT")
     private String actionTaken;
     
-    @Column(name = "involved_parties", columnDefinition = "JSONB")
+    @Column(name = "involved_parties", columnDefinition = "TEXT")
     private String involvedParties; // JSON string
     
     @CreationTimestamp

@@ -198,6 +198,10 @@ public class ReportRequest {
         
         private String involvedParties; // JSON string
         
+        @Pattern(regexp = "submitted|under_review|resolved", 
+                 message = "Status must be one of: submitted, under_review, resolved")
+        private String status;
+        
         public UpdateReport() {}
         
         // Getters and Setters
@@ -271,6 +275,14 @@ public class ReportRequest {
         
         public void setInvolvedParties(String involvedParties) {
             this.involvedParties = involvedParties;
+        }
+        
+        public String getStatus() {
+            return status;
+        }
+        
+        public void setStatus(String status) {
+            this.status = status;
         }
     }
     

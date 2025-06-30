@@ -81,6 +81,7 @@ export default function ReportsTabScreen() {
       if (Object.keys(filters).length === 0) {
         setReports(allReports);
         setActiveFilters({});
+        setLoading(false);
         return;
       }
 
@@ -89,25 +90,30 @@ export default function ReportsTabScreen() {
       if (response.success && response.reports) {
         setReports(response.reports);
       } else {
-        // Fallback to local filtering
+        // Fallback to local filtering with case-insensitive comparison
+        console.log('Using local filtering');
+        console.log('All reports status values:', allReports.map(r => r.status));
+        console.log('Filter status:', filters.status);
+        
         let filteredReports = [...allReports];
         
         if (filters.incidentType) {
           filteredReports = filteredReports.filter(report => 
-            report.incidentType === filters.incidentType
+            report.incidentType.toLowerCase() === filters.incidentType!.toLowerCase()
           );
         }
         
         if (filters.visibility) {
           filteredReports = filteredReports.filter(report => 
-            report.visibility === filters.visibility
+            report.visibility.toLowerCase() === filters.visibility!.toLowerCase()
           );
         }
         
         if (filters.status) {
           filteredReports = filteredReports.filter(report => 
-            report.status === filters.status
+            report.status.toLowerCase() === filters.status!.toLowerCase()
           );
+          console.log('Filtered reports count:', filteredReports.length);
         }
         
         setReports(filteredReports);
@@ -127,53 +133,29 @@ export default function ReportsTabScreen() {
     setReports(allReports);
   };
 
-  const handleDeleteReport = async (reportId: string) => {
-    Alert.alert(
-      'Delete Report',
-      'Are you sure you want to delete this report? This action cannot be undone.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setLoading(true);
-              const response = await apiService.deleteReport(reportId);
-              
-              if (response.success) {
-                // Remove the report from the local state
-                setReports(reports.filter(report => report.reportId !== reportId));
-                setAllReports(allReports.filter(report => report.reportId !== reportId));
-                Alert.alert('Success', 'Report deleted successfully');
-              } else {
-                Alert.alert('Error', response.error || 'Failed to delete report');
-              }
-            } catch (error) {
-              console.error('Delete report error:', error);
-              Alert.alert('Error', 'An unexpected error occurred while deleting the report');
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
   const getIncidentTypeIcon = (type: string) => {
     switch (type) {
       case 'harassment':
-        return 'warning';
+        return 'person-off';
       case 'theft':
-        return 'remove-circle';
+        return 'money-off';
       case 'assault':
-        return 'dangerous';
+        return 'pan-tool';
       default:
-        return 'help';
+        return 'category';
+    }
+  };
+
+  const getIncidentTypeColor = (type: string) => {
+    switch (type) {
+      case 'harassment':
+        return '#DC2626'; // Red
+      case 'theft':
+        return '#7C2D12'; // Brown
+      case 'assault':
+        return '#B91C1C'; // Dark Red
+      default:
+        return '#6B7280'; // Gray
     }
   };
 
@@ -232,11 +214,14 @@ export default function ReportsTabScreen() {
       {/* Header with incident type and status */}
       <View className="flex-row justify-between items-center mb-3">
         <View className="flex-row items-center flex-1">
-          <View className="w-10 h-10 bg-[#67082F]/10 rounded-full items-center justify-center mr-3">
+          <View 
+            className="w-12 h-12 rounded-full items-center justify-center mr-3 shadow-sm"
+            style={{ backgroundColor: `${getIncidentTypeColor(report.incidentType)}15` }}
+          >
             <MaterialIcons
               name={getIncidentTypeIcon(report.incidentType) as any}
-              size={20}
-              color="#67082F"
+              size={24}
+              color={getIncidentTypeColor(report.incidentType)}
             />
           </View>
           <View className="flex-1">
@@ -269,13 +254,6 @@ export default function ReportsTabScreen() {
               {report.status.replace('_', ' ')}
             </Text>
           </View>
-          <TouchableOpacity
-            onPress={() => handleDeleteReport(report.reportId)}
-            className="p-1 rounded-full"
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <MaterialIcons name="delete" size={18} color="#EF4444" />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -381,41 +359,65 @@ export default function ReportsTabScreen() {
           </View>
 
           {reports.length === 0 ? (
-            <View className="bg-white rounded-lg p-8 shadow-sm items-center">
-              <View className="w-20 h-20 bg-[#67082F]/10 rounded-full items-center justify-center mb-4">
-                <MaterialIcons name="assignment" size={40} color="#67082F" />
-              </View>
-              <Text className="text-gray-800 text-xl font-bold mt-2">No Reports Yet</Text>
-              <Text className="text-gray-500 text-center mt-3 leading-relaxed">
-                You haven't submitted any incident reports. Your safety matters - start by creating your first report.
-              </Text>
-              
-              {/* Feature highlights */}
-              <View className="w-full mt-6 space-y-3">
-                <View className="flex-row items-center">
-                  <MaterialIcons name="security" size={16} color="#67082F" />
-                  <Text className="text-gray-600 text-sm ml-2">Secure and confidential reporting</Text>
+            <>
+              {Object.keys(activeFilters).length > 0 ? (
+                // Filtered empty state
+                <View className="bg-white rounded-lg p-8 shadow-sm items-center">
+                  <View className="w-16 h-16 bg-gray-100 rounded-full items-center justify-center mb-4">
+                    <MaterialIcons name="filter-list-off" size={32} color="#6B7280" />
+                  </View>
+                  <Text className="text-gray-800 text-lg font-bold mb-2">No Reports Found</Text>
+                  <Text className="text-gray-500 text-center leading-relaxed">
+                    No report of this type
+                  </Text>
+                  <TouchableOpacity
+                    className="bg-gray-100 rounded-lg px-6 py-3 mt-4"
+                    onPress={() => {
+                      clearFilters();
+                    }}
+                  >
+                    <Text className="text-gray-700 font-medium">Clear Filters</Text>
+                  </TouchableOpacity>
                 </View>
-                <View className="flex-row items-center">
-                  <MaterialIcons name="location-on" size={16} color="#67082F" />
-                  <Text className="text-gray-600 text-sm ml-2">GPS location tracking</Text>
+              ) : (
+                // Default empty state when no filters applied
+                <View className="bg-white rounded-lg p-8 shadow-sm items-center">
+                  <View className="w-20 h-20 bg-[#67082F]/10 rounded-full items-center justify-center mb-4">
+                    <MaterialIcons name="assignment" size={40} color="#67082F" />
+                  </View>
+                  <Text className="text-gray-800 text-xl font-bold mt-2">No Reports Yet</Text>
+                  <Text className="text-gray-500 text-center mt-3 leading-relaxed">
+                    You haven't submitted any incident reports. Your safety matters - start by creating your first report.
+                  </Text>
+                  
+                  {/* Feature highlights */}
+                  <View className="w-full mt-6 space-y-3">
+                    <View className="flex-row items-center">
+                      <MaterialIcons name="security" size={16} color="#67082F" />
+                      <Text className="text-gray-600 text-sm ml-2">Secure and confidential reporting</Text>
+                    </View>
+                    <View className="flex-row items-center">
+                      <MaterialIcons name="location-on" size={16} color="#67082F" />
+                      <Text className="text-gray-600 text-sm ml-2">GPS location tracking</Text>
+                    </View>
+                    <View className="flex-row items-center">
+                      <MaterialIcons name="cloud-upload" size={16} color="#67082F" />
+                      <Text className="text-gray-600 text-sm ml-2">Evidence upload support</Text>
+                    </View>
+                  </View>
+                  
+                  <TouchableOpacity
+                    className="bg-[#67082F] rounded-lg px-8 py-4 mt-8 w-full shadow-sm"
+                    onPress={navigateToSubmit}
+                  >
+                    <View className="flex-row items-center justify-center">
+                      <MaterialIcons name="add-circle" size={20} color="white" />
+                      <Text className="text-white font-bold text-base ml-2">Submit First Report</Text>
+                    </View>
+                  </TouchableOpacity>
                 </View>
-                <View className="flex-row items-center">
-                  <MaterialIcons name="cloud-upload" size={16} color="#67082F" />
-                  <Text className="text-gray-600 text-sm ml-2">Evidence upload support</Text>
-                </View>
-              </View>
-              
-              <TouchableOpacity
-                className="bg-[#67082F] rounded-lg px-8 py-4 mt-8 w-full shadow-sm"
-                onPress={navigateToSubmit}
-              >
-                <View className="flex-row items-center justify-center">
-                  <MaterialIcons name="add-circle" size={20} color="white" />
-                  <Text className="text-white font-bold text-base ml-2">Submit First Report</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
+              )}
+            </>
           ) : (
             <>
               {/* Reports List Header */}
@@ -439,7 +441,16 @@ export default function ReportsTabScreen() {
       >
         <View className="flex-1 bg-black/50 justify-center items-center">
           <View className="bg-white rounded-lg p-6 m-4 w-11/12 max-w-md">
-            <Text className="text-lg font-bold text-[#67082F] mb-4">Filter Reports</Text>
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-lg font-bold text-[#67082F]">Filter Reports</Text>
+              <TouchableOpacity
+                onPress={() => setShowFilterModal(false)}
+                className="p-1 rounded-full"
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <MaterialIcons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
             
             {/* Incident Type Filter */}
             <Text className="text-sm font-semibold text-gray-700 mb-2">Incident Type</Text>
@@ -447,11 +458,15 @@ export default function ReportsTabScreen() {
               {['harassment', 'theft', 'assault', 'other'].map((type) => (
                 <TouchableOpacity
                   key={type}
-                  className={`px-3 py-2 rounded-lg mr-2 mb-2 ${
+                  className={`flex-row items-center px-3 py-2 rounded-lg mr-2 mb-2 border ${
                     activeFilters.incidentType === type
-                      ? 'bg-[#67082F]'
-                      : 'bg-gray-200'
+                      ? 'border-2'
+                      : 'bg-gray-100 border-gray-200'
                   }`}
+                  style={activeFilters.incidentType === type ? {
+                    backgroundColor: `${getIncidentTypeColor(type)}15`,
+                    borderColor: getIncidentTypeColor(type)
+                  } : {}}
                   onPress={() => {
                     const newFilters = { ...activeFilters };
                     if (newFilters.incidentType === type) {
@@ -462,9 +477,18 @@ export default function ReportsTabScreen() {
                     setActiveFilters(newFilters);
                   }}
                 >
-                  <Text className={`capitalize ${
-                    activeFilters.incidentType === type ? 'text-white' : 'text-gray-700'
-                  }`}>
+                  <MaterialIcons
+                    name={getIncidentTypeIcon(type) as any}
+                    size={16}
+                    color={activeFilters.incidentType === type ? getIncidentTypeColor(type) : '#6B7280'}
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text 
+                    className={`capitalize text-sm font-medium`}
+                    style={{
+                      color: activeFilters.incidentType === type ? getIncidentTypeColor(type) : '#374151'
+                    }}
+                  >
                     {type}
                   </Text>
                 </TouchableOpacity>
@@ -539,7 +563,7 @@ export default function ReportsTabScreen() {
                   setShowFilterModal(false);
                 }}
               >
-                <Text className="text-gray-700">Clear All</Text>
+                <Text className="text-gray-700">Back</Text>
               </TouchableOpacity>
               
               <TouchableOpacity

@@ -94,7 +94,7 @@ export default function EvidenceUploadScreen() {
   };
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-gray-50 max-w-screen-md mx-auto w-full">
       {/* Header */}
       <View className="bg-white px-4 pt-12 pb-4 shadow-sm">
         <View className="flex-row items-center justify-between">

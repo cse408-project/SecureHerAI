@@ -22,6 +22,8 @@ interface LocationData {
 export default function SubmitReportScreen() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null);
   const [gettingLocation, setGettingLocation] = useState(false);
 
@@ -105,18 +107,17 @@ export default function SubmitReportScreen() {
 
       const response = await apiService.submitReport(reportData);
 
+      console.log('API Response:', response); // Debug log
+
       if (response.success) {
-        Alert.alert(
-          'Success',
-          'Incident report submitted successfully',
-          [
-            {
-              text: 'OK',
-              onPress: () => router.back(),
-            },
-          ]
-        );
+        console.log('Setting success to true'); // Debug log
+        setLoading(false); // Ensure loading is false
+        setSuccess(true);
+        setErrorMessage(null);
+        // Don't auto-redirect, let user click OK button
       } else {
+        console.log('API Error:', response.error); // Debug log
+        setErrorMessage(response.error || 'Failed to submit report');
         Alert.alert('Error', response.error || 'Failed to submit report');
       }
     } catch (error) {
@@ -128,10 +129,10 @@ export default function SubmitReportScreen() {
   };
 
   const incidentTypes = [
-    { value: 'harassment', label: 'Harassment', icon: 'warning' },
-    { value: 'theft', label: 'Theft', icon: 'remove-circle' },
-    { value: 'assault', label: 'Assault', icon: 'dangerous' },
-    { value: 'other', label: 'Other', icon: 'help' },
+    { value: 'harassment', label: 'Harassment', icon: 'person-off', color: '#DC2626' },
+    { value: 'theft', label: 'Theft', icon: 'money-off', color: '#7C2D12' },
+    { value: 'assault', label: 'Assault', icon: 'pan-tool', color: '#B91C1C' },
+    { value: 'other', label: 'Other', icon: 'category', color: '#6B7280' },
   ] as const;
 
   const visibilityOptions = [
@@ -141,7 +142,35 @@ export default function SubmitReportScreen() {
   ] as const;
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-gray-50 max-w-screen-md mx-auto w-full">
+      {/* Success Overlay */}
+      {success && (
+        <View className="absolute inset-0 bg-black/50 z-50 items-center justify-center">
+          <View className="bg-white rounded-xl mx-8 p-0 items-center shadow-2xl overflow-hidden">
+            {/* Green header section */}
+            <View className="bg-green-50 w-full px-8 pt-8 pb-4 items-center">
+              <View className="w-16 h-16 bg-green-500 rounded-full items-center justify-center mb-4">
+                <MaterialIcons name="check" size={32} color="white" />
+              </View>
+              <Text className="text-2xl font-bold text-gray-900 mb-2">Success</Text>
+              <Text className="text-gray-600 text-center leading-5">
+                Report submitted successfully
+              </Text>
+            </View>
+            
+            {/* White bottom section with button */}
+            <View className="w-full px-8 py-6">
+              <TouchableOpacity 
+                className="bg-green-500 rounded-lg py-4 w-full"
+                onPress={() => router.back()}
+              >
+                <Text className="text-white text-center font-semibold text-base">OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* Header */}
       <View className="bg-white px-4 pt-12 pb-4 shadow-sm">
         <View className="flex-row items-center justify-between">
@@ -161,22 +190,32 @@ export default function SubmitReportScreen() {
             {incidentTypes.map((type) => (
               <TouchableOpacity
                 key={type.value}
-                className={`flex-row items-center px-3 py-2 rounded-full border ${
+                className={`flex-row items-center px-4 py-3 rounded-xl border-2 ${
                   incidentType === type.value
-                    ? 'bg-[#67082F] border-[#67082F]'
-                    : 'bg-gray-100 border-gray-300'
+                    ? 'border-2'
+                    : 'bg-gray-50 border-gray-200'
                 }`}
+                style={incidentType === type.value ? {
+                  backgroundColor: `${type.color}15`,
+                  borderColor: type.color
+                } : {}}
                 onPress={() => setIncidentType(type.value)}
               >
-                <MaterialIcons
-                  name={type.icon as any}
-                  size={16}
-                  color={incidentType === type.value ? 'white' : '#6B7280'}
-                />
+                <View 
+                  className="w-8 h-8 rounded-full items-center justify-center mr-3"
+                  style={{ backgroundColor: incidentType === type.value ? type.color : `${type.color}20` }}
+                >
+                  <MaterialIcons
+                    name={type.icon as any}
+                    size={18}
+                    color={incidentType === type.value ? 'white' : type.color}
+                  />
+                </View>
                 <Text
-                  className={`ml-2 text-sm font-medium ${
-                    incidentType === type.value ? 'text-white' : 'text-gray-600'
+                  className={`text-sm font-semibold ${
+                    incidentType === type.value ? 'text-gray-800' : 'text-gray-600'
                   }`}
+                  style={incidentType === type.value ? { color: type.color } : {}}
                 >
                   {type.label}
                 </Text>
@@ -381,16 +420,51 @@ export default function SubmitReportScreen() {
         </View>
 
         {/* Submit Button */}
+        {errorMessage && (
+          <View className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <View className="flex-row items-center">
+              <MaterialIcons name="error" size={20} color="#DC2626" />
+              <Text className="text-red-700 font-medium ml-2 flex-1">{errorMessage}</Text>
+              <TouchableOpacity onPress={() => setErrorMessage(null)}>
+                <MaterialIcons name="close" size={20} color="#DC2626" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Submit Button */}
         <TouchableOpacity
-          className={`bg-[#67082F] rounded-lg p-4 mb-8 ${
-            loading ? 'opacity-50' : ''
+          className={`rounded-lg p-4 mb-8 ${
+            success 
+              ? 'bg-green-600' 
+              : loading 
+                ? 'bg-gray-400' 
+                : 'bg-[#67082F]'
           }`}
           onPress={handleSubmit}
-          disabled={loading}
+          disabled={loading || success}
         >
-          <Text className="text-white text-center font-semibold text-base">
-            {loading ? 'Submitting...' : 'Submit Report'}
-          </Text>
+          <View className="flex-row items-center justify-center">
+            {success ? (
+              <>
+                <MaterialIcons name="check-circle" size={24} color="white" />
+                <Text className="text-white text-center font-semibold text-base ml-2">
+                  Report Submitted Successfully!
+                </Text>
+              </>
+            ) : loading ? (
+              <>
+                <MaterialIcons name="hourglass-empty" size={24} color="white" />
+                <Text className="text-white text-center font-semibold text-base ml-2">
+                  Submitting...
+                </Text>
+              </>
+            ) : (
+              <Text className="text-white text-center font-semibold text-base">
+                Submit Report
+              </Text>
+            )}
+          </View>
         </TouchableOpacity>
       </ScrollView>
     </View>
