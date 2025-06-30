@@ -11,13 +11,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { useAlert } from "../context/AlertContext";
 import { useAuth } from "../context/AuthContext";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function OAuthSuccessScreen() {
   const { token, error } = useLocalSearchParams();
   const { showAlert } = useAlert();
-  const { setToken } = useAuth();
-  const [countdown, setCountdown] = useState(5);
+  const { setToken, handleGoogleLogin } = useAuth();
+  // const [countdown, setCountdown] = useState(2);
 
   useEffect(() => {
     const handleOAuthSuccess = async () => {
@@ -32,70 +31,35 @@ export default function OAuthSuccessScreen() {
       }
 
       try {
-        console.log("OAuth Success Screen - Setting token:", token);
+        console.log("OAuth Success Screen - Processing token");
 
-        // First, store the token directly in AsyncStorage
-        await AsyncStorage.setItem("auth_token", token as string);
+        // Use the dedicated Google login handler from AuthContext
+        // This will properly validate the token, store it, and get user data
 
-        // Then try to use the AuthContext's setToken method if available
-        try {
-          if (setToken) {
-            await setToken(token as string);
-            console.log("Token set via AuthContext");
-          }
-        } catch (authError) {
-          console.error("Error using setToken from AuthContext:", authError);
-          // Continue with our direct token handling
-        }
-
-        // Fetch user profile manually as a fallback
-        try {
-          // Get API base URL from environment or use a fallback
-          const API_BASE_URL =
-            process.env.EXPO_PUBLIC_API_BASE_URL ||
-            "https://secureherai.me/api";
-          const response = await fetch(`${API_BASE_URL}/user/profile`, {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-
-          if (response.ok) {
-            const userData = await response.json();
-            if (userData && userData.data) {
-              await AsyncStorage.setItem(
-                "user_data",
-                JSON.stringify(userData.data)
-              );
-              console.log("User data saved:", userData.data);
-            }
-          }
-        } catch (profileError) {
-          console.error("Error fetching profile:", profileError);
-        }
-
-        // Success case - show success message
         showAlert(
           "Success",
           "Successfully authenticated with Google!",
           "success"
         );
 
-        // Start countdown
-        const countdownInterval = setInterval(() => {
-          setCountdown((prev) => {
-            if (prev <= 1) {
-              clearInterval(countdownInterval);
-              // Navigate to index to trigger authentication check
-              router.replace("/");
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
+        await setToken(token as string);
+        await handleGoogleLogin(token as string);
+        console.log("Token saved and user data fetched successfully");
 
-        return () => clearInterval(countdownInterval);
+        // Start countdown without showing an additional alert
+        // const countdownInterval = setInterval(() => {
+        //   setCountdown((prev) => {
+        //     if (prev <= 1) {
+        //       clearInterval(countdownInterval);
+        // Navigate to index to trigger authentication check
+        router.replace("/");
+        return 0;
+        //     }
+        //     return prev - 1;
+        //   });
+        // }, 1000);
+
+        // return () => clearInterval(countdownInterval);
       } catch (error) {
         console.error("Error processing OAuth success:", error);
         showAlert("Error", "Failed to process authentication", "error");
@@ -103,7 +67,7 @@ export default function OAuthSuccessScreen() {
     };
 
     handleOAuthSuccess();
-  }, [token, error, showAlert, setToken]);
+  }, [token, error]);
 
   const handleContinue = () => {
     router.replace("/");
@@ -175,7 +139,7 @@ export default function OAuthSuccessScreen() {
               </Text>
             </TouchableOpacity>
 
-            {/* Auto-redirect countdown */}
+            {/* Auto-redirect countdown
             <View className="items-center">
               <Text className="text-gray-600 text-sm">
                 Auto-redirecting in {countdown} seconds...
@@ -185,7 +149,7 @@ export default function OAuthSuccessScreen() {
                 color="#67082F"
                 className="mt-2"
               />
-            </View>
+            </View> */}
           </View>
         </View>
       </ScrollView>
