@@ -5,11 +5,14 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  Image,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { useAlert } from "../context/AlertContext";
 import DatePicker from "../components/DatePicker";
@@ -157,162 +160,205 @@ export default function CompleteRegisterScreen() {
 
   if (!googleInfo) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
-        <Text className="text-gray-600">Loading...</Text>
+      <SafeAreaView className="flex-1 bg-[#FFE4D6] justify-center items-center">
+        <ActivityIndicator size="large" color="#67082F" />
+        <Text className="text-gray-700 mt-4">Loading your information...</Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-[#FFE4D6]">
       <StatusBar style="dark" />
-
-      <ScrollView className="flex-1 px-6 py-4">
-        {/* Header */}
-        <View className="mb-6">
-          <TouchableOpacity onPress={() => router.back()} className="mb-4">
-            <Feather name="arrow-left" size={24} color="#374151" />
-          </TouchableOpacity>
-
-          <Text className="text-2xl font-bold text-gray-900 mb-2">
-            Complete Your Registration
-          </Text>
-          <Text className="text-gray-600 mb-4">
-            Welcome, {googleInfo.name}! Please provide the remaining information
-            to complete your account setup.
-          </Text>
-
-          {/* Google Info Display */}
-          <View className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
-            <Text className="text-sm font-semibold text-gray-700 mb-2">
-              Google Account Info:
-            </Text>
-            <Text className="text-gray-600">✓ Email: {googleInfo.email}</Text>
-            <Text className="text-gray-600">✓ Name: {googleInfo.name}</Text>
-          </View>
-        </View>
-
-        {/* Missing Information */}
-        <View className="mb-6">
-          <Text className="text-lg font-semibold text-gray-900 mb-4">
-            Additional Information Required
-          </Text>
-
-          <View className="mb-4">
-            <Text className="text-sm font-medium text-gray-700 mb-2">
-              Phone Number <Text className="text-red-500">*</Text>
-            </Text>
-            <TextInput
-              className={`w-full px-4 py-3 border rounded-lg bg-white text-gray-900 ${
-                errors.phoneNumber ? "border-red-500" : "border-gray-300"
-              }`}
-              placeholder="+1234567890"
-              placeholderTextColor="#9CA3AF"
-              value={formData.phoneNumber}
-              onChangeText={(text: string) =>
-                setFormData((prev) => ({ ...prev, phoneNumber: text }))
-              }
-              keyboardType="phone-pad"
-            />
-            {errors.phoneNumber && (
-              <Text className="text-red-500 text-sm mt-1">
-                {errors.phoneNumber}
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View className="flex-1 justify-center px-6 py-8 max-w-screen-md mx-auto w-full">
+            {/* Logo and Branding */}
+            <View className="items-center mb-6">
+              <View className="w-24 h-24 rounded-full bg-white shadow-lg items-center justify-center mb-4">
+                <Image
+                  source={require("../assets/images/secureherai_logo.png")}
+                  style={{
+                    width: 60,
+                    height: 60,
+                    resizeMode: "contain",
+                  }}
+                />
+              </View>
+              <Text className="text-3xl font-bold text-[#67082F] mb-2">
+                SecureHer AI
               </Text>
-            )}
-          </View>
-
-          <DatePicker
-            label="Date of Birth"
-            value={formData.dateOfBirth}
-            onDateChange={(date) =>
-              setFormData((prev) => ({ ...prev, dateOfBirth: date }))
-            }
-            placeholder="Select your birth date"
-            required
-          />
-          {errors.dateOfBirth && (
-            <Text className="text-red-500 text-sm mt-1">
-              {errors.dateOfBirth}
-            </Text>
-          )}
-
-          <View className="mb-4">
-            <Text className="text-gray-700 font-medium mb-2">
-              Role <Text className="text-red-500">*</Text>
-            </Text>
-            <View className="bg-white border border-gray-300 rounded-lg">
-              <Picker
-                selectedValue={formData.role}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, role: value }))
-                }
-                style={{ color: "#000" }}
-              >
-                <Picker.Item label="User" value="USER" />
-                <Picker.Item label="Responder" value="RESPONDER" />
-              </Picker>
+              <Text className="text-base text-gray-600 text-center mb-2">
+                Complete Your Registration
+              </Text>
             </View>
-          </View>
 
-          {/* Responder-specific fields */}
-          {formData.role === "RESPONDER" && (
-            <>
-              <View className="mb-4">
-                <Text className="text-gray-700 font-medium mb-2">
-                  Responder Type <Text className="text-red-500">*</Text>
+            {/* Form Container */}
+            <View className="bg-white rounded-xl p-6 shadow-sm mb-6">
+              {/* Google Info Display */}
+              <View className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
+                <Text className="text-sm font-semibold text-gray-700 mb-2">
+                  Google Account Info:
                 </Text>
-                <View className="bg-white border border-gray-300 rounded-lg">
+                <Text className="text-gray-600">
+                  ✓ Email: {googleInfo.email}
+                </Text>
+                <Text className="text-gray-600">✓ Name: {googleInfo.name}</Text>
+              </View>
+
+              {/* Phone Number */}
+              <View className="mb-4">
+                <Text className="text-sm font-medium text-gray-700 mb-2">
+                  Phone Number <Text className="text-red-500">*</Text>
+                </Text>
+                <TextInput
+                  className={`w-full px-4 py-3 border rounded-lg bg-white text-gray-900 ${
+                    errors.phoneNumber ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder="+1234567890"
+                  placeholderTextColor="#9CA3AF"
+                  value={formData.phoneNumber}
+                  onChangeText={(text: string) =>
+                    setFormData((prev) => ({ ...prev, phoneNumber: text }))
+                  }
+                  keyboardType="phone-pad"
+                />
+                {errors.phoneNumber && (
+                  <Text className="text-red-500 text-sm mt-1">
+                    {errors.phoneNumber}
+                  </Text>
+                )}
+              </View>
+
+              {/* Date of Birth */}
+              <View className="mb-4">
+                <DatePicker
+                  label="Date of Birth"
+                  value={formData.dateOfBirth}
+                  onDateChange={(date) =>
+                    setFormData((prev) => ({ ...prev, dateOfBirth: date }))
+                  }
+                  placeholder="Select your birth date"
+                  required
+                />
+                {errors.dateOfBirth && (
+                  <Text className="text-red-500 text-sm mt-1">
+                    {errors.dateOfBirth}
+                  </Text>
+                )}
+              </View>
+
+              {/* Role Selection */}
+              <View className="mb-4">
+                <Text className="text-sm font-medium text-gray-700 mb-2">
+                  Role <Text className="text-red-500">*</Text>
+                </Text>
+                <View className="border border-gray-300 rounded-lg bg-white">
                   <Picker
-                    selectedValue={formData.responderType}
+                    selectedValue={formData.role}
                     onValueChange={(value) =>
-                      setFormData((prev) => ({ ...prev, responderType: value }))
+                      setFormData((prev) => ({ ...prev, role: value }))
                     }
                     style={{ color: "#000" }}
                   >
-                    <Picker.Item label="Police" value="POLICE" />
-                    <Picker.Item label="Medical" value="MEDICAL" />
+                    <Picker.Item label="User" value="USER" />
+                    <Picker.Item label="Responder" value="RESPONDER" />
                   </Picker>
                 </View>
               </View>
 
-              <View className="mb-4">
-                <Text className="text-gray-700 font-medium mb-2">
-                  Badge Number <Text className="text-red-500">*</Text>
-                </Text>
-                <TextInput
-                  className={`w-full px-4 py-3 border rounded-lg bg-white text-gray-900 ${
-                    errors.badgeNumber ? "border-red-500" : "border-gray-300"
-                  }`}
-                  placeholder="Enter your badge number"
-                  placeholderTextColor="#9CA3AF"
-                  value={formData.badgeNumber}
-                  onChangeText={(text: string) =>
-                    setFormData((prev) => ({ ...prev, badgeNumber: text }))
-                  }
-                />
-                {errors.badgeNumber && (
-                  <Text className="text-red-500 text-sm mt-1">
-                    {errors.badgeNumber}
+              {/* Responder-specific fields */}
+              {formData.role === "RESPONDER" && (
+                <>
+                  <View className="mb-4">
+                    <Text className="text-sm font-medium text-gray-700 mb-2">
+                      Responder Type <Text className="text-red-500">*</Text>
+                    </Text>
+                    <View className="border border-gray-300 rounded-lg bg-white">
+                      <Picker
+                        selectedValue={formData.responderType}
+                        onValueChange={(value) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            responderType: value,
+                          }))
+                        }
+                        style={{ color: "#000" }}
+                      >
+                        <Picker.Item label="Police" value="POLICE" />
+                        <Picker.Item label="Medical" value="MEDICAL" />
+                        <Picker.Item label="Fire" value="FIRE" />
+                        <Picker.Item label="Security" value="SECURITY" />
+                        <Picker.Item label="Other" value="OTHER" />
+                      </Picker>
+                    </View>
+                  </View>
+
+                  <View className="mb-6">
+                    <Text className="text-sm font-medium text-gray-700 mb-2">
+                      Badge Number <Text className="text-red-500">*</Text>
+                    </Text>
+                    <TextInput
+                      className={`w-full px-4 py-3 border rounded-lg bg-white text-gray-900 ${
+                        errors.badgeNumber
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
+                      placeholder="Enter your badge number"
+                      placeholderTextColor="#9CA3AF"
+                      value={formData.badgeNumber}
+                      onChangeText={(text: string) =>
+                        setFormData((prev) => ({ ...prev, badgeNumber: text }))
+                      }
+                    />
+                    {errors.badgeNumber && (
+                      <Text className="text-red-500 text-sm mt-1">
+                        {errors.badgeNumber}
+                      </Text>
+                    )}
+                  </View>
+                </>
+              )}
+
+              {/* Complete Registration Button */}
+              <TouchableOpacity
+                className={`w-full py-4 rounded-lg ${
+                  loading
+                    ? "bg-[#67082F]/50"
+                    : "bg-[#67082F] active:bg-[#67082F]/90"
+                } mb-2`}
+                onPress={handleCompleteRegistration}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text className="text-white text-center font-semibold text-lg">
+                    Complete Registration
                   </Text>
                 )}
-              </View>
-            </>
-          )}
-        </View>
+              </TouchableOpacity>
+            </View>
 
-        {/* Complete Registration Button */}
-        <TouchableOpacity
-          className={`w-full py-4 rounded-lg ${
-            loading ? "bg-[#67082F]/50" : "bg-[#67082F] active:bg-[#67082F]/90"
-          } mb-8`}
-          onPress={handleCompleteRegistration}
-          disabled={loading}
-        >
-          <Text className="text-white text-center font-semibold text-lg">
-            {loading ? "Completing Registration..." : "Complete Registration"}
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
+            {/* Login Link */}
+            <View className="items-center">
+              <Text className="text-gray-600 mb-2">
+                Already have an account?
+              </Text>
+              <TouchableOpacity onPress={() => router.replace("/(auth)")}>
+                <Text className="text-[#67082F] font-semibold">Sign In</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

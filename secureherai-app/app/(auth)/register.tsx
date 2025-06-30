@@ -9,7 +9,6 @@ import {
   Platform,
   ActivityIndicator,
   Image,
-  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
@@ -31,8 +30,9 @@ export default function RegisterScreen() {
   });
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
 
-  const { register } = useAuth();
+  const { register, initiateGoogleLogin } = useAuth();
   const { showAlert } = useAlert();
 
   const updateFormData = (field: keyof RegisterRequest, value: string) => {
@@ -94,33 +94,20 @@ export default function RegisterScreen() {
   };
 
   const handleGoogleSignUp = async () => {
-    setIsLoading(true);
+    setIsLoadingGoogle(true);
     try {
-      // Get Google OAuth URL from backend
-      const response = await fetch(
-        `http://localhost:8080/api/auth/google-signup`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (data.success && data.authUrl) {
-        // Redirect to Google OAuth
-        const fullUrl = `http://localhost:8080${data.authUrl}`;
-        Linking.openURL(fullUrl);
-      } else {
-        showAlert("Error", "Unable to initialize Google signup", "error");
-      }
+      // Use the AuthContext method to initiate Google login
+      await initiateGoogleLogin();
+      // Navigation will happen in AuthContext's deep link handler
     } catch (error) {
-      console.error("Google signup error:", error);
-      showAlert("Error", "An error occurred with Google signup", "error");
+      console.error("Google Auth Error:", error);
+      showAlert(
+        "Authentication Error",
+        "Failed to start Google authentication",
+        "error"
+      );
     } finally {
-      setIsLoading(false);
+      setIsLoadingGoogle(false);
     }
   };
 
@@ -287,12 +274,21 @@ export default function RegisterScreen() {
               <TouchableOpacity
                 className="w-full py-4 rounded-lg border border-gray-300 bg-white flex-row items-center justify-center mb-6"
                 onPress={handleGoogleSignUp}
-                disabled={isLoading}
+                disabled={isLoadingGoogle}
               >
-                <View className="w-5 h-5 bg-red-500 rounded-full mr-3" />
-                <Text className="text-gray-700 font-semibold text-lg">
-                  Sign up with Google
-                </Text>
+                {isLoadingGoogle ? (
+                  <ActivityIndicator color="#67082F" className="mr-2" />
+                ) : (
+                  <View className="flex-row items-center justify-center">
+                    <Image
+                      source={require("../../assets/images/google_icon.png")}
+                      style={{ width: 20, height: 20, marginRight: 8 }}
+                    />
+                    <Text className="text-gray-700 font-semibold text-lg">
+                      Sign up with Google
+                    </Text>
+                  </View>
+                )}
               </TouchableOpacity>
             </View>
 

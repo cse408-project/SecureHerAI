@@ -30,6 +30,59 @@ class ApiService {
 
     return headers;
   }
+
+  // Google Authentication Methods
+  getGoogleAuthUrl(): string {
+    return `${API_BASE_URL.replace("/api", "")}/oauth2/authorize/google`;
+  }
+
+  async handleGoogleAuthToken(token: string) {
+    try {
+      console.log("API: Processing Google auth token");
+
+      // This method will validate the token received from Google OAuth flow
+      // It returns user info just like a normal login would
+      const response = await fetch(
+        `${API_BASE_URL}/auth/google/validate-token`,
+        {
+          method: "POST",
+          headers: await this.getHeaders(),
+          body: JSON.stringify({ token }),
+        }
+      );
+
+      console.log(
+        "API: Google token validation response status:",
+        response.status
+      );
+
+      const data = await response.json();
+      console.log("API: Google token validation data:", data);
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error:
+            data.error ||
+            data.message ||
+            `Server returned ${response.status}: ${response.statusText}`,
+        };
+      }
+
+      return data;
+    } catch (error) {
+      console.error(
+        "API: Network error during Google auth token validation:",
+        error
+      );
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  // Regular Authentication Methods
   async login(email: string, password: string) {
     try {
       console.log("API: Attempting login for:", email);

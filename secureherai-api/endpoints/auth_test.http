@@ -6,10 +6,36 @@
 ### 1. Health Check
 GET {{baseUrl}}/health
 
+### Google OAuth Authentication Endpoints
+
+### 1.1 Get Google OAuth URL
+GET {{baseUrl}}/auth/google/auth-url
+
+### 1.2 Validate Google OAuth token
+POST {{baseUrl}}/auth/google/validate-token
+Content-Type: application/json
+
+{
+  "token": "google_oauth_token_from_redirect"
+}
+
+### Expected Success Response for Google token validation
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "success": true,
+  "token": "jwt_token_string",
+  "userId": "user_id_string",
+  "fullName": "User's Full Name",
+  "email": "user@example.com",
+  "role": "USER",
+  "needsProfileCompletion": false
+}
+
 ### 2. Register User
 POST {{baseUrl}}/auth/register
 Content-Type: application/json
-
 {
   "fullName": "AN Swapnil",
   "email": "2005009@ugrad.cse.buet.ac.bd",

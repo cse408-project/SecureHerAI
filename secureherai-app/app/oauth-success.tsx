@@ -5,11 +5,13 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { useAlert } from "../context/AlertContext";
 import { useAuth } from "../context/AuthContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function OAuthSuccessScreen() {
   const { token, error } = useLocalSearchParams();
@@ -30,8 +32,48 @@ export default function OAuthSuccessScreen() {
       }
 
       try {
-        // Use the AuthContext's setToken method which handles JWT parsing and user profile extraction
-        await setToken(token as string);
+        console.log("OAuth Success Screen - Setting token:", token);
+
+        // First, store the token directly in AsyncStorage
+        await AsyncStorage.setItem("auth_token", token as string);
+
+        // Then try to use the AuthContext's setToken method if available
+        try {
+          if (setToken) {
+            await setToken(token as string);
+            console.log("Token set via AuthContext");
+          }
+        } catch (authError) {
+          console.error("Error using setToken from AuthContext:", authError);
+          // Continue with our direct token handling
+        }
+
+        // Fetch user profile manually as a fallback
+        try {
+          // Get API base URL from environment or use a fallback
+          const API_BASE_URL =
+            process.env.EXPO_PUBLIC_API_BASE_URL ||
+            "https://secureherai.me/api";
+          const response = await fetch(`${API_BASE_URL}/user/profile`, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (response.ok) {
+            const userData = await response.json();
+            if (userData && userData.data) {
+              await AsyncStorage.setItem(
+                "user_data",
+                JSON.stringify(userData.data)
+              );
+              console.log("User data saved:", userData.data);
+            }
+          }
+        } catch (profileError) {
+          console.error("Error fetching profile:", profileError);
+        }
 
         // Success case - show success message
         showAlert(
@@ -45,8 +87,8 @@ export default function OAuthSuccessScreen() {
           setCountdown((prev) => {
             if (prev <= 1) {
               clearInterval(countdownInterval);
-              // Navigate to home after countdown
-              router.replace("/(tabs)");
+              // Navigate to index to trigger authentication check
+              router.replace("/");
               return 0;
             }
             return prev - 1;
@@ -93,31 +135,35 @@ export default function OAuthSuccessScreen() {
   return (
     <SafeAreaView className="flex-1 bg-[#FFE4D6]">
       <ScrollView className="flex-1" contentContainerStyle={{ flexGrow: 1 }}>
-        <View className="flex-1 justify-center px-6">
-          <View className="bg-white rounded-xl p-6 shadow-sm">
-            <Text className="text-2xl font-bold text-green-600 mb-4 text-center">
+        <View className="flex-1 justify-center px-6 py-8 max-w-screen-md mx-auto w-full">
+          {/* Logo and Branding */}
+          <View className="items-center mb-8">
+            <View className="w-24 h-24 rounded-full bg-white shadow-lg items-center justify-center mb-4">
+              <Image
+                source={require("../assets/images/secureherai_logo.png")}
+                style={{
+                  width: 60,
+                  height: 60,
+                  resizeMode: "contain",
+                }}
+              />
+            </View>
+            <Text className="text-3xl font-bold text-[#67082F] mb-2">
+              SecureHer AI
+            </Text>
+            <Text className="text-base text-gray-600 text-center">
+              Your safety companion
+            </Text>
+          </View>
+
+          <View className="bg-white rounded-xl p-6 shadow-sm mb-6">
+            <Text className="text-2xl font-bold text-[#67082F] mb-6 text-center">
               Authentication Successful!
             </Text>
 
             <Text className="text-gray-700 text-center mb-6">
               You have successfully authenticated with Google.
             </Text>
-
-            {/* User Info Display */}
-            <View className="bg-gray-50 rounded-lg p-4 mb-6">
-              <Text className="text-lg font-semibold text-gray-800 mb-2">
-                Authentication Details:
-              </Text>
-
-              <View className="mb-2">
-                <Text className="text-sm font-medium text-gray-600">
-                  Token:
-                </Text>
-                <Text className="text-gray-800 text-xs font-mono">
-                  {token ? `${(token as string).substring(0, 20)}...` : "N/A"}
-                </Text>
-              </View>
-            </View>
 
             {/* Action Buttons */}
             <TouchableOpacity
