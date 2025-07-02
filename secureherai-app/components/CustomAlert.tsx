@@ -32,6 +32,8 @@ export default function CustomAlert({
   cancelText = "Cancel",
   showCancel = false,
 }: CustomAlertProps) {
+  console.log('🎭 CustomAlert rendered with:', { visible, title, message, type, showCancel });
+
   const scaleAnim = React.useRef(new Animated.Value(0.8)).current;
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const slideAnim = React.useRef(new Animated.Value(50)).current;

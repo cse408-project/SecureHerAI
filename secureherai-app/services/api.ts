@@ -1,8 +1,16 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  SubmitReportRequest,
+  GenericReportResponse,
+  UserReportsResponse,
+  ReportDetailsResponse,
+  UploadEvidenceRequest,
+  UpdateReportRequest
+} from "../types/report";
 
 //Ensure API base URL works in both web and native environments
 const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL || "http://192.168.0.103:8080/api";
+  process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
 //Debug log for API base URL
 console.log("API_BASE_URL:", API_BASE_URL);
@@ -412,6 +420,329 @@ class ApiService {
       return {
         success: false,
         error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  // Report API Methods
+  async submitReport(reportData: SubmitReportRequest): Promise<GenericReportResponse> {
+    try {
+      console.log("API: Submitting report:", reportData);
+      const response = await fetch(`${API_BASE_URL}/report/submit`, {
+        method: "POST",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify(reportData),
+      });
+
+      const data = await response.json();
+      console.log("API: Submit report response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Submit report error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while submitting report",
+      };
+    }
+  }
+
+  async getUserReports(): Promise<UserReportsResponse> {
+    try {
+      console.log("API: Fetching user reports");
+      const response = await fetch(`${API_BASE_URL}/report/user-reports`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+      console.log("API: User reports response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Get user reports error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while fetching reports",
+      };
+    }
+  }
+
+  async getReportDetails(reportId: string): Promise<ReportDetailsResponse> {
+    try {
+      console.log("API: Fetching report details for:", reportId);
+      const response = await fetch(
+        `${API_BASE_URL}/report/details?reportId=${reportId}`,
+        {
+          method: "GET",
+          headers: await this.getHeaders(true),
+        }
+      );
+
+      const data = await response.json();
+      console.log("API: Report details response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Get report details error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while fetching report details",
+      };
+    }
+  }
+
+  async uploadEvidence(evidenceData: UploadEvidenceRequest): Promise<GenericReportResponse> {
+    try {
+      console.log("API: Uploading evidence for report:", evidenceData.reportId);
+      const response = await fetch(`${API_BASE_URL}/report/upload-evidence`, {
+        method: "POST",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify(evidenceData),
+      });
+
+      const data = await response.json();
+      console.log("API: Upload evidence response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Upload evidence error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while uploading evidence",
+      };
+    }
+  }
+
+  async updateReport(updateData: UpdateReportRequest): Promise<GenericReportResponse> {
+    try {
+      console.log("API: Updating report:", updateData.reportId);
+      const response = await fetch(`${API_BASE_URL}/report/update`, {
+        method: "PUT",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify(updateData),
+      });
+
+      const data = await response.json();
+      console.log("API: Update report response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Update report error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while updating report",
+      };
+    }
+  }
+
+  async getPublicReports(): Promise<UserReportsResponse> {
+    try {
+      console.log("API: Fetching public reports");
+      const response = await fetch(`${API_BASE_URL}/report/public-reports`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+      console.log("API: Public reports response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Get public reports error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while fetching public reports",
+      };
+    }
+  }
+
+  async searchReports(query: string, page = 0, size = 50): Promise<UserReportsResponse> {
+    try {
+      console.log("API: Searching reports with query:", query);
+      const params = new URLSearchParams({
+        query,
+        page: page.toString(),
+        size: size.toString(),
+        sortBy: 'createdAt',
+        sortDir: 'desc'
+      });
+      
+      const response = await fetch(`${API_BASE_URL}/report/search?${params}`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+      console.log("API: Search reports response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Search reports error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while searching reports",
+      };
+    }
+  }
+
+  async filterReports(filters: {
+    incidentType?: string;
+    visibility?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<UserReportsResponse> {
+    try {
+      console.log("API: Filtering reports with filters:", filters);
+      const params = new URLSearchParams();
+      
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) {
+          params.append(key, value);
+        }
+      });
+      
+      const response = await fetch(`${API_BASE_URL}/report/filter?${params}`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+      console.log("API: Filter reports response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Filter reports error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while filtering reports",
+      };
+    }
+  }
+
+  async getReportCategories(): Promise<{
+    success: boolean;
+    categories?: string[];
+    error?: string;
+  }> {
+    try {
+      console.log("API: Fetching report categories");
+      const response = await fetch(`${API_BASE_URL}/report/categories`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+      console.log("API: Report categories response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Get report categories error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while fetching categories",
+      };
+    }
+  }
+
+  async getReportStats(): Promise<{
+    success: boolean;
+    stats?: any;
+    error?: string;
+  }> {
+    try {
+      console.log("API: Fetching report statistics");
+      const response = await fetch(`${API_BASE_URL}/report/stats`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+      console.log("API: Report stats response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Get report stats error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while fetching statistics",
+      };
+    }
+  }
+
+  async deleteReport(reportId: string): Promise<GenericReportResponse> {
+    try {
+      console.log("API: Deleting report:", reportId);
+      
+      // Check if we have auth token
+      const token = await AsyncStorage.getItem("auth_token");
+      if (!token) {
+        console.error("API: No auth token found");
+        return {
+          success: false,
+          error: "Authentication required. Please log in again.",
+        };
+      }
+      
+      const headers = await this.getHeaders(true);
+      console.log("API: Request headers:", headers);
+      
+      const url = `${API_BASE_URL}/report/delete?reportId=${reportId}`;
+      console.log("API: Delete URL:", url);
+      
+      const response = await fetch(url, {
+        method: "DELETE",
+        headers: headers,
+      });
+
+      console.log("API: Delete report response status:", response.status);
+      console.log("API: Delete report response ok:", response.ok);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("API: Delete report error response:", errorText);
+        
+        if (response.status === 401) {
+          return {
+            success: false,
+            error: "Authentication failed. Please log in again.",
+          };
+        } else if (response.status === 403) {
+          return {
+            success: false,
+            error: "You don't have permission to delete this report.",
+          };
+        } else if (response.status === 404) {
+          return {
+            success: false,
+            error: "Report not found.",
+          };
+        }
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          return {
+            success: false,
+            error: errorData.error || errorData.message || `Server error: ${response.status}`,
+          };
+        } catch {
+          return {
+            success: false,
+            error: `Server error: ${response.status} - ${errorText}`,
+          };
+        }
+      }
+
+      const data = await response.json();
+      console.log("API: Delete report response data:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Delete report error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while deleting report",
       };
     }
   }

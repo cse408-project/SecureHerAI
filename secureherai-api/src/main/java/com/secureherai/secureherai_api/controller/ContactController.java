@@ -65,7 +65,19 @@ public class ContactController {
         }
     }
 
-    @GetMapping("/")
+    @GetMapping("/test")
+    public ResponseEntity<Object> testContactsEndpoint() {
+        try {
+            return ResponseEntity.ok().body(
+                new ContactResponse.GenericResponse(true, "Contacts API is working", null)
+            );
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ContactResponse.GenericResponse(false, null, "Test endpoint failed: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping({"", "/"})
     public ResponseEntity<Object> getTrustedContacts(
             @RequestHeader("Authorization") String authHeader) {
         try {
