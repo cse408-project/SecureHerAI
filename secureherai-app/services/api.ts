@@ -16,7 +16,7 @@ const API_BASE_URL =
 console.log("API_BASE_URL:", API_BASE_URL);
 
 // Test API connection on startup
-fetch(`${API_BASE_URL}/health`)
+fetch(`${API_BASE_URL}/isOk`)
   .then((response) => response.json())
   .then((data) => console.log("API Health Check:", data))
   .catch((error) => console.error("API Health Check Failed:", error));

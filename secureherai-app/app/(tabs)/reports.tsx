@@ -15,7 +15,7 @@ import { router, useFocusEffect } from "expo-router";
 import { useAuth } from "../../context/AuthContext";
 import apiService from "../../services/api";
 import { ReportSummary } from "../../types/report";
-import Header from "../../src/components/Header";
+import Header from "../../components/Header";
 
 const { width } = Dimensions.get('window');
 
