@@ -1,7 +1,7 @@
 ### SecureHerAI Authentication API Tests
 
 @baseUrl = https://secureherai.me/api
-@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MTg3ZjBlYi0wZGQwLTQwZDgtOWRlMy05NjdjY2NlNjgwOTkiLCJlbWFpbCI6ImFyaW1vdG9raWthMjAwNTAyNUBnbWFpbC5jb20iLCJyb2xlIjoiUkVTUE9OREVSIiwiaWF0IjoxNzUwMjIxMjExLCJleHAiOjE3NTAzMDc2MTF9.qfCxNb_bRDUppKquGa0SGN0IjvQFxlMC9fpVK3cDvt8
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZDZkMDY4Yi0wNzc3LTRlMTUtYmMyMy1iOWRlNjVlODMzZjMiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc1MDgyMDA0NywiZXhwIjoxNzUwOTA2NDQ3fQ.n5me94blDNu7IXML46nnWBJMyAqpQ8w4giHSzRU1PZ0
 
 ### 1. Health Check
 GET {{baseUrl}}/health
@@ -158,7 +158,7 @@ Content-Type: application/json
 
 {
   "email": "2005009@ugrad.cse.buet.ac.bd",
-  "loginCode": "824967"
+  "loginCode": "631843"
 }
 
 ### Successful Verification Response (User)

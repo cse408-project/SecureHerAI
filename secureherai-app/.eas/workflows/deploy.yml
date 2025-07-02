@@ -2,7 +2,7 @@ name: Create Production Builds and Deploy Web
 
 on:
   push:
-    branches: ['amin']
+    branches: ['main']
 
 jobs:
   build_android:

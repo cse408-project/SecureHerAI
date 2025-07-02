@@ -222,6 +222,199 @@ class ApiService {
 
     return response.json();
   }
+
+  // Trusted Contacts API Methods
+  async getTrustedContacts() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/contacts`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to fetch contacts",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error fetching contacts:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  async addTrustedContact(contact: {
+    name: string;
+    phone: string;
+    relationship: string;
+    email?: string;
+    shareLocation?: boolean;
+  }) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/contacts/add`, {
+        method: "POST",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({ contact }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to add contact",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error adding contact:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  async updateTrustedContact(
+    contactId: string,
+    contact: {
+      name: string;
+      phone: string;
+      relationship: string;
+      email?: string;
+      shareLocation?: boolean;
+    }
+  ) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/contacts/update`, {
+        method: "PUT",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({ contactId, contact }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to update contact",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error updating contact:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  async deleteTrustedContact(contactId: string) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/contacts/delete`, {
+        method: "DELETE",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({ contactId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to delete contact",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error deleting contact:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  // Notification Preferences API Methods
+  async getNotificationPreferences() {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/notifications/preferences`,
+        {
+          method: "GET",
+          headers: await this.getHeaders(true),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error:
+            data.error ||
+            data.message ||
+            "Failed to fetch notification preferences",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error fetching notification preferences:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  async updateNotificationPreferences(preferences: {
+    emailAlerts: boolean;
+    smsAlerts: boolean;
+    pushNotifications: boolean;
+  }) {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/notifications/update-preferences`,
+        {
+          method: "PUT",
+          headers: await this.getHeaders(true),
+          body: JSON.stringify({ preferences }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error:
+            data.error ||
+            data.message ||
+            "Failed to update notification preferences",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error updating notification preferences:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
 }
 
 export default new ApiService();

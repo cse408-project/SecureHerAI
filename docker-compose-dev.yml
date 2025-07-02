@@ -24,18 +24,11 @@ services:
 
       # JWT Configuration
       JWT_SECRET: HRVu1xFYfraq/lculzNaXzMHVady85sMReuLwlSzEjcKznYOEPdbbK3F+9hq+4muGxhYfft5nNQYxbDZIGzzAA==
-      JWT_EXPIRATION: 86400000
-
-      # Email Configuration (Use environment variables for production)
+      JWT_EXPIRATION: 86400000 # Email Configuration (Use environment variables for production)
       MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
-
-      # Expo Configuration
-      EXPO_APP_URL: ${EXPO_APP_URL:-}
-      EXPO_METRO_URL: ${EXPO_METRO_URL:-}
-      EXPO_PUBLIC_API_BASE_URL: ${EXPO_PUBLIC_API_BASE_URL:-http://localhost:8080}
 
       # OAuth2 Configuration
       OAUTH2_WEB_ORIGIN: ${OAUTH2_WEB_ORIGIN:-}
@@ -118,7 +111,7 @@ networks:
   app-network:
     driver: bridge
     name: app-network
-    external: true
+    # external: true
 
 # For pgAdmin (http://localhost:5050):
 

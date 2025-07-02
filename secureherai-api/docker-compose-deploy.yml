@@ -1,0 +1,97 @@
+version: "3.8"
+
+services:
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt/live/secureherai.me/fullchain.pem:/etc/nginx/ssl/fullchain.pem:ro
+      - /etc/letsencrypt/live/secureherai.me/privkey.pem:/etc/nginx/ssl/privkey.pem:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  api:
+    container_name: secureherai_api
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    expose:
+      - "8080"
+    env_file:
+      - .env
+    environment:
+      # Database Configuration
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/secureherai
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_PROFILES_ACTIVE: prod
+
+      # JWT Configuration
+      JWT_SECRET: HRVu1xFYfraq/lculzNaXzMHVady85sMReuLwlSzEjcKznYOEPdbbK3F+9hq+4muGxhYfft5nNQYxbDZIGzzAA==
+      JWT_EXPIRATION: 86400000
+
+      # Email Configuration (Use environment variables for production)
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+
+      # OAuth2 Configuration
+      OAUTH2_WEB_ORIGIN: ${OAUTH2_WEB_ORIGIN:-}
+      OAUTH2_WEB_REDIRECT_URI: ${OAUTH2_WEB_REDIRECT_URI:-}
+      OAUTH2_CLIENT_ID: ${OAUTH2_CLIENT_ID:-}
+      OAUTH2_CLIENT_SECRET: ${OAUTH2_CLIENT_SECRET:-}
+      OAUTH2_CLIENT_ID_ANDROID: ${OAUTH2_CLIENT_ID_ANDROID:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - app-network
+
+  db:
+    image: postgres:15-alpine
+    container_name: postgres_secureherai
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: secureherai
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d secureherai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

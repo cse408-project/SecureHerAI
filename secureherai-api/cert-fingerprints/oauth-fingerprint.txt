@@ -1,2 +1,0 @@
-Certificate fingerprints:
-	 SHA1: 6F:C3:08:D3:37:74:18:6E:95:FD:49:5F:11:FB:B1:8B:01:8A:38:A2

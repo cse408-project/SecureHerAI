@@ -4,18 +4,20 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
 // @ts-ignore
 import { router } from "expo-router";
 import { useAuth } from "../../context/AuthContext";
+import { useAlert } from "../../context/AlertContext";
 import { RegisterRequest } from "../../types/auth";
+import DatePicker from "../../components/DatePicker";
 
 export default function RegisterScreen() {
   const [formData, setFormData] = useState<RegisterRequest>({
@@ -30,6 +32,7 @@ export default function RegisterScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   const { register } = useAuth();
+  const { showAlert } = useAlert();
 
   const updateFormData = (field: keyof RegisterRequest, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -55,7 +58,7 @@ export default function RegisterScreen() {
   const handleRegister = async () => {
     const validationError = validateForm();
     if (validationError) {
-      Alert.alert("Validation Error", validationError);
+      showAlert("Validation Error", validationError, "error");
       return;
     }
 
@@ -64,36 +67,33 @@ export default function RegisterScreen() {
       const response = await register(formData);
 
       if (response.success) {
-        Alert.alert(
+        showAlert(
           "Success",
           response.message ||
             "Registration successful! Please verify your email.",
-          [
-            {
-              text: "OK",
-              onPress: () => {
-                // Navigate back to login
-                router.push("/(auth)");
-              },
-            },
-          ]
+          "success"
         );
+        // Navigate back to login after showing success
+        setTimeout(() => {
+          router.push("/(auth)");
+        }, 2000);
       } else {
-        Alert.alert(
+        showAlert(
           "Registration Failed",
-          response.error || "An error occurred"
+          response.error || "An error occurred",
+          "error"
         );
       }
     } catch (error) {
       console.error("Registration error:", error);
-      Alert.alert("Error", "An unexpected error occurred");
+      showAlert("Error", "An unexpected error occurred", "error");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-[#FFE4D6]">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -103,25 +103,38 @@ export default function RegisterScreen() {
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
         >
-          <View className="flex-1 px-6 py-8">
-            {/* Header */}
+          <View className="flex-1 justify-center px-6 py-8 max-w-screen-md mx-auto w-full">
+            {/* Logo and Branding */}
             <View className="items-center mb-8">
-              <Text className="text-3xl font-bold text-primary mb-2">
-                Create Account
+              <View className="w-24 h-24 rounded-full bg-white shadow-lg items-center justify-center mb-4">
+                <Image
+                  source={require("../../assets/images/secureherai_logo.png")}
+                  style={{
+                    width: 60,
+                    height: 60,
+                    resizeMode: "contain",
+                  }}
+                />
+              </View>
+              <Text className="text-3xl font-bold text-[#67082F] mb-2">
+                SecureHer AI
               </Text>
-              <Text className="text-base text-muted text-center">
-                Join SecureHer AI community
+              <Text className="text-base text-gray-600 text-center">
+                Join our safety community
               </Text>
             </View>
 
             {/* Registration Form */}
-            <View className="mb-6">
+            <View className="bg-white rounded-xl p-6 shadow-sm mb-6">
+              <Text className="text-2xl font-bold text-[#67082F] mb-6 text-center">
+                Create Account
+              </Text>
               <View className="mb-4">
-                <Text className="text-sm font-medium text-foreground mb-2">
+                <Text className="text-sm font-medium text-gray-700 mb-2">
                   Full Name
                 </Text>
                 <TextInput
-                  className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900"
                   placeholder="Enter your full name"
                   placeholderTextColor="#9CA3AF"
                   value={formData.fullName}
@@ -131,11 +144,11 @@ export default function RegisterScreen() {
               </View>
 
               <View className="mb-4">
-                <Text className="text-sm font-medium text-foreground mb-2">
+                <Text className="text-sm font-medium text-gray-700 mb-2">
                   Email Address
                 </Text>
                 <TextInput
-                  className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900"
                   placeholder="Enter your email"
                   placeholderTextColor="#9CA3AF"
                   value={formData.email}
@@ -147,11 +160,11 @@ export default function RegisterScreen() {
               </View>
 
               <View className="mb-4">
-                <Text className="text-sm font-medium text-foreground mb-2">
+                <Text className="text-sm font-medium text-gray-700 mb-2">
                   Phone Number
                 </Text>
                 <TextInput
-                  className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900"
                   placeholder="Enter your phone number"
                   placeholderTextColor="#9CA3AF"
                   value={formData.phoneNumber}
@@ -160,24 +173,19 @@ export default function RegisterScreen() {
                 />
               </View>
 
-              <View className="mb-4">
-                <Text className="text-sm font-medium text-foreground mb-2">
-                  Date of Birth
-                </Text>
-                <TextInput
-                  className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground"
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor="#9CA3AF"
-                  value={formData.dateOfBirth}
-                  onChangeText={(value) => updateFormData("dateOfBirth", value)}
-                />
-              </View>
+              <DatePicker
+                label="Date of Birth"
+                value={formData.dateOfBirth}
+                onDateChange={(date) => updateFormData("dateOfBirth", date)}
+                placeholder="Select your birth date"
+                required
+              />
 
               <View className="mb-4">
-                <Text className="text-sm font-medium text-foreground mb-2">
+                <Text className="text-sm font-medium text-gray-700 mb-2">
                   Role
                 </Text>
-                <View className="border border-border rounded-lg bg-background">
+                <View className="border border-gray-300 rounded-lg bg-white">
                   <Picker
                     selectedValue={formData.role}
                     onValueChange={(value) => updateFormData("role", value)}
@@ -190,11 +198,11 @@ export default function RegisterScreen() {
               </View>
 
               <View className="mb-4">
-                <Text className="text-sm font-medium text-foreground mb-2">
+                <Text className="text-sm font-medium text-gray-700 mb-2">
                   Password
                 </Text>
                 <TextInput
-                  className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900"
                   placeholder="Enter your password"
                   placeholderTextColor="#9CA3AF"
                   value={formData.password}
@@ -204,11 +212,11 @@ export default function RegisterScreen() {
               </View>
 
               <View className="mb-6">
-                <Text className="text-sm font-medium text-foreground mb-2">
+                <Text className="text-sm font-medium text-gray-700 mb-2">
                   Confirm Password
                 </Text>
                 <TextInput
-                  className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900"
                   placeholder="Confirm your password"
                   placeholderTextColor="#9CA3AF"
                   value={confirmPassword}
@@ -221,8 +229,8 @@ export default function RegisterScreen() {
               <TouchableOpacity
                 className={`w-full py-4 rounded-lg mb-6 ${
                   isLoading
-                    ? "bg-primary/50"
-                    : "bg-primary active:bg-primary/90"
+                    ? "bg-[#67082F]/50"
+                    : "bg-[#67082F] active:bg-[#67082F]/90"
                 }`}
                 onPress={handleRegister}
                 disabled={isLoading}
@@ -235,16 +243,16 @@ export default function RegisterScreen() {
                   </Text>
                 )}
               </TouchableOpacity>
+            </View>
 
-              {/* Switch to Login */}
-              <View className="items-center">
-                <Text className="text-muted mb-2">
-                  Already have an account?
-                </Text>
-                <TouchableOpacity onPress={() => router.push("/(auth)")}>
-                  <Text className="text-primary font-semibold">Sign In</Text>
-                </TouchableOpacity>
-              </View>
+            {/* Sign in link */}
+            <View className="items-center">
+              <Text className="text-gray-600 mb-2">
+                Already have an account?
+              </Text>
+              <TouchableOpacity onPress={() => router.push("/(auth)")}>
+                <Text className="text-[#67082F] font-semibold">Sign In</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </ScrollView>

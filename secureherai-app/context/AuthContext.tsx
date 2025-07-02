@@ -61,6 +61,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } catch (error) {
           console.error("Failed to refresh user profile:", error);
         }
+      } else {
+        setToken(null);
+        setUser(null);
+        console.log(
+          "No auth token or user data found, setting state to unauthenticated."
+        );
       }
     } catch (error) {
       console.error("Failed to check auth state:", error);
@@ -295,8 +301,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
     }
   };
-
   const logout = async () => {
+    console.log("AuthContext - Logging out...");
     // Clear state immediately for instant UI feedback
     setToken(null);
     setUser(null);
@@ -305,12 +311,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Then clear storage
       await AsyncStorage.removeItem("auth_token");
       await AsyncStorage.removeItem("user_data");
+      console.log("AuthContext - Successfully cleared storage");
     } catch (error) {
       console.error("Logout error:", error);
       // State is already cleared above, so this is just cleanup
     }
+    console.log("AuthContext - Logout process completed");
   };
-
   const value: AuthContextType = {
     user,
     token,
@@ -323,7 +330,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     forgotPassword,
     resetPassword,
     setToken: setTokenAndUpdateUser, // Expose the new method
-    isAuthenticated: !!token && !!user,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
