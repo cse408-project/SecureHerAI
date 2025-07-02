@@ -77,7 +77,7 @@ public class ContactController {
         }
     }
 
-    @GetMapping({"", "/"})
+    @GetMapping("")
     public ResponseEntity<Object> getTrustedContacts(
             @RequestHeader("Authorization") String authHeader) {
         try {

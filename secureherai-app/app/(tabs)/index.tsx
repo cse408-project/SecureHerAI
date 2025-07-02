@@ -4,9 +4,9 @@ import { StatusBar } from "expo-status-bar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useAlert } from "../../context/AlertContext";
-import Header from "../../src/components/Header";
-import QuickAction from "../../src/components/QuickAction";
-import NotificationModal from "../../src/components/NotificationModal";
+import Header from "../../components/Header";
+import QuickAction from "../../components/QuickAction";
+import NotificationModal from "../../components/NotificationModal";
 
 export default function Home() {
   const pulseAnim = useRef(new Animated.Value(1)).current;

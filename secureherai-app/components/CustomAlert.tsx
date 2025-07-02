@@ -156,7 +156,7 @@ export default function CustomAlert({
           {/* Content */}
           <View className="px-6 py-6">
             {/* Message */}
-            <Text className="text-base text-gray-600 text-center leading-relaxed mb-6">
+            <Text className="text-base text-white text-center leading-relaxed mb-6 font-medium">
               {message}
             </Text>
 

@@ -60,10 +60,12 @@ export interface AuthContextType {
   verifyLoginCode: (email: string, code: string) => Promise<AuthResponse>;
   register: (data: RegisterRequest) => Promise<AuthResponse>;
   handleGoogleLogin: (token: string) => Promise<AuthResponse>;
+  initiateGoogleLogin: () => Promise<void>; // Added method to initiate Google authentication flow
   forgotPassword: (email: string) => Promise<AuthResponse>;
   resetPassword: (token: string, newPassword: string) => Promise<AuthResponse>;
   logout: () => Promise<void>;
   setToken: (token: string) => Promise<void>;
+  checkAuthState?: () => Promise<void>; // Optional method to check auth state
 }
 
 export interface CompleteProfileRequest {

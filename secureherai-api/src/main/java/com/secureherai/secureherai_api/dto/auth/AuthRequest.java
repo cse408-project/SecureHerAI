@@ -2,6 +2,7 @@ package com.secureherai.secureherai_api.dto.auth;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 // Combined DTOs for Login, Register, and Password Reset
@@ -101,6 +102,45 @@ public class AuthRequest {
         public void setEmail(String email) { this.email = email; }
         public String getLoginCode() { return loginCode; }
         public void setLoginCode(String loginCode) { this.loginCode = loginCode; }
+    }
+    
+    // Complete OAuth Registration Request
+    public static class CompleteOAuthRegistration {
+        @NotBlank(message = "Token is required")
+        private String token;
+        
+        @NotBlank(message = "Phone number is required")
+        @Size(max = 20, message = "Phone number cannot exceed 20 characters")
+        private String phoneNumber;
+        
+        @NotNull(message = "Date of birth is required")
+        private String dateOfBirth; // ISO date format: YYYY-MM-DD
+        
+        @NotBlank(message = "Role is required")
+        private String role; // USER or RESPONDER
+
+        // Responder-specific fields (only required if role is "RESPONDER")
+        private String responderType; // "POLICE", "FIRE_DEPARTMENT", "MEDICAL", "SECURITY"
+        private String badgeNumber;
+
+        // Getters and Setters
+        public String getToken() { return token; }
+        public void setToken(String token) { this.token = token; }
+        
+        public String getPhoneNumber() { return phoneNumber; }
+        public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+        
+        public String getDateOfBirth() { return dateOfBirth; }
+        public void setDateOfBirth(String dateOfBirth) { this.dateOfBirth = dateOfBirth; }
+        
+        public String getRole() { return role; }
+        public void setRole(String role) { this.role = role; }
+
+        public String getResponderType() { return responderType; }
+        public void setResponderType(String responderType) { this.responderType = responderType; }
+
+        public String getBadgeNumber() { return badgeNumber; }
+        public void setBadgeNumber(String badgeNumber) { this.badgeNumber = badgeNumber; }
     }    // Update Profile Request
     public static class UpdateProfile {
         @Size(max = 100, message = "Full name cannot exceed 100 characters")
@@ -145,5 +185,21 @@ public class AuthRequest {
         public void setResponderType(String responderType) { this.responderType = responderType; }
         public String getBadgeNumber() { return badgeNumber; }
         public void setBadgeNumber(String badgeNumber) { this.badgeNumber = badgeNumber; }
+    }
+    
+    // Delete Account Request
+    public static class DeleteAccount {
+        @NotBlank(message = "Password is required for account deletion")
+        private String password;
+        
+        @NotBlank(message = "Confirmation text is required")
+        private String confirmationText; // Should be "DELETE MY ACCOUNT"
+        
+        // Getters and Setters
+        public String getPassword() { return password; }
+        public void setPassword(String password) { this.password = password; }
+        
+        public String getConfirmationText() { return confirmationText; }
+        public void setConfirmationText(String confirmationText) { this.confirmationText = confirmationText; }
     }
 }

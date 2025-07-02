@@ -1,19 +1,21 @@
+version: "3.8"
+
 services:
   api:
     container_name: secureherai_api
     build:
-      context: ./secureherai-api
+      context: .
       dockerfile: Dockerfile
       target: development
     volumes:
-      - ./secureherai-api:/app
+      - .:/app
       - maven_cache:/root/.m2
     working_dir: /app
     command: mvn spring-boot:run -Dspring-boot.run.profiles=dev
     ports:
       - "8080:8080"
     env_file:
-      - ./secureherai-api/.env
+      - .env
     environment:
       # Database Configuration
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/secureherai
@@ -22,11 +24,11 @@ services:
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_PROFILES_ACTIVE: dev
 
-      
       # JWT Configuration
-
       JWT_SECRET: ${JWT_SECRET:-}
-      JWT_EXPIRATION: ${JWT_EXPIRATION:-}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-} 
+      
+      # Email Configuration (Use environment variables for production)
       MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
@@ -35,52 +37,18 @@ services:
       # OAuth2 Configuration
       OAUTH2_WEB_ORIGIN: ${OAUTH2_WEB_ORIGIN:-}
       OAUTH2_WEB_REDIRECT_URI: ${OAUTH2_WEB_REDIRECT_URI:-}
+
       OAUTH2_CLIENT_ID: ${OAUTH2_CLIENT_ID:-}
       OAUTH2_CLIENT_SECRET: ${OAUTH2_CLIENT_SECRET:-}
+
       OAUTH2_CLIENT_ID_ANDROID: ${OAUTH2_CLIENT_ID_ANDROID:-}
-        # Debugging settings
-      LOGGING_LEVEL_ROOT: INFO
-      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY: DEBUG
-      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB: DEBUG
-      SPRING_BOOT_LOGGING_LEVEL: DEBUG
     depends_on:
       db:
         condition: service_healthy
     stdin_open: true
     tty: true
     networks:
-      - app-network  # Frontend web application (React Native Expo)
-  frontend:
-    container_name: secureherai_web
-    build:
-      context: ./secureherai-app
-      dockerfile: Dockerfile
-      target: development
-    volumes:
-      - ./secureherai-app:/app
-      - node_modules:/app/node_modules
-      - expo_cache:/app/.expo
-    working_dir: /app
-    command: sh -c "CI=1 npx expo start --web --host lan --port 19006"
-    ports:
-      - "19006:19006"
-    environment:
-      EXPO_PUBLIC_API_BASE_URL: http://api:8080
-      NODE_ENV: development
-      EXPO_DEVTOOLS_LISTEN_ADDRESS: 0.0.0.0
-      CI: "1"
-      EXPO_USE_FAST_REFRESH: "true"
-      EXPO_USE_METRO_CACHE: "false"
-      EXPO_NO_DOTENV: "1"
-      EXPO_NO_TELEMETRY: "1"
-      EXPO_NO_UPDATE_CHECK: "1"
-    stdin_open: true
-    tty: true
-    depends_on:
-      - api
-    networks:
       - app-network
-    restart: unless-stopped
 
   db:
     container_name: postgres_secureherai
@@ -106,8 +74,6 @@ services:
 volumes:
   postgres_data:
   maven_cache:
-  node_modules:
-  expo_cache:
 
 networks:
   app-network:

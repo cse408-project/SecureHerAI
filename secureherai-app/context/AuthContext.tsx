@@ -4,8 +4,12 @@ import React, {
   useEffect,
   useState,
   ReactNode,
+  useCallback,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
+import { router } from "expo-router";
 
 import {
   AuthContextType,
@@ -14,6 +18,10 @@ import {
   RegisterRequest,
 } from "../types/auth";
 import ApiService from "../services/api";
+
+// Register the URL handler for the OAuth flow
+// This ensures the app can handle the callback from OAuth
+WebBrowser.maybeCompleteAuthSession();
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -26,9 +34,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Handle OAuth redirect URLs
+  const handleOAuthRedirect = useCallback(async (event: { url: string }) => {
+    try {
+      const url = event.url;
+      console.log("Deep link detected:", url);
+
+      // Parse the URL to extract token and other params
+      const urlObj = new URL(url);
+      const params = new URLSearchParams(urlObj.search);
+      const token = params.get("token");
+      const error = params.get("error");
+
+      if (error) {
+        console.error("OAuth error:", error);
+        return;
+      }
+
+      if (token) {
+        console.log("Got OAuth token, processing...");
+        const response = await handleGoogleLogin(token);
+        if (response.success) {
+          router.replace("/(tabs)");
+        }
+      }
+    } catch (e) {
+      console.error("Error handling OAuth redirect:", e);
+    }
+  }, []);
+
   useEffect(() => {
     checkAuthState();
-  }, []);
+
+    // Set up URL listener for deep linking (OAuth redirects)
+    const subscription = Linking.addEventListener("url", handleOAuthRedirect);
+
+    return () => {
+      subscription.remove();
+    };
+  }, [handleOAuthRedirect]);
 
   useEffect(() => {
     // Log auth state changes for debugging
@@ -144,40 +188,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const handleGoogleLogin = async (token: string): Promise<AuthResponse> => {
     try {
       if (token) {
+        // Validate the token with the backend
+        const response = await ApiService.handleGoogleAuthToken(token);
+
+        if (!response.success) {
+          return response;
+        }
+
         // Save token
         await AsyncStorage.setItem("auth_token", token);
         setToken(token);
 
-        // Get user info from token (JWT decode)
-        const base64Url = token.split(".")[1];
-        const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-
-        // Using a safer method that works in web and native without external dependencies
-        // This is a simple JWT decode that should work in all environments
-        // In a production app, consider using a proper JWT library
-        const jsonPayload = JSON.parse(
-          decodeURIComponent(
-            atob(base64)
-              .split("")
-              .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-              .join("")
-          )
-        );
-        const decodedToken = JSON.parse(jsonPayload);
-
-        // Create user object from token
+        // Create user object from the response
         const userData: User = {
-          userId: decodedToken.sub,
-          fullName: decodedToken.fullName || "Google User",
-          email: decodedToken.email,
-          role: decodedToken.role || "USER",
+          userId: response.userId,
+          fullName: response.fullName || "Google User",
+          email: response.email,
+          role: response.role || "USER",
         };
 
         setUser(userData);
         await AsyncStorage.setItem("user_data", JSON.stringify(userData));
-
-        // Check if profile needs completion (based on profileComplete from token)
-        const needsProfileCompletion = decodedToken.profileComplete === false;
 
         // Return success response
         return {
@@ -186,7 +217,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           userId: userData.userId,
           fullName: userData.fullName,
           role: userData.role,
-          needsProfileCompletion: needsProfileCompletion,
+          needsProfileCompletion: response.needsProfileCompletion,
         };
       }
 
@@ -203,73 +234,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Expose a method to directly set a token (used for deep links)
-  const setTokenAndUpdateUser = async (newToken: string): Promise<void> => {
+  // Method to initiate Google login
+  const initiateGoogleLogin = async (): Promise<void> => {
     try {
-      // Save token
-      await AsyncStorage.setItem("auth_token", newToken);
-      setToken(newToken);
+      // Get Google auth URL from API service
+      const authUrl = ApiService.getGoogleAuthUrl();
 
-      // Parse token to get user info
-      try {
-        // Split the token to get the payload part
-        const parts = newToken.split(".");
-        if (parts.length !== 3) {
-          throw new Error("Invalid token format");
-        }
-
-        // Decode the base64-encoded payload
-        const payload = parts[1];
-        // Need to pad the base64 string to make it a valid length
-        const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
-
-        // For browser environments
-        if (typeof atob === "function") {
-          const jsonString = atob(base64);
-          const decodedToken = JSON.parse(jsonString);
-
-          // Create user object from token
-          const userData: User = {
-            userId: decodedToken.sub,
-            fullName: decodedToken.fullName || "User",
-            email: decodedToken.email,
-            role: decodedToken.role || "USER",
-          };
-
-          setUser(userData);
-          await AsyncStorage.setItem("user_data", JSON.stringify(userData));
-        }
-        // For React Native environments
-        else {
-          // Fetch user profile using the token
-          const profileResponse = await ApiService.getUserProfile();
-          if (profileResponse.success && profileResponse.data) {
-            setUser(profileResponse.data);
-            await AsyncStorage.setItem(
-              "user_data",
-              JSON.stringify(profileResponse.data)
-            );
-          }
-        }
-      } catch (error) {
-        console.error("Error decoding token:", error);
-
-        // Fetch user profile as fallback
-        try {
-          const profileResponse = await ApiService.getUserProfile();
-          if (profileResponse.success && profileResponse.data) {
-            setUser(profileResponse.data);
-            await AsyncStorage.setItem(
-              "user_data",
-              JSON.stringify(profileResponse.data)
-            );
-          }
-        } catch (profileError) {
-          console.error("Failed to fetch user profile:", profileError);
-        }
-      }
+      // Open the auth URL in the browser
+      await Linking.openURL(authUrl);
     } catch (error) {
-      console.error("Failed to set token:", error);
+      console.error("Error initiating Google login:", error);
+      throw new Error("Failed to start Google authentication");
     }
   };
 
@@ -318,6 +293,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
     console.log("AuthContext - Logout process completed");
   };
+  // Expose a method to directly set a token (used for deep links)
+  const setTokenAndUpdateUser = async (newToken: string): Promise<void> => {
+    try {
+      await AsyncStorage.setItem("auth_token", newToken);
+      setToken(newToken);
+
+      // Optionally get user profile with new token
+      try {
+        const profileResponse = await ApiService.getUserProfile();
+        if (profileResponse.success && profileResponse.data) {
+          setUser(profileResponse.data);
+          await AsyncStorage.setItem(
+            "user_data",
+            JSON.stringify(profileResponse.data)
+          );
+        }
+      } catch (error) {
+        console.error("Failed to get user profile after token update:", error);
+      }
+    } catch (error) {
+      console.error("Failed to set token:", error);
+      throw error;
+    }
+  };
+
   const value: AuthContextType = {
     user,
     token,
@@ -327,9 +327,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     handleGoogleLogin,
+    initiateGoogleLogin, // Add this to expose the method for direct Google login
     forgotPassword,
     resetPassword,
-    setToken: setTokenAndUpdateUser, // Expose the new method
+    setToken: setTokenAndUpdateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -3,6 +3,7 @@ package com.secureherai.secureherai_api.controller;
 import com.secureherai.secureherai_api.dto.auth.AuthRequest;
 import com.secureherai.secureherai_api.dto.auth.AuthResponse;
 import com.secureherai.secureherai_api.service.AuthService;
+import com.secureherai.secureherai_api.service.JwtService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -18,6 +19,9 @@ public class AuthController {
 
     @Autowired
     private AuthService authService;
+    
+    @Autowired
+    private JwtService jwtService;
 
     @PostMapping("/login")
     public ResponseEntity<Object> login(@Valid @RequestBody AuthRequest.Login request) {
@@ -84,5 +88,59 @@ public class AuthController {
         response.put("success", true);
         response.put("authUrl", "/oauth2/authorize/google");
         return ResponseEntity.ok(response);
+    }
+    
+    @GetMapping("/google-signup")
+    public ResponseEntity<Object> googleSignup() {
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("authUrl", "/oauth2/authorize/google");
+        return ResponseEntity.ok(response);
+    }
+    
+    @PostMapping("/complete-oauth-registration")
+    public ResponseEntity<Object> completeOAuthRegistration(@Valid @RequestBody AuthRequest.CompleteOAuthRegistration request) {
+        Object response = authService.completeOAuthRegistration(request);
+        
+        if (response instanceof AuthResponse.Error) {
+            AuthResponse.Error error = (AuthResponse.Error) response;
+            if (error.getError().contains("already")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+            }
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+    
+    @DeleteMapping("/delete-account")
+    public ResponseEntity<Object> deleteAccount(@Valid @RequestBody AuthRequest.DeleteAccount request, 
+                                               @RequestHeader("Authorization") String authHeader) {
+        try {
+            // Extract JWT token from Authorization header
+            String token = authHeader.substring(7); // Remove "Bearer " prefix
+            String userEmail = jwtService.extractEmail(token);
+            
+            if (userEmail == null || !jwtService.isTokenValid(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new AuthResponse.Error("Invalid or expired token"));
+            }
+            
+            Object response = authService.deleteAccount(request, userEmail);
+            
+            if (response instanceof AuthResponse.Error) {
+                AuthResponse.Error error = (AuthResponse.Error) response;
+                if (error.getError().contains("password") || error.getError().contains("confirmation")) {
+                    return ResponseEntity.badRequest().body(response);
+                }
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            }
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new AuthResponse.Error("Invalid authorization header"));
+        }
     }
 }

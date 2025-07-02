@@ -15,6 +15,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 // @ts-ignore
 import { router } from "expo-router";
 import { useAuth } from "../../context/AuthContext";
+// Import Google icon
+import * as WebBrowser from "expo-web-browser";
+
+// Initialize WebBrowser
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -22,11 +27,12 @@ export default function LoginScreen() {
   const [loginCode, setLoginCode] = useState("");
   const [isLoadingLogin, setIsLoadingLogin] = useState(false);
   const [isLoadingVerify, setIsLoadingVerify] = useState(false);
+  const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
   const [showCodeInput, setShowCodeInput] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const { showAlert } = useAlert();
 
-  const { login, verifyLoginCode } = useAuth();
+  const { login, verifyLoginCode, initiateGoogleLogin } = useAuth();
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -87,6 +93,24 @@ export default function LoginScreen() {
   const handleGoBack = () => {
     setShowCodeInput(false);
     setLoginCode("");
+  };
+
+  const handleGoogleAuth = async () => {
+    setIsLoadingGoogle(true);
+    try {
+      // Use the AuthContext's method for Google login
+      await initiateGoogleLogin();
+      // Navigation will be handled in the deep link handler in AuthContext
+    } catch (error) {
+      console.error("Google Auth Error:", error);
+      showAlert(
+        "Authentication Error",
+        "Failed to start Google authentication.",
+        "error"
+      );
+    } finally {
+      setIsLoadingGoogle(false);
+    }
   };
 
   return (
@@ -188,15 +212,26 @@ export default function LoginScreen() {
                     </TouchableOpacity>
                   </View>
 
+                  {/* Google Auth Button */}
                   <TouchableOpacity
-                    className="w-full py-4 border border-gray-300 rounded-lg mb-6 bg-white"
-                    onPress={() => {
-                      console.log("Google OAuth pressed");
-                    }}
+                    className="w-full py-4 rounded-lg border border-gray-300 bg-white flex-row items-center justify-center mb-6"
+                    onPress={handleGoogleAuth}
+                    disabled={isLoadingGoogle}
                   >
-                    <Text className="text-gray-700 text-center font-semibold">
-                      Continue with Google
-                    </Text>
+                    {isLoadingGoogle ? (
+                      <ActivityIndicator color="#67082F" className="mr-2" />
+                    ) : (
+                      <View className="flex-row items-center justify-center">
+                        <Image
+                          source={require("../../assets/images/google_icon.png")}
+                          className="w-5 h-5 mr-2"
+                          style={{ width: 20, height: 20, marginRight: 8 }}
+                        />
+                        <Text className="text-gray-700 font-semibold text-lg">
+                          Continue with Google
+                        </Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 </View>
 

@@ -15,7 +15,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
 import ApiService from "../../services/api";
-import Header from "../../src/components/Header";
+import Header from "../../components/Header";
 import DatePicker from "../../components/DatePicker";
 import cloudinaryService from "../../services/cloudinary";
 
@@ -415,6 +415,71 @@ export default function SettingsScreen() {
     }
   };
 
+  // Delete Account functionality
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [deleteAccountData, setDeleteAccountData] = useState({
+    password: "",
+    confirmationText: "",
+  });
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  const handleDeleteAccount = () => {
+    setShowDeleteAccountModal(true);
+  };
+
+  const executeDeleteAccount = async () => {
+    if (deleteAccountData.confirmationText !== "DELETE MY ACCOUNT") {
+      showAlert(
+        "Error",
+        'Please type exactly "DELETE MY ACCOUNT" to confirm',
+        "error"
+      );
+      return;
+    }
+
+    // For regular users (non-OAuth), password is required
+    if (!deleteAccountData.password) {
+      showAlert("Error", "Password is required", "error");
+      return;
+    }
+
+    try {
+      setIsDeletingAccount(true);
+      const response = await ApiService.deleteAccount(
+        deleteAccountData.password,
+        deleteAccountData.confirmationText
+      );
+
+      if (response.success) {
+        showAlert(
+          "Account Deleted",
+          "Your account has been permanently deleted.",
+          "success"
+        );
+        setShowDeleteAccountModal(false);
+        // Clear form
+        setDeleteAccountData({ password: "", confirmationText: "" });
+        // Logout user after successful deletion
+        await logout();
+      } else {
+        showAlert(
+          "Error",
+          response.error || "Failed to delete account",
+          "error"
+        );
+      }
+    } catch (error) {
+      console.error("Delete account error:", error);
+      showAlert(
+        "Error",
+        "Failed to delete account. Please try again.",
+        "error"
+      );
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <View className="flex-1 bg-[#FFE4D6] max-w-screen-md mx-auto w-full">
@@ -633,7 +698,19 @@ export default function SettingsScreen() {
               <Text className="text-gray-800 ml-3">Help & Support</Text>
             </View>
             <MaterialIcons name="chevron-right" size={24} color="#67082F" />
-          </TouchableOpacity>          <TouchableOpacity
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            className="p-4 flex-row items-center justify-between"
+            onPress={handleDeleteAccount}
+          >
+            <View className="flex-row items-center">
+              <MaterialIcons name="delete-forever" size={24} color="#DC2626" />
+              <Text className="text-red-600 ml-3">Delete Account</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             className="p-4 flex-row items-center justify-between"
             onPress={handleLogout}
           >
@@ -1104,6 +1181,87 @@ export default function SettingsScreen() {
                 </TouchableOpacity>
               </View>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete Account Modal */}
+      <Modal
+        visible={showDeleteAccountModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowDeleteAccountModal(false)}
+      >
+        <View className="flex-1 bg-black/50 items-center justify-center p-4">
+          <View className="bg-white rounded-lg p-6 w-full max-w-sm">
+            <Text className="text-lg font-bold mb-4 text-center text-red-600">
+              Delete Account
+            </Text>
+
+            <Text className="text-gray-600 mb-4 text-center">
+              This action cannot be undone. All your data will be permanently
+              deleted.
+            </Text>
+
+            {/* Password field - always show for now since we simplified the logic */}
+            <View className="mb-4">
+              <Text className="text-gray-700 mb-2">Enter your password:</Text>
+              <TextInput
+                className="border border-gray-300 rounded-lg p-3"
+                placeholder="Password (leave empty for Google accounts)"
+                secureTextEntry
+                value={deleteAccountData.password}
+                onChangeText={(text) =>
+                  setDeleteAccountData((prev) => ({ ...prev, password: text }))
+                }
+              />
+            </View>
+
+            <View className="mb-4">
+              <Text className="text-gray-700 mb-2">
+                Type &quot;DELETE MY ACCOUNT&quot; to confirm:
+              </Text>
+              <TextInput
+                className="border border-gray-300 rounded-lg p-3"
+                placeholder="DELETE MY ACCOUNT"
+                value={deleteAccountData.confirmationText}
+                onChangeText={(text) =>
+                  setDeleteAccountData((prev) => ({
+                    ...prev,
+                    confirmationText: text,
+                  }))
+                }
+              />
+            </View>
+
+            <View className="flex-row space-x-3">
+              <TouchableOpacity
+                className="flex-1 bg-gray-200 rounded-lg p-4"
+                onPress={() => {
+                  setShowDeleteAccountModal(false);
+                  setDeleteAccountData({ password: "", confirmationText: "" });
+                }}
+                disabled={isDeletingAccount}
+              >
+                <Text className="text-center text-gray-700 font-semibold">
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className="flex-1 bg-red-600 rounded-lg p-4"
+                onPress={executeDeleteAccount}
+                disabled={isDeletingAccount}
+              >
+                {isDeletingAccount ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Text className="text-center text-white font-semibold">
+                    Delete Account
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
