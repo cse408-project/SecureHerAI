@@ -256,7 +256,7 @@ export default function Home() {
             <QuickAction
               icon="description"
               label="Report Incident"
-              onPress={() => router.push("/report-submit" as any)}
+              onPress={() => router.push("/reports/submit" as any)}
             />
           </View>
         </View>

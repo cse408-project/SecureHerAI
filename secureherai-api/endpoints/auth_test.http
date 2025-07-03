@@ -1,10 +1,10 @@
 ### SecureHerAI Authentication API Tests
 
 @baseUrl = http://localhost:8080/api
-@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI5MzZlZTRkYS1mN2VkLTQzODItOTMwOC1iYzc2YWNkODg2NjkiLCJlbWFpbCI6ImFyaW1vdG9raWthMjAwNTAyNUBnbWFpbC5jb20iLCJyb2xlIjoiUkVTUE9OREVSIiwiaWF0IjoxNzUxMDM0MDUzLCJleHAiOjE3NTE4OTgwNTN9.tNy_5L4Fk81eI-H2tdEyxAM3XnAwLRlkaLPZ6NTLp0M
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJmODA3YWI5Mi02ZDFmLTRkZWItYWYzOC1mZTkwYTA3NmM1NmIiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc1MTQzMjMzNSwiZXhwIjoxNzUyMjk2MzM1fQ.hsX3pdQET1_pUZxVmPA6gtPu2HX4gI8L4h0HmdaClKE
 
 ### 1. Health Check
-GET {{baseUrl}}/health
+GET {{baseUrl}}/isOk
 
 ### Google OAuth Authentication Endpoints
 
@@ -36,6 +36,7 @@ Content-Type: application/json
 ### 2. Register User
 POST {{baseUrl}}/auth/register
 Content-Type: application/json
+
 {
   "fullName": "AN Swapnil",
   "email": "2005009@ugrad.cse.buet.ac.bd",
@@ -184,7 +185,7 @@ Content-Type: application/json
 
 {
   "email": "2005009@ugrad.cse.buet.ac.bd",
-  "loginCode": "631843"
+  "loginCode": "471499"
 }
 
 ### Successful Verification Response (User)

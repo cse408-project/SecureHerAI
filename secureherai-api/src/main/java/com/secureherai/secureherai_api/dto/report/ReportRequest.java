@@ -134,9 +134,9 @@ public class ReportRequest {
         @NotNull(message = "Report ID is required")
         private UUID reportId;
         
-        @NotNull(message = "Evidence files are required")
-        @Size(min = 1, message = "At least one evidence file is required")
-        private List<String> evidence; // Base64 encoded files
+        @NotNull(message = "Evidence URLs are required")
+        @Size(min = 1, message = "At least one evidence URL is required")
+        private List<String> evidence; // URLs to evidence files
         
         private String description;
         

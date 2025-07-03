@@ -16,8 +16,10 @@ import com.secureherai.secureherai_api.dto.report.ReportRequest;
 import com.secureherai.secureherai_api.dto.report.ReportResponse;
 import com.secureherai.secureherai_api.entity.IncidentReport;
 import com.secureherai.secureherai_api.entity.User;
+import com.secureherai.secureherai_api.entity.ReportEvidence;
 import com.secureherai.secureherai_api.repository.IncidentReportRepository;
 import com.secureherai.secureherai_api.repository.UserRepository;
+import com.secureherai.secureherai_api.repository.ReportEvidenceRepository;
 
 @Service
 @Transactional
@@ -31,6 +33,9 @@ public class ReportService {
     @Autowired
     private UserRepository userRepository;
     
+    @Autowired
+    private ReportEvidenceRepository evidenceRepository;
+    
     /**
      * Submit a new incident report
      */
@@ -43,6 +48,11 @@ public class ReportService {
                 logger.debug("Location: {}, {}", request.getLocation().getLatitude(), request.getLocation().getLongitude());
             } else {
                 logger.debug("No location provided");
+            }
+            
+            // Log if evidence is included in the submission
+            if (request.getEvidence() != null && !request.getEvidence().isEmpty()) {
+                logger.debug("Request includes {} evidence URL(s)", request.getEvidence().size());
             }
             
             // Verify user exists
@@ -139,12 +149,57 @@ public class ReportService {
             
             logger.info("Report saved successfully with ID: {}", savedReport.getId());
             
-            // TODO: Handle evidence upload if provided
-            // This would typically involve saving files to storage and storing URLs
+            // Handle evidence URLs if provided in the initial submission
+            if (request.getEvidence() != null && !request.getEvidence().isEmpty()) {
+                logger.debug("Processing {} evidence URL(s) included in report submission", request.getEvidence().size());
+                
+                // Validate URL formats
+                List<String> validatedUrls = new ArrayList<>();
+                for (String evidenceUrl : request.getEvidence()) {
+                    if (!isValidUrl(evidenceUrl)) {
+                        logger.warn("Invalid URL format in initial evidence: {}", evidenceUrl);
+                        continue; // Skip invalid URLs instead of failing the whole report
+                    }
+                    validatedUrls.add(evidenceUrl);
+                }
+                
+                if (!validatedUrls.isEmpty()) {
+                    // Create evidence entities for each URL
+                    List<ReportEvidence> evidenceList = new ArrayList<>();
+                    for (String url : validatedUrls) {
+                        String fileType = determineFileTypeFromUrl(url);
+                        if (fileType == null) {
+                            logger.warn("Unsupported file type for URL: {}", url);
+                            continue; // Skip unsupported file types
+                        }
+                        
+                        // Create evidence entity
+                        ReportEvidence evidence = new ReportEvidence(
+                            savedReport.getId(),
+                            url,
+                            fileType,
+                            null // No description for initial evidence
+                        );
+                        evidenceList.add(evidence);
+                    }
+                    
+                    // Store evidence URLs in database
+                    if (!evidenceList.isEmpty()) {
+                        evidenceRepository.saveAll(evidenceList);
+                        logger.info("Saved {} evidence file(s) with initial report submission", evidenceList.size());
+                    }
+                }
+            }
+            
+            // Customize success message based on whether evidence was included
+            String successMessage = "Incident report submitted successfully";
+            if (request.getEvidence() != null && !request.getEvidence().isEmpty()) {
+                successMessage += " with " + request.getEvidence().size() + " evidence file(s)";
+            }
             
             return new ReportResponse.GenericResponse(
                 true, 
-                "Incident report submitted successfully", 
+                successMessage, 
                 null, 
                 savedReport.getId()
             );
@@ -224,12 +279,38 @@ public class ReportService {
                 return new ReportResponse.GenericResponse(false, null, "Report not found or access denied");
             }
             
-            // TODO: Implement actual evidence upload logic
-            // This would involve:
-            // 1. Decoding base64 files
-            // 2. Validating file types and sizes
-            // 3. Storing files (e.g., in cloud storage)
-            // 4. Saving file URLs to database
+            // Implement evidence upload logic
+            // 1. Validate URL formats and accessibility
+            List<String> validatedUrls = new ArrayList<>();
+            for (String evidenceUrl : request.getEvidence()) {
+                if (!isValidUrl(evidenceUrl)) {
+                    logger.warn("Invalid URL format: {}", evidenceUrl);
+                    return new ReportResponse.GenericResponse(false, null, "Invalid URL format: " + evidenceUrl);
+                }
+                validatedUrls.add(evidenceUrl);
+            }
+            
+            // 2. Determine file types from URLs
+            List<ReportEvidence> evidenceList = new ArrayList<>();
+            for (String url : validatedUrls) {
+                String fileType = determineFileTypeFromUrl(url);
+                if (fileType == null) {
+                    logger.warn("Unsupported file type for URL: {}", url);
+                    return new ReportResponse.GenericResponse(false, null, "Unsupported file type for URL: " + url);
+                }
+                
+                // 3. Create evidence entity
+                ReportEvidence evidence = new ReportEvidence(
+                    request.getReportId(),
+                    url,
+                    fileType,
+                    request.getDescription()
+                );
+                evidenceList.add(evidence);
+            }
+            
+            // 4. Store URLs in database
+            evidenceRepository.saveAll(evidenceList);
             
             logger.info("Evidence uploaded successfully for report: {}", request.getReportId());
             return new ReportResponse.GenericResponse(true, "Evidence uploaded successfully", null);
@@ -440,8 +521,12 @@ public class ReportService {
         details.setCreatedAt(report.getCreatedAt());
         details.setUpdatedAt(report.getUpdatedAt());
         
-        // TODO: Load evidence URLs from separate evidence table
-        details.setEvidence(new ArrayList<>());
+        // Load evidence URLs from evidence table
+        List<ReportEvidence> evidenceList = evidenceRepository.findByReportIdOrderByUploadedAt(report.getId());
+        List<String> evidenceUrls = evidenceList.stream()
+                .map(ReportEvidence::getFileUrl)
+                .collect(Collectors.toList());
+        details.setEvidence(evidenceUrls);
         
         return details;
     }
@@ -756,5 +841,49 @@ public class ReportService {
                 incidentType.equalsIgnoreCase("theft") || 
                 incidentType.equalsIgnoreCase("assault") || 
                 incidentType.equalsIgnoreCase("other"));
+    }
+    
+    // Helper method to validate URL format
+    private boolean isValidUrl(String urlString) {
+        try {
+            new java.net.URL(urlString);
+            return urlString.startsWith("http://") || urlString.startsWith("https://");
+        } catch (java.net.MalformedURLException e) {
+            return false;
+        }
+    }
+    
+    // Helper method to determine file type from URL
+    private String determineFileTypeFromUrl(String url) {
+        String lowerUrl = url.toLowerCase();
+        
+        // Image types
+        if (lowerUrl.endsWith(".jpg") || lowerUrl.endsWith(".jpeg") || 
+            lowerUrl.endsWith(".png") || lowerUrl.endsWith(".gif") || 
+            lowerUrl.endsWith(".bmp") || lowerUrl.endsWith(".webp")) {
+            return "image";
+        }
+        
+        // Video types
+        if (lowerUrl.endsWith(".mp4") || lowerUrl.endsWith(".avi") || 
+            lowerUrl.endsWith(".mov") || lowerUrl.endsWith(".wmv") || 
+            lowerUrl.endsWith(".flv") || lowerUrl.endsWith(".webm")) {
+            return "video";
+        }
+        
+        // Audio types
+        if (lowerUrl.endsWith(".mp3") || lowerUrl.endsWith(".wav") || 
+            lowerUrl.endsWith(".flac") || lowerUrl.endsWith(".aac") || 
+            lowerUrl.endsWith(".ogg") || lowerUrl.endsWith(".m4a")) {
+            return "audio";
+        }
+        
+        // Document types
+        if (lowerUrl.endsWith(".pdf") || lowerUrl.endsWith(".doc") || 
+            lowerUrl.endsWith(".docx") || lowerUrl.endsWith(".txt")) {
+            return "document";
+        }
+        
+        return null; // Unsupported file type
     }
 }

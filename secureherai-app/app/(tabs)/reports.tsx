@@ -197,11 +197,11 @@ export default function ReportsTabScreen() {
   };
 
   const navigateToDetails = (reportId: string) => {
-    router.push(`/report-details?id=${reportId}` as any);
+    router.push(`/reports/details?id=${reportId}` as any);
   };
 
   const navigateToSubmit = () => {
-    router.push(`/report-submit` as any);
+    router.push(`/reports/submit` as any);
   };
 
   const renderReportCard = (report: ReportSummary) => (
@@ -273,12 +273,26 @@ export default function ReportsTabScreen() {
       </View>
 
       <View className="flex-row justify-between items-center mt-2 pt-2 border-t border-gray-100">
-        <Text className="text-xs text-gray-500">
-          Incident: {formatDate(report.incidentTime)}
-        </Text>
-        <Text className="text-xs text-gray-500">
-          Submitted: {formatDate(report.createdAt)}
-        </Text>
+        <View className="flex-1">
+          <Text className="text-xs text-gray-500">
+            Incident: {formatDate(report.incidentTime)}
+          </Text>
+          <Text className="text-xs text-gray-500">
+            Submitted: {formatDate(report.createdAt)}
+          </Text>
+        </View>
+        
+        {/* Quick action for evidence upload */}
+        <TouchableOpacity
+          className="flex-row items-center px-3 py-1 bg-[#67082F]/10 rounded-full"
+          onPress={(e) => {
+            e.stopPropagation(); // Prevent navigating to details
+            router.push(`/reports/evidence?reportId=${report.reportId}` as any);
+          }}
+        >
+          <MaterialIcons name="add-photo-alternate" size={14} color="#67082F" />
+          <Text className="text-[#67082F] text-xs font-medium ml-1">Evidence</Text>
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -387,7 +401,7 @@ export default function ReportsTabScreen() {
                   </View>
                   <Text className="text-gray-800 text-xl font-bold mt-2">No Reports Yet</Text>
                   <Text className="text-gray-500 text-center mt-3 leading-relaxed">
-                    You haven't submitted any incident reports. Your safety matters - start by creating your first report.
+                    You haven&apos;t submitted any incident reports. Your safety matters - start by creating your first report.
                   </Text>
                   
                   {/* Feature highlights */}
