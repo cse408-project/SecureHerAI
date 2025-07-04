@@ -1,7 +1,7 @@
 ### SecureHerAI Authentication API Tests
 
 @baseUrl = http://localhost:8080/api
-@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI5MzZlZTRkYS1mN2VkLTQzODItOTMwOC1iYzc2YWNkODg2NjkiLCJlbWFpbCI6ImFyaW1vdG9raWthMjAwNTAyNUBnbWFpbC5jb20iLCJyb2xlIjoiUkVTUE9OREVSIiwiaWF0IjoxNzUxMDM0MDUzLCJleHAiOjE3NTE4OTgwNTN9.tNy_5L4Fk81eI-H2tdEyxAM3XnAwLRlkaLPZ6NTLp0M
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI2YTU5NjE0Yi04MDY3LTQxYmMtODhjNi1kODAyNWRlNzk2OGEiLCJlbWFpbCI6InNvbmlha2hhdHVuOTQzNThAZ21haWwuY29tIiwicm9sZSI6IlJFU1BPTkRFUiIsImlhdCI6MTc1MTU3NDQ0OCwiZXhwIjoxNzUyNDM4NDQ4fQ.olCnREUT_HnHJhvZLbG4hekLA0yIDrxaQNj2Ipys1YE
 
 ### 1. Health Check
 GET {{baseUrl}}/health
@@ -173,7 +173,7 @@ POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "arimotokika2005025@gmail.com",
+  "email": "soniakhatun94358@gmail.com",
   "password": "password123"
 }
 
@@ -205,8 +205,8 @@ POST {{baseUrl}}/auth/verify-login-code
 Content-Type: application/json
 
 {
-  "email": "arimotokika2005025@gmail.com",
-  "loginCode": "441615"
+  "email": "2005009@ugrad.cse.buet.ac.bd",
+  "loginCode": "077954"
 }
 
 ### Successful Verification Response
@@ -227,8 +227,8 @@ POST {{baseUrl}}/auth/verify-login-code
 Content-Type: application/json
 
 {
-  "email": "2005009@ugrad.cse.buet.ac.bd",
-  "loginCode": "403328"
+  "email": "soniakhatun94358@gmail.com",
+  "loginCode": "077954"
 }
 
 

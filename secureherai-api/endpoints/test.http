@@ -1,0 +1,80 @@
+### Azure Speech-to-Text API Tests
+
+### Health Check - Speech Service
+GET http://localhost:8080/api/speech/health
+Accept: application/json
+
+###
+
+### Speech-to-Text Transcription (with audio file)
+POST http://localhost:8080/api/speech/transcribe
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="audio"; filename="test-audio.wav"
+Content-Type: audio/wav
+
+< ../data/try_again.wav
+--boundary--
+
+###
+
+### Test with invalid file format (should return 400)
+POST http://localhost:8080/api/speech/transcribe
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="audio"; filename="test-file.txt"
+Content-Type: text/plain
+
+< ./test-file.txt
+--boundary--
+
+###
+
+### Test without file (should return 400)
+POST http://localhost:8080/api/speech/transcribe
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="audio"; filename=""
+Content-Type: audio/wav
+
+--boundary--
+
+###
+
+### Transcribe from URL (Public Audio URL)
+POST http://localhost:8080/api/speech/transcribe-url
+Content-Type: application/json
+Accept: application/json
+
+{
+  "audioUrl": "https://res.cloudinary.com/dhb8x5ucj/video/upload/v1751572270/report_evidence/kg72ocz30919aegthsgf.wav",
+  "languageCode": "en-US"
+}
+
+###
+
+### Transcribe from URL (Invalid URL)
+POST http://localhost:8080/api/speech/transcribe-url
+Content-Type: application/json
+Accept: application/json
+
+{
+  "audioUrl": "",
+  "languageCode": "en-US"
+}
+
+###
+
+### Transcribe from URL (Missing URL)
+POST http://localhost:8080/api/speech/transcribe-url
+Content-Type: application/json
+Accept: application/json
+
+{
+  "languageCode": "en-US"
+}
+
+###

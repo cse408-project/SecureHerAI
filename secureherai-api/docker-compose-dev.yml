@@ -34,14 +34,18 @@ services:
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
 
-      # OAuth2 Configuration
+      # OAuth2 Web Configuration
       OAUTH2_WEB_ORIGIN: ${OAUTH2_WEB_ORIGIN:-}
       OAUTH2_WEB_REDIRECT_URI: ${OAUTH2_WEB_REDIRECT_URI:-}
 
+      # OAuth2 Credential Configuration
       OAUTH2_CLIENT_ID: ${OAUTH2_CLIENT_ID:-}
       OAUTH2_CLIENT_SECRET: ${OAUTH2_CLIENT_SECRET:-}
-
       OAUTH2_CLIENT_ID_ANDROID: ${OAUTH2_CLIENT_ID_ANDROID:-}
+
+      # Azure Speech Service Configuration
+      AZURE_SPEECH_KEY: ${AZURE_SPEECH_KEY:-}
+      AZURE_SPEECH_REGION: ${AZURE_SPEECH_REGION:-}
     depends_on:
       db:
         condition: service_healthy
