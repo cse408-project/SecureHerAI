@@ -95,7 +95,7 @@ public class SOSService {
             }
         } finally {
             // Clean up the temporary file
-            cleanupTemporaryFile(tempFile);
+            // cleanupTemporaryFile(tempFile);
         }
     }
     

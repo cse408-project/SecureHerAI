@@ -155,12 +155,16 @@ public class AzureSpeechService {
             
         } finally {
             // Always clean up the temporary file
+            // TODO: Temporarily commented out for debugging - keeping temp files for analysis
             if (tempFile != null && tempFile.exists()) {
+                log.info("Temporary file kept for debugging: {}", tempFile.getAbsolutePath());
+                /*
                 if (tempFile.delete()) {
                     log.debug("Deleted temporary file for URL: {}", tempFile.getAbsolutePath());
                 } else {
                     log.warn("Failed to delete temporary file for URL: {}", tempFile.getAbsolutePath());
                 }
+                */
             }
         }
     }
@@ -259,6 +263,11 @@ public class AzureSpeechService {
                 transcriptionResult.setConfidence(0.0);
                 transcriptionResult.setMessage("Unexpected recognition result");
                 break;
+        }
+
+        // Log the result for debugging
+        if (!transcriptionResult.isSuccess()) {
+            log.warn("Azure Speech Service failed for {}: {}", fileName, transcriptionResult.getMessage());
         }
 
         return transcriptionResult;

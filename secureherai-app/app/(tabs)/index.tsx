@@ -7,6 +7,9 @@ import { useAlert } from "../../context/AlertContext";
 import Header from "../../components/Header";
 import QuickAction from "../../components/QuickAction";
 import NotificationModal from "../../components/NotificationModal";
+import SOSModalModern from "../../components/SOSModalModern";
+import ReportModal from "../../components/ReportModal";
+import { AlertResponse } from "../../types/sos";
 
 export default function Home() {
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -19,6 +22,13 @@ export default function Home() {
   );
   const [showNotifications, setShowNotifications] = useState(false);
   const { showAlert, showConfirmAlert } = useAlert();
+
+  // Added states for SOS flow
+  const [showSOSModal, setShowSOSModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [alertResponse, setAlertResponse] = useState<AlertResponse | null>(
+    null
+  );
 
   const notifications = [
     { id: 1, message: "SOS Alert sent successfully!" },
@@ -72,30 +82,8 @@ export default function Home() {
       setSosTriggered(true);
       setIsPressed(false);
 
-      // Show confirmation alert first
-      showConfirmAlert(
-        "Emergency SOS",
-        "This will send emergency alerts to your trusted contacts and emergency services. Continue?",
-        async () => {
-          // Simulate SOS sending
-          showAlert(
-            "SOS Sent!",
-            "Emergency alert has been sent to your trusted contacts and emergency services.",
-            "success"
-          );
-
-          // Navigate to SOS management page to show details
-          setTimeout(() => {
-            router.push("/(tabs)/sos" as any);
-          }, 1500);
-        },
-        () => {
-          setSosTriggered(false);
-          // Restart pulse animation
-          if (pulseAnimation) pulseAnimation.start();
-        },
-        "warning"
-      );
+      // Show SOS modal directly without confirmation
+      setShowSOSModal(true);
     } catch (error) {
       console.error("Error triggering SOS:", error);
       showAlert(
@@ -106,6 +94,40 @@ export default function Home() {
       setSosTriggered(false);
       if (pulseAnimation) pulseAnimation.start();
     }
+  };
+
+  // Handle successful SOS alert submission
+  const handleSOSSuccess = (response: AlertResponse) => {
+    setAlertResponse(response);
+    setShowSOSModal(false);
+
+    // Show confirmation and ask if user wants to submit a report
+    showConfirmAlert(
+      "SOS Alert Sent",
+      "Your SOS alert has been sent successfully. Would you like to provide more details by submitting an incident report?",
+      () => {
+        // Show report modal if user confirms
+        setShowReportModal(true);
+      },
+      () => {
+        // Reset SOS trigger state if user declines
+        resetSOSState();
+      },
+      "success"
+    );
+  };
+
+  // Handle closing of the report modal
+  const handleReportClose = () => {
+    setShowReportModal(false);
+    resetSOSState();
+  };
+
+  // Reset SOS state after completion or cancellation
+  const resetSOSState = () => {
+    setSosTriggered(false);
+    setAlertResponse(null);
+    if (pulseAnimation) pulseAnimation.start();
   };
 
   const handleQuickLocationShare = () => {
@@ -134,6 +156,10 @@ export default function Home() {
       undefined,
       "error"
     );
+  };
+
+  const handleViewAlertHistory = () => {
+    router.push("/sos" as any);
   };
 
   return (
@@ -251,16 +277,39 @@ export default function Home() {
               onPress={handleQuickEmergencyCall}
             />
           </View>
-          
-          <View className="flex-row justify-center">
+
+          <View className="flex-row justify-around">
             <QuickAction
               icon="description"
               label="Report Incident"
               onPress={() => router.push("/report-submit" as any)}
             />
+            <QuickAction
+              icon="history"
+              label="Alert History"
+              onPress={handleViewAlertHistory}
+            />
           </View>
         </View>
       </View>
+
+      {/* SOS Modal for voice/text selection */}
+      <SOSModalModern
+        visible={showSOSModal}
+        onClose={() => {
+          setShowSOSModal(false);
+          resetSOSState();
+        }}
+        onSuccess={handleSOSSuccess}
+      />
+
+      {/* Report Modal for incident details */}
+      <ReportModal
+        visible={showReportModal}
+        onClose={handleReportClose}
+        alertData={alertResponse}
+      />
+
       <NotificationModal
         visible={showNotifications}
         notifications={notifications}

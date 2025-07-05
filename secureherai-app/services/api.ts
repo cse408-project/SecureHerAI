@@ -5,7 +5,7 @@ import {
   UserReportsResponse,
   ReportDetailsResponse,
   UploadEvidenceRequest,
-  UpdateReportRequest
+  UpdateReportRequest,
 } from "../types/report";
 
 //Ensure API base URL works in both web and native environments
@@ -505,7 +505,9 @@ class ApiService {
   }
 
   // Report API Methods
-  async submitReport(reportData: SubmitReportRequest): Promise<GenericReportResponse> {
+  async submitReport(
+    reportData: SubmitReportRequest
+  ): Promise<GenericReportResponse> {
     try {
       console.log("API: Submitting report:", reportData);
       const response = await fetch(`${API_BASE_URL}/report/submit`, {
@@ -572,7 +574,9 @@ class ApiService {
     }
   }
 
-  async uploadEvidence(evidenceData: UploadEvidenceRequest): Promise<GenericReportResponse> {
+  async uploadEvidence(
+    evidenceData: UploadEvidenceRequest
+  ): Promise<GenericReportResponse> {
     try {
       console.log("API: Uploading evidence for report:", evidenceData.reportId);
       const response = await fetch(`${API_BASE_URL}/report/upload-evidence`, {
@@ -594,7 +598,9 @@ class ApiService {
     }
   }
 
-  async updateReport(updateData: UpdateReportRequest): Promise<GenericReportResponse> {
+  async updateReport(
+    updateData: UpdateReportRequest
+  ): Promise<GenericReportResponse> {
     try {
       console.log("API: Updating report:", updateData.reportId);
       const response = await fetch(`${API_BASE_URL}/report/update`, {
@@ -637,17 +643,21 @@ class ApiService {
     }
   }
 
-  async searchReports(query: string, page = 0, size = 50): Promise<UserReportsResponse> {
+  async searchReports(
+    query: string,
+    page = 0,
+    size = 50
+  ): Promise<UserReportsResponse> {
     try {
       console.log("API: Searching reports with query:", query);
       const params = new URLSearchParams({
         query,
         page: page.toString(),
         size: size.toString(),
-        sortBy: 'createdAt',
-        sortDir: 'desc'
+        sortBy: "createdAt",
+        sortDir: "desc",
       });
-      
+
       const response = await fetch(`${API_BASE_URL}/report/search?${params}`, {
         method: "GET",
         headers: await this.getHeaders(true),
@@ -676,13 +686,13 @@ class ApiService {
     try {
       console.log("API: Filtering reports with filters:", filters);
       const params = new URLSearchParams();
-      
+
       Object.entries(filters).forEach(([key, value]) => {
         if (value) {
           params.append(key, value);
         }
       });
-      
+
       const response = await fetch(`${API_BASE_URL}/report/filter?${params}`, {
         method: "GET",
         headers: await this.getHeaders(true),
@@ -754,7 +764,7 @@ class ApiService {
   async deleteReport(reportId: string): Promise<GenericReportResponse> {
     try {
       console.log("API: Deleting report:", reportId);
-      
+
       // Check if we have auth token
       const token = await AsyncStorage.getItem("auth_token");
       if (!token) {
@@ -764,13 +774,13 @@ class ApiService {
           error: "Authentication required. Please log in again.",
         };
       }
-      
+
       const headers = await this.getHeaders(true);
       console.log("API: Request headers:", headers);
-      
+
       const url = `${API_BASE_URL}/report/delete?reportId=${reportId}`;
       console.log("API: Delete URL:", url);
-      
+
       const response = await fetch(url, {
         method: "DELETE",
         headers: headers,
@@ -782,7 +792,7 @@ class ApiService {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("API: Delete report error response:", errorText);
-        
+
         if (response.status === 401) {
           return {
             success: false,
@@ -799,12 +809,15 @@ class ApiService {
             error: "Report not found.",
           };
         }
-        
+
         try {
           const errorData = JSON.parse(errorText);
           return {
             success: false,
-            error: errorData.error || errorData.message || `Server error: ${response.status}`,
+            error:
+              errorData.error ||
+              errorData.message ||
+              `Server error: ${response.status}`,
           };
         } catch {
           return {
@@ -823,6 +836,131 @@ class ApiService {
       return {
         success: false,
         error: "Network error occurred while deleting report",
+      };
+    }
+  }
+
+  // SOS Alert Methods
+  async submitSOSVoiceCommand(
+    audioUrl: string,
+    location: { latitude: number; longitude: number; address: string }
+  ) {
+    try {
+      console.log("API: Submitting SOS voice command");
+      const response = await fetch(`${API_BASE_URL}/sos/voice-command`, {
+        method: "POST",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({
+          audioUrl,
+          location,
+        }),
+      });
+
+      console.log("API: SOS voice command response status:", response.status);
+      const data = await response.json();
+
+      return data;
+    } catch (error) {
+      console.error("API: SOS voice command error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while submitting SOS voice command",
+      };
+    }
+  }
+
+  async submitSOSTextCommand(
+    message: string,
+    keyword: string,
+    location: { latitude: number; longitude: number; address: string }
+  ) {
+    try {
+      console.log("API: Submitting SOS text command");
+      const response = await fetch(`${API_BASE_URL}/sos/text-command`, {
+        method: "POST",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({
+          message,
+          keyword,
+          location,
+        }),
+      });
+
+      console.log("API: SOS text command response status:", response.status);
+      const data = await response.json();
+
+      return data;
+    } catch (error) {
+      console.error("API: SOS text command error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while submitting SOS text command",
+      };
+    }
+  }
+
+  async getUserAlerts() {
+    try {
+      console.log("API: Getting user alerts");
+      const response = await fetch(`${API_BASE_URL}/sos/alerts`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      console.log("API: User alerts response status:", response.status);
+      const data = await response.json();
+
+      return data;
+    } catch (error) {
+      console.error("API: Get user alerts error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while getting user alerts",
+      };
+    }
+  }
+
+  async getActiveAlerts() {
+    try {
+      console.log("API: Getting active alerts (responder)");
+      const response = await fetch(`${API_BASE_URL}/sos/active-alerts`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      console.log("API: Active alerts response status:", response.status);
+      const data = await response.json();
+
+      return data;
+    } catch (error) {
+      console.error("API: Get active alerts error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while getting active alerts",
+      };
+    }
+  }
+
+  async cancelAlert(alertId: string) {
+    try {
+      console.log("API: Canceling alert:", alertId);
+      const response = await fetch(`${API_BASE_URL}/sos/cancel`, {
+        method: "POST",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({
+          alertId,
+        }),
+      });
+
+      console.log("API: Cancel alert response status:", response.status);
+      const data = await response.json();
+
+      return data;
+    } catch (error) {
+      console.error("API: Cancel alert error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while canceling alert",
       };
     }
   }
