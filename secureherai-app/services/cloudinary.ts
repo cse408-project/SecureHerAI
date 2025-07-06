@@ -107,15 +107,45 @@ class CloudinaryService {
    * Upload evidence for reports - handles images, videos, and audio files
    */
   async uploadEvidence(fileUri: string): Promise<CloudinaryResponse> {
-    // Determine file type and appropriate resource type
-    const isVideo = this.isVideoFile(fileUri);
-    const isAudio = this.isAudioFile(fileUri);
-    
-    // Cloudinary typically handles audio files under 'video' resource type
-    // unless your account specifically supports 'audio' resource type
-    const resourceType = (isVideo || isAudio) ? 'video' : 'image';
-    
-    return this.uploadFile(fileUri, 'report_evidence', resourceType);
+    try {
+      // For blob URIs (web), we need to check the actual blob MIME type
+      let resourceType: 'image' | 'video' = 'image';
+      
+      if (fileUri.startsWith('blob:')) {
+        try {
+          // Fetch the blob to get its MIME type
+          const response = await fetch(fileUri);
+          if (response.ok) {
+            const blob = await response.blob();
+            console.log('Detected blob MIME type:', blob.type);
+            
+            if (blob.type.startsWith('audio/') || blob.type.startsWith('video/')) {
+              resourceType = 'video'; // Cloudinary handles audio under 'video' resource type
+            } else if (blob.type.startsWith('image/')) {
+              resourceType = 'image';
+            }
+          }
+        } catch {
+          console.warn('Could not fetch blob for MIME type detection, falling back to URI analysis');
+        }
+      } else {
+        // For file URIs, use the existing detection methods
+        const isVideo = this.isVideoFile(fileUri);
+        const isAudio = this.isAudioFile(fileUri);
+        
+        // Cloudinary typically handles audio files under 'video' resource type
+        // unless your account specifically supports 'audio' resource type
+        resourceType = (isVideo || isAudio) ? 'video' : 'image';
+      }
+      
+      console.log(`Uploading evidence with resource type: ${resourceType} for URI: ${fileUri.substring(0, 100)}`);
+      
+      return this.uploadFile(fileUri, 'report_evidence', resourceType);
+    } catch (error) {
+      console.error('Error in uploadEvidence:', error);
+      // Fallback to image if there's any error in detection
+      return this.uploadFile(fileUri, 'report_evidence', 'image');
+    }
   }
 
   /**
@@ -343,7 +373,7 @@ class CloudinaryService {
         let errorData;
         try {
           errorData = JSON.parse(errorText);
-        } catch (e) {
+        } catch {
           throw new Error(`HTTP error! status: ${response.status}, response: ${errorText}`);
         }
         

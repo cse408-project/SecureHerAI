@@ -1,12 +1,12 @@
 # Incident Report API Testing
 @baseUrl = http://localhost:8080/api
-@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIzNDYxZTlhMC00OTc4LTQwZjYtOTYwMi03YWNkYzQ0YWJiMWEiLCJlbWFpbCI6ImFyaW1vdG9raWthMjAwNTAyNUBnbWFpbC5jb20iLCJyb2xlIjoiUkVTUE9OREVSIiwiaWF0IjoxNzUxMjY2MTA4LCJleHAiOjE3NTIxMzAxMDh9.fFaKDMlbJg5bJtifvU6hiEYd-k-XrCtKIPlUFr_FJbQ
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJmODA3YWI5Mi02ZDFmLTRkZWItYWYzOC1mZTkwYTA3NmM1NmIiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc1MTQzMjMzNSwiZXhwIjoxNzUyMjk2MzM1fQ.hsX3pdQET1_pUZxVmPA6gtPu2HX4gI8L4h0HmdaClKE
 ### Test Authentication - Check if token is valid
 GET {{baseUrl}}/user/profile
 Authorization: Bearer {{authToken}}
 
 ### Test Health Check (No auth required)
-GET {{baseUrl}}/health
+GET {{baseUrl}}/isOk
 
 
 
@@ -18,7 +18,7 @@ Authorization: Bearer {{authToken}}
 
 {
   "incidentType": "harassment",
-  "description": "I was followed by a suspicious person on my way home from work. They kept a distance but followed me for about 3 blocks.",
+  "description": "I was followed by amin on my way home from work. They kept a distance but followed me for about 3 blocks.",
   "location": {
     "latitude": "23.8103",
     "longitude": "90.4125"
@@ -126,12 +126,12 @@ Content-Type: application/json
 Authorization: Bearer {{authToken}}
 
 {
-  "reportId": "eb8671f7-dab8-4366-8b6b-bdc761beede9",
+  "reportId": "9bb5bd98-2286-4688-bab2-9ea348105957",
   "evidence": [
-    "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD...",
-    "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD..."
+    "https://res.cloudinary.com/secureherai/image/upload/v1234567890/report_evidence/evidence_1234567890.jpg",
+    "https://res.cloudinary.com/secureherai/video/upload/v1234567891/report_evidence/evidence_1234567891.mp4"
   ],
-  "description": "Photos taken at the incident location"
+  "description": "Photos and video evidence taken at the incident location"
 }
 
 ###response 200 
@@ -327,8 +327,8 @@ Authorization: Bearer {{authToken}}
 {
   "reportId": "eb8671f7-dab8-4366-8b6b-bdc761beede9",
   "evidence": [
-    "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD...",
-    "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD..."
+    "https://res.cloudinary.com/secureherai/image/upload/v1234567892/report_evidence/evidence_1234567892.jpg",
+    "https://res.cloudinary.com/secureherai/image/upload/v1234567893/report_evidence/evidence_1234567893.jpg"
   ],
   "description": "Photos taken at the incident location"
 }

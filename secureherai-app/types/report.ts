@@ -12,6 +12,7 @@ export interface SubmitReportRequest {
   visibility: 'public' | 'officials_only' | 'private';
   anonymous: boolean;
   alertId?: string;
+  evidence?: string[]; // URLs to evidence files
   involvedParties?: string; // JSON string
 }
 
@@ -72,7 +73,7 @@ export interface ReportDetailsResponse {
 
 export interface UploadEvidenceRequest {
   reportId: string;
-  evidence: string[]; // Base64 encoded files
+  evidence: string[]; // URLs to uploaded evidence files
   description?: string;
 }
 

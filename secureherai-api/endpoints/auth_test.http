@@ -4,7 +4,7 @@
 @authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI2YTU5NjE0Yi04MDY3LTQxYmMtODhjNi1kODAyNWRlNzk2OGEiLCJlbWFpbCI6InNvbmlha2hhdHVuOTQzNThAZ21haWwuY29tIiwicm9sZSI6IlJFU1BPTkRFUiIsImlhdCI6MTc1MTU3NDQ0OCwiZXhwIjoxNzUyNDM4NDQ4fQ.olCnREUT_HnHJhvZLbG4hekLA0yIDrxaQNj2Ipys1YE
 
 ### 1. Health Check
-GET {{baseUrl}}/health
+GET {{baseUrl}}/isOk
 
 ### Google OAuth Authentication Endpoints
 
@@ -36,6 +36,7 @@ Content-Type: application/json
 ### 2. Register User
 POST {{baseUrl}}/auth/register
 Content-Type: application/json
+
 {
   "fullName": "AN Swapnil",
   "email": "2005009@ugrad.cse.buet.ac.bd",
@@ -184,7 +185,7 @@ Content-Type: application/json
 
 {
   "email": "2005009@ugrad.cse.buet.ac.bd",
-  "loginCode": "631843"
+  "loginCode": "888190"
 }
 
 ### Successful Verification Response (User)

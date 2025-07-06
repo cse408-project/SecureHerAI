@@ -1,5 +1,5 @@
 @baseUrl = http://localhost:8080/api
-@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI2YTU5NjE0Yi04MDY3LTQxYmMtODhjNi1kODAyNWRlNzk2OGEiLCJlbWFpbCI6InNvbmlha2hhdHVuOTQzNThAZ21haWwuY29tIiwicm9sZSI6IlJFU1BPTkRFUiIsImlhdCI6MTc1MTU3NDQ0OCwiZXhwIjoxNzUyNDM4NDQ4fQ.olCnREUT_HnHJhvZLbG4hekLA0yIDrxaQNj2Ipys1YE
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIzOGVhOGU1OS0zNzc1LTQxMDItOWRmNS0xMDQzNzU4M2M1ZjMiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc1MTc3NzE3MywiZXhwIjoxNzUyNjQxMTczfQ.hkUe0_GWg8xgj8UsbePKYyYX3B_w4C8FrXO5zK7WUos
 
 ### Health check for API
 GET {{baseUrl}}/isOk
@@ -23,7 +23,7 @@ Content-Type: audio/wav
 ------WebKitFormBoundary7MA4YWxkTrZu0gW--
 
 ### Transcribe audio from URL
-POST {{baseUrl}}/speech/transcribe-url
+POST {{baseUrl}}/speech/transcribe-urlz
 Content-Type: application/json
 
 {
