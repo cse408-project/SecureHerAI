@@ -22,15 +22,6 @@ Content-Type: audio/wav
 < ../data/try_again.wav
 ------WebKitFormBoundary7MA4YWxkTrZu0gW--
 
-### Transcribe audio from URL
-POST {{baseUrl}}/speech/transcribe-urlz
-Content-Type: application/json
-
-{
-    "audioUrl": "https://example.com/audio/test-audio.wav",
-    "languageCode": "en-US"
-}
-
 ### SOS Voice Command (URL-based)
 # Requires authentication token
 POST {{baseUrl}}/sos/voice-command

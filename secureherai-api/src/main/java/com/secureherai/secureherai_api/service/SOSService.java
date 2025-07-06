@@ -52,7 +52,7 @@ public class SOSService {
      */
     @Transactional
     public Alert processVoiceCommand(UUID userId, MultipartFile audioFile, LocationDto location) 
-            throws IOException, InterruptedException, ExecutionException {
+            throws IOException, InterruptedException, ExecutionException, Exception {
         
         log.info("Processing voice command for user: {}", userId);
         
@@ -109,7 +109,7 @@ public class SOSService {
      */
     @Transactional
     public Alert processVoiceCommandFromUrl(UUID userId, String audioUrl, LocationDto location) 
-            throws IOException, InterruptedException, ExecutionException {
+            throws IOException, InterruptedException, ExecutionException, Exception {
         
         log.info("Processing voice command from URL for user: {}", userId);
         

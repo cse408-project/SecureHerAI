@@ -1,6 +1,5 @@
 package com.secureherai.secureherai_api.controller;
 
-import com.secureherai.secureherai_api.dto.AudioUrlRequestDto;
 import com.secureherai.secureherai_api.dto.SpeechTranscriptionResponseDto;
 import com.secureherai.secureherai_api.service.AzureSpeechService;
 import lombok.RequiredArgsConstructor;
@@ -32,16 +31,19 @@ public class SpeechController {
 
     private final AzureSpeechService azureSpeechService;
     
-    // Supported audio file formats
+    // Supported audio file formats - now includes WebM, AAC, and more
     private static final List<String> SUPPORTED_FORMATS = Arrays.asList(
-        "audio/wav", "audio/wave", "audio/x-wav",
-        "audio/mpeg", "audio/mp3", "audio/x-mpeg-3",
-        "audio/flac", "audio/x-flac",
-        "audio/ogg", "audio/vorbis"
+        "audio/wav", "audio/wave", "audio/vnd.wave", "audio/x-wav",       // WAV (all variants)
+        "audio/mpeg", "audio/mp3", "audio/x-mpeg-3",                     // MP3
+        "audio/mp4", "audio/aac", "audio/x-aac",                         // AAC (all variants)
+        "audio/webm", "video/webm",                                       // WebM (both audio and video containers)
+        "audio/flac", "audio/x-flac",                                    // FLAC
+        "audio/ogg", "audio/vorbis", "audio/opus",                       // OGG/Opus
+        "audio/x-ms-wma"                                                  // WMA
     );
     
-    // Maximum file size (10MB)
-    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
+    // Maximum file size (50MB to handle larger audio files)
+    private static final long MAX_FILE_SIZE = 50 * 1024 * 1024;
     
     // Directory for temporary audio files
     private static final String TEMP_AUDIO_DIR = "data/received";
@@ -49,7 +51,7 @@ public class SpeechController {
     /**
      * Transcribes uploaded audio file to text using Azure Speech-to-Text service
      *
-     * @param audioFile The uploaded audio file (WAV, MP3, FLAC, OGG formats supported)
+     * @param audioFile The uploaded audio file (WAV, MP3, AAC, WebM, FLAC, OGG, WMA formats supported)
      * @return Transcription result with recognized text and metadata
      */
     @PostMapping(value = "/transcribe", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -133,102 +135,6 @@ public class SpeechController {
     }
 
     /**
-     * Transcribes audio from URL to text using Azure Speech-to-Text service
-     * 
-     * @param requestDto The request containing the audio URL
-     * @return Transcription result with recognized text and metadata
-     */
-    @PostMapping(value = "/transcribe-url", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<SpeechTranscriptionResponseDto> transcribeAudioFromUrl(
-            @RequestBody AudioUrlRequestDto requestDto) {
-        
-        long startTime = System.currentTimeMillis();
-        String audioUrl = requestDto.getAudioUrl();
-        
-        log.info("Received URL transcription request for: {}", audioUrl);
-        
-        try {
-            // Validate URL
-            if (audioUrl == null || audioUrl.trim().isEmpty()) {
-                return ResponseEntity.badRequest().body(
-                    new SpeechTranscriptionResponseDto(
-                        false, "", 0.0, "Audio URL cannot be empty", "", 0
-                    )
-                );
-            }
-            
-            // Transcribe the audio from URL
-            AzureSpeechService.SpeechTranscriptionResult result = 
-                azureSpeechService.transcribeAudioFromUrl(audioUrl, requestDto.getLanguageCode());
-            
-            long processingTime = System.currentTimeMillis() - startTime;
-            
-            // Create response DTO
-            SpeechTranscriptionResponseDto response = new SpeechTranscriptionResponseDto(
-                result.isSuccess(),
-                result.getText(),
-                result.getConfidence(),
-                result.getMessage(),
-                extractFilenameFromUrl(audioUrl),
-                processingTime
-            );
-            
-            log.info("URL transcription completed in {}ms", processingTime);
-            
-            return ResponseEntity.ok(response);
-            
-        } catch (UnsupportedOperationException e) {
-            // Handle the specific error for URL transcription not being supported directly
-            log.warn("URL transcription not supported: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(
-                new SpeechTranscriptionResponseDto(
-                    false, "", 0.0, 
-                    "This feature requires Azure Speech Batch Transcription API: " + e.getMessage(),
-                    extractFilenameFromUrl(audioUrl),
-                    System.currentTimeMillis() - startTime
-                )
-            );
-            
-        } catch (Exception e) {
-            log.error("Error processing URL transcription request: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                new SpeechTranscriptionResponseDto(
-                    false, "", 0.0, 
-                    "Internal server error during URL transcription: " + e.getMessage(),
-                    extractFilenameFromUrl(audioUrl),
-                    System.currentTimeMillis() - startTime
-                )
-            );
-        }
-    }
-    
-    /**
-     * Extracts filename from a URL
-     * 
-     * @param url The URL to extract filename from
-     * @return The extracted filename or the whole URL if extraction fails
-     */
-    private String extractFilenameFromUrl(String url) {
-        if (url == null || url.isEmpty()) {
-            return "";
-        }
-        
-        try {
-            // Try to extract filename from the URL path
-            String path = new java.net.URL(url).getPath();
-            int lastSlashIndex = path.lastIndexOf('/');
-            if (lastSlashIndex >= 0 && lastSlashIndex < path.length() - 1) {
-                return path.substring(lastSlashIndex + 1);
-            }
-        } catch (Exception e) {
-            // If URL parsing fails, just return the original URL
-            log.debug("Failed to extract filename from URL: {}", url, e);
-        }
-        
-        return url;
-    }
-
-    /**
      * Validates the uploaded audio file
      *
      * @param audioFile The uploaded file to validate
@@ -265,7 +171,7 @@ public class SpeechController {
         String contentType = audioFile.getContentType();
         if (contentType == null || !SUPPORTED_FORMATS.contains(contentType.toLowerCase())) {
             throw new IllegalArgumentException(
-                "Unsupported file format. Supported formats: WAV, MP3, FLAC, OGG"
+                "Unsupported file format. Supported formats: WAV, MP3, AAC, WebM, FLAC, OGG/Opus, WMA"
             );
         }
     }

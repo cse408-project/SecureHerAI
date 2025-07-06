@@ -2,7 +2,10 @@ package com.secureherai.secureherai_api.service;
 
 import com.microsoft.cognitiveservices.speech.*;
 import com.microsoft.cognitiveservices.speech.audio.AudioConfig;
+import com.secureherai.secureherai_api.util.AudioFormatConverter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.tika.Tika;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +19,7 @@ import java.util.concurrent.Future;
 /**
  * Azure Speech-to-Text service implementation
  * Handles audio file transcription using Azure Cognitive Services Speech SDK
+ * Supports multiple audio formats: WAV, MP3, AAC, WebM, OGG, FLAC, WMA
  */
 @Service
 @Slf4j
@@ -27,8 +31,14 @@ public class AzureSpeechService {
     @Value("${azure.speech.region}")
     private String speechRegion;
 
+    @Autowired
+    private AudioFormatConverter audioConverter;
+
+    private final Tika tika = new Tika();
+
     /**
      * Transcribes audio file to text using Azure Speech-to-Text service
+     * Supports multiple audio formats: WAV, MP3, AAC, WebM, OGG, FLAC, WMA
      *
      * @param audioFile The audio file to transcribe
      * @return Transcription result containing recognized text and confidence
@@ -37,56 +47,50 @@ public class AzureSpeechService {
      * @throws ExecutionException If transcription fails
      */
     public SpeechTranscriptionResult transcribeAudioFile(File audioFile)
-            throws IOException, InterruptedException, ExecutionException {
+            throws IOException, InterruptedException, ExecutionException, Exception {
 
-        log.info("Starting transcription for file: {}", audioFile.getName());
+        log.info("Starting transcription for file: {} ({})", audioFile.getName(), 
+                 formatFileSize(audioFile.length()));
 
         // Validate Azure Speech configuration
-        if (speechKey == null || speechKey.trim().isEmpty()) {
-            throw new IllegalStateException("Azure Speech key is not configured. Please set AZURE_SPEECH_KEY environment variable.");
+        validateAzureConfiguration();
+
+        // Validate input file
+        if (!audioFile.exists() || audioFile.length() == 0) {
+            throw new IllegalArgumentException("Audio file does not exist or is empty: " + audioFile.getName());
         }
 
-        if (speechRegion == null || speechRegion.trim().isEmpty()) {
-            throw new IllegalStateException("Azure Speech region is not configured. Please set AZURE_SPEECH_REGION environment variable.");
+        // Check if format is supported
+        if (!audioConverter.isSupportedByExtension(audioFile.getName())) {
+            throw new UnsupportedOperationException(
+                "Unsupported audio format. Supported formats: " + 
+                String.join(", ", audioConverter.getSupportedFormats())
+            );
         }
 
+        File wavFile = null;
         try {
-            // Configure Azure Speech service
-            SpeechConfig speechConfig = SpeechConfig.fromSubscription(speechKey, speechRegion);
-            speechConfig.setSpeechRecognitionLanguage("en-US");
+            // Convert audio to WAV format if needed
+            wavFile = audioConverter.convertToWav(audioFile);
+            log.info("Audio converted to WAV format: {}", wavFile.getName());
 
-            // Configure audio input from file
-            AudioConfig audioConfig = AudioConfig.fromWavFileInput(audioFile.getAbsolutePath());
-
-            // Create speech recognizer
-            SpeechRecognizer speechRecognizer = new SpeechRecognizer(speechConfig, audioConfig);
-
-            log.debug("Configured Azure Speech recognizer for file: {}", audioFile.getName());
-
-            // Perform recognition
-            Future<SpeechRecognitionResult> task = speechRecognizer.recognizeOnceAsync();
-            SpeechRecognitionResult result = task.get();
-
-            // Process recognition result
-            SpeechTranscriptionResult transcriptionResult = processRecognitionResult(result, audioFile.getName());
-
-            // Clean up resources
-            speechRecognizer.close();
-            audioConfig.close();
-            speechConfig.close();
-
-            log.info("Transcription completed for file: {}", audioFile.getName());
-            return transcriptionResult;
+            // Perform Azure Speech recognition on the WAV file
+            return performSpeechRecognition(wavFile, audioFile.getName());
 
         } catch (Exception e) {
             log.error("Error during transcription of file {}: {}", audioFile.getName(), e.getMessage(), e);
             throw e;
+        } finally {
+            // Clean up temporary WAV file if it was created
+            if (wavFile != null && !wavFile.equals(audioFile)) {
+                audioConverter.cleanupTempFile(wavFile);
+            }
         }
     }
 
     /**
      * Transcribes audio from a URL using Azure Speech-to-Text service
-     * This method downloads the file temporarily and then transcribes it
+     * Supports multiple audio formats through automatic conversion
      *
      * @param audioUrl The URL of the audio file to transcribe
      * @param languageCode Optional language code (e.g., "en-US")
@@ -96,18 +100,12 @@ public class AzureSpeechService {
      * @throws IOException If file operations fail
      */
     public SpeechTranscriptionResult transcribeAudioFromUrl(String audioUrl, String languageCode) 
-            throws InterruptedException, ExecutionException, IOException {
+            throws InterruptedException, ExecutionException, IOException, Exception {
         
         log.info("Starting transcription for audio URL: {}", audioUrl);
         
         // Validate Azure Speech configuration
-        if (speechKey == null || speechKey.trim().isEmpty()) {
-            throw new IllegalStateException("Azure Speech key is not configured. Please set AZURE_SPEECH_KEY environment variable.");
-        }
-        
-        if (speechRegion == null || speechRegion.trim().isEmpty()) {
-            throw new IllegalStateException("Azure Speech region is not configured. Please set AZURE_SPEECH_REGION environment variable.");
-        }
+        validateAzureConfiguration();
         
         // Validate URL
         if (audioUrl == null || audioUrl.trim().isEmpty()) {
@@ -115,56 +113,31 @@ public class AzureSpeechService {
         }
         
         File tempFile = null;
+        File wavFile = null;
         try {
             // Download the audio file from URL to a temporary file
             tempFile = downloadAudioFromUrl(audioUrl);
             log.debug("Downloaded audio from URL to temporary file: {}", tempFile.getAbsolutePath());
             
-            // Configure Azure Speech service
-            SpeechConfig speechConfig = SpeechConfig.fromSubscription(speechKey, speechRegion);
+            // Detect audio format
+            String detectedFormat = tika.detect(tempFile);
+            log.info("Detected audio format from URL: {}", detectedFormat);
             
-            // Set language if provided, otherwise default to en-US
-            if (languageCode != null && !languageCode.trim().isEmpty()) {
-                speechConfig.setSpeechRecognitionLanguage(languageCode);
-            } else {
-                speechConfig.setSpeechRecognitionLanguage("en-US");
-            }
+            // Convert to WAV if needed
+            wavFile = audioConverter.convertUrlAudioToWav(tempFile, detectedFormat);
             
-            // Configure audio input from the downloaded file
-            AudioConfig audioConfig = AudioConfig.fromWavFileInput(tempFile.getAbsolutePath());
-            
-            // Create speech recognizer
-            SpeechRecognizer speechRecognizer = new SpeechRecognizer(speechConfig, audioConfig);
-            
-            log.debug("Configured Azure Speech recognizer for URL content");
-            
-            // Perform recognition
-            Future<SpeechRecognitionResult> task = speechRecognizer.recognizeOnceAsync();
-            SpeechRecognitionResult result = task.get();
-            
-            // Process recognition result
-            SpeechTranscriptionResult transcriptionResult = processRecognitionResult(result, "URL: " + audioUrl);
-            
-            // Clean up resources
-            speechRecognizer.close();
-            audioConfig.close();
-            speechConfig.close();
-            
-            log.info("Transcription completed for URL: {}", audioUrl);
-            return transcriptionResult;
+            // Perform Azure Speech recognition on the WAV file
+            return performSpeechRecognition(wavFile, "URL: " + audioUrl, languageCode);
             
         } finally {
-            // Always clean up the temporary file
-            // TODO: Temporarily commented out for debugging - keeping temp files for analysis
+            // Clean up temporary files
             if (tempFile != null && tempFile.exists()) {
+                // Keep for debugging as in original code
                 log.info("Temporary file kept for debugging: {}", tempFile.getAbsolutePath());
-                /*
-                if (tempFile.delete()) {
-                    log.debug("Deleted temporary file for URL: {}", tempFile.getAbsolutePath());
-                } else {
-                    log.warn("Failed to delete temporary file for URL: {}", tempFile.getAbsolutePath());
-                }
-                */
+            }
+            
+            if (wavFile != null && !wavFile.equals(tempFile)) {
+                audioConverter.cleanupTempFile(wavFile);
             }
         }
     }
@@ -193,7 +166,7 @@ public class AzureSpeechService {
         // Create temporary file
         String tempFileName = String.format("url_audio_%d_%s", 
             System.currentTimeMillis(), 
-            fileName.isEmpty() ? "audio.wav" : fileName
+            fileName.isEmpty() ? "audio.unknown" : fileName
         );
         File tempFile = tempDir.resolve(tempFileName).toFile();
         
@@ -209,6 +182,93 @@ public class AzureSpeechService {
         }
         
         return tempFile;
+    }
+
+    /**
+     * Validates Azure Speech service configuration
+     */
+    private void validateAzureConfiguration() {
+        if (speechKey == null || speechKey.trim().isEmpty()) {
+            throw new IllegalStateException("Azure Speech key is not configured. Please set AZURE_SPEECH_KEY environment variable.");
+        }
+
+        if (speechRegion == null || speechRegion.trim().isEmpty()) {
+            throw new IllegalStateException("Azure Speech region is not configured. Please set AZURE_SPEECH_REGION environment variable.");
+        }
+    }
+
+    /**
+     * Performs Azure Speech recognition on a WAV file
+     */
+    private SpeechTranscriptionResult performSpeechRecognition(File wavFile, String originalFileName) 
+            throws InterruptedException, ExecutionException {
+        return performSpeechRecognition(wavFile, originalFileName, null);
+    }
+
+    /**
+     * Performs Azure Speech recognition on a WAV file with specified language
+     */
+    private SpeechTranscriptionResult performSpeechRecognition(File wavFile, String originalFileName, String languageCode) 
+            throws InterruptedException, ExecutionException {
+        
+        SpeechConfig speechConfig = null;
+        AudioConfig audioConfig = null;
+        SpeechRecognizer speechRecognizer = null;
+
+        try {
+            // Configure Azure Speech service
+            speechConfig = SpeechConfig.fromSubscription(speechKey, speechRegion);
+            
+            // Set language if provided, otherwise default to en-US
+            if (languageCode != null && !languageCode.trim().isEmpty()) {
+                speechConfig.setSpeechRecognitionLanguage(languageCode);
+            } else {
+                speechConfig.setSpeechRecognitionLanguage("en-US");
+            }
+
+            // Configure audio input from file
+            audioConfig = AudioConfig.fromWavFileInput(wavFile.getAbsolutePath());
+
+            // Create speech recognizer
+            speechRecognizer = new SpeechRecognizer(speechConfig, audioConfig);
+
+            log.debug("Configured Azure Speech recognizer for file: {}", originalFileName);
+
+            // Perform recognition
+            Future<SpeechRecognitionResult> task = speechRecognizer.recognizeOnceAsync();
+            SpeechRecognitionResult result = task.get();
+
+            // Process recognition result
+            SpeechTranscriptionResult transcriptionResult = processRecognitionResult(result, originalFileName);
+
+            log.info("Transcription completed for file: {}", originalFileName);
+            return transcriptionResult;
+
+        } finally {
+            // Clean up resources
+            if (speechRecognizer != null) {
+                speechRecognizer.close();
+            }
+            if (audioConfig != null) {
+                audioConfig.close();
+            }
+            if (speechConfig != null) {
+                speechConfig.close();
+            }
+        }
+    }
+
+    /**
+     * Formats file size for logging
+     */
+    private String formatFileSize(long sizeInBytes) {
+        if (sizeInBytes < 1024) {
+            return sizeInBytes + " B";
+        } else if (sizeInBytes < 1024 * 1024) {
+            return String.format("%.1f KB", sizeInBytes / 1024.0);
+        } else {
+            return String.format("%.1f MB", sizeInBytes / (1024.0 * 1024.0));
+        }
     }
 
     /**
@@ -271,6 +331,25 @@ public class AzureSpeechService {
         }
 
         return transcriptionResult;
+    }
+
+    /**
+     * Gets the list of supported audio formats
+     * 
+     * @return List of supported MIME types
+     */
+    public java.util.List<String> getSupportedAudioFormats() {
+        return audioConverter.getSupportedFormats();
+    }
+
+    /**
+     * Checks if a file format is supported based on filename
+     * 
+     * @param fileName The name of the audio file
+     * @return true if the format is supported, false otherwise
+     */
+    public boolean isAudioFormatSupported(String fileName) {
+        return audioConverter.isSupportedByExtension(fileName);
     }
 
     /**
