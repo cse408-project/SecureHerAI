@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
-import { useAudioRecorder } from 'expo-audio';
-import audioRecordingService, { AudioUploadResult } from '../services/audioRecordingService';
+import { useState, useEffect, useRef } from "react";
+import { useAudioRecorder } from "expo-audio";
+import audioRecordingService, {
+  AudioUploadResult,
+} from "../services/audioRecordingService";
 
 export interface UseAudioRecordingOptions {
   maxDuration?: number; // in seconds
@@ -16,14 +18,14 @@ export interface UseAudioRecordingReturn {
   recordingDuration: number;
   recordingUri: string | null;
   hasPermission: boolean;
-  
+
   // Actions
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<void>;
   uploadRecording: () => Promise<AudioUploadResult | null>;
   requestPermissions: () => Promise<boolean>;
   resetRecording: () => void;
-  
+
   // Utils
   formatDuration: (seconds: number) => string;
 }
@@ -32,24 +34,23 @@ export interface UseAudioRecordingReturn {
  * Custom hook for audio recording using expo-audio
  * Provides a complete interface for recording, stopping, and uploading audio
  */
-export function useAudioRecording(options: UseAudioRecordingOptions = {}): UseAudioRecordingReturn {
-  const {
-    maxDuration = 10,
-    onProgress,
-    onComplete,
-    onError
-  } = options;
+export function useAudioRecording(
+  options: UseAudioRecordingOptions = {}
+): UseAudioRecordingReturn {
+  const { maxDuration = 10, onProgress, onComplete, onError } = options;
 
   // Initialize the audio recorder with recording options
-  const recorder = useAudioRecorder(audioRecordingService.getRecordingOptions());
-  
+  const recorder = useAudioRecorder(
+    audioRecordingService.getRecordingOptions()
+  );
+
   // State management
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [recordingUri, setRecordingUri] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState(false);
-  
+
   // Refs for timers
   const durationTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const maxDurationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -74,7 +75,7 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}): UseAu
       const granted = await audioRecordingService.getPermissions();
       setHasPermission(granted);
     } catch (error) {
-      console.error('Error checking permissions:', error);
+      console.error("Error checking permissions:", error);
       setHasPermission(false);
     }
   };
@@ -86,8 +87,8 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}): UseAu
       setHasPermission(granted);
       return granted;
     } catch (error) {
-      console.error('Error requesting permissions:', error);
-      onError?.('Failed to request permissions');
+      console.error("Error requesting permissions:", error);
+      onError?.("Failed to request permissions");
       setHasPermission(false);
       return false;
     }
@@ -97,7 +98,7 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}): UseAu
   const startRecording = async () => {
     try {
       if (isRecording) {
-        console.warn('Recording is already in progress');
+        console.warn("Recording is already in progress");
         return;
       }
 
@@ -105,19 +106,19 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}): UseAu
       if (!hasPermission) {
         const granted = await requestPermissions();
         if (!granted) {
-          onError?.('Microphone permission denied');
+          onError?.("Microphone permission denied");
           return;
         }
       }
 
-      console.log('🎙️ Starting recording...');
+      console.log("🎙️ Starting recording...");
       setIsProcessing(true);
 
       // Start the recording using the service
       const result = await audioRecordingService.startRecording(recorder);
-      
+
       if (!result.success) {
-        throw new Error(result.error || 'Failed to start recording');
+        throw new Error(result.error || "Failed to start recording");
       }
 
       setIsRecording(true);
@@ -127,7 +128,7 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}): UseAu
 
       // Start duration timer
       durationTimer.current = setInterval(() => {
-        setRecordingDuration(prev => {
+        setRecordingDuration((prev) => {
           const newDuration = prev + 1;
           onProgress?.(newDuration);
           return newDuration;
@@ -140,12 +141,14 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}): UseAu
         await stopRecording();
       }, maxDuration * 1000);
 
-      console.log('✅ Recording started successfully');
+      console.log("✅ Recording started successfully");
     } catch (error) {
-      console.error('❌ Error starting recording:', error);
+      console.error("❌ Error starting recording:", error);
       setIsProcessing(false);
       setIsRecording(false);
-      onError?.(error instanceof Error ? error.message : 'Failed to start recording');
+      onError?.(
+        error instanceof Error ? error.message : "Failed to start recording"
+      );
     }
   };
 
@@ -153,11 +156,11 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}): UseAu
   const stopRecording = async () => {
     try {
       if (!isRecording) {
-        console.warn('No recording in progress');
+        console.warn("No recording in progress");
         return;
       }
 
-      console.log('🛑 Stopping recording...');
+      console.log("🛑 Stopping recording...");
       setIsProcessing(true);
 
       // Clear timers
@@ -172,23 +175,24 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}): UseAu
 
       // Stop the recording using the service
       const result = await audioRecordingService.stopRecording(recorder);
-      
+
       if (!result.success) {
-        throw new Error(result.error || 'Failed to stop recording');
+        throw new Error(result.error || "Failed to stop recording");
       }
 
       setIsRecording(false);
       setIsProcessing(false);
       setRecordingUri(result.uri || null);
 
-      console.log('✅ Recording stopped successfully');
+      console.log("✅ Recording stopped successfully");
       console.log(`📁 Recording saved to: ${result.uri}`);
-      
     } catch (error) {
-      console.error('❌ Error stopping recording:', error);
+      console.error("❌ Error stopping recording:", error);
       setIsProcessing(false);
       setIsRecording(false);
-      onError?.(error instanceof Error ? error.message : 'Failed to stop recording');
+      onError?.(
+        error instanceof Error ? error.message : "Failed to stop recording"
+      );
     }
   };
 
@@ -196,31 +200,32 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}): UseAu
   const uploadRecording = async (): Promise<AudioUploadResult | null> => {
     try {
       if (!recordingUri) {
-        throw new Error('No recording to upload');
+        throw new Error("No recording to upload");
       }
 
-      console.log('☁️ Uploading recording...');
+      console.log("☁️ Uploading recording...");
       setIsProcessing(true);
 
       const result = await audioRecordingService.uploadRecording(recordingUri);
-      
+
       setIsProcessing(false);
-      
+
       if (result.success) {
         onComplete?.(result);
       } else {
-        onError?.(result.error || 'Upload failed');
+        onError?.(result.error || "Upload failed");
       }
 
       return result;
     } catch (error) {
-      console.error('❌ Error uploading recording:', error);
+      console.error("❌ Error uploading recording:", error);
       setIsProcessing(false);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to upload recording';
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to upload recording";
       onError?.(errorMessage);
       return {
         success: false,
-        error: errorMessage
+        error: errorMessage,
       };
     }
   };
@@ -247,7 +252,9 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}): UseAu
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
   };
 
   return {
@@ -257,15 +264,15 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}): UseAu
     recordingDuration,
     recordingUri,
     hasPermission,
-    
+
     // Actions
     startRecording,
     stopRecording,
     uploadRecording,
     requestPermissions,
     resetRecording,
-    
+
     // Utils
-    formatDuration
+    formatDuration,
   };
 }

@@ -33,6 +33,9 @@ public class ResponderController {
     @GetMapping("/profile")
     public ResponseEntity<Object> getResponderProfile(Authentication authentication) {
         try {
+            if (authentication == null) {
+                return ResponseEntity.status(401).body(createErrorResponse("Authentication required"));
+            }
             String email = authentication.getName();
             Optional<User> userOpt = userRepository.findByEmail(email);
             
@@ -83,6 +86,9 @@ public class ResponderController {
             @RequestBody Map<String, String> request,
             Authentication authentication) {
         try {
+            if (authentication == null) {
+                return ResponseEntity.status(401).body(createErrorResponse("Authentication required"));
+            }
             String email = authentication.getName();
             Optional<User> userOpt = userRepository.findByEmail(email);
             
@@ -146,6 +152,104 @@ public class ResponderController {
         }
         
         return ResponseEntity.status(500).body(createErrorResponse("Unexpected error occurred"));
+    }
+    
+    @PutMapping("/availability")
+    public ResponseEntity<Object> updateAvailabilityStatus(
+            @RequestBody Map<String, String> request,
+            Authentication authentication) {
+        try {
+            if (authentication == null) {
+                return ResponseEntity.status(401).body(createErrorResponse("Authentication required"));
+            }
+            String email = authentication.getName();
+            Optional<User> userOpt = userRepository.findByEmail(email);
+            
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.status(404).body(createErrorResponse("User not found"));
+            }
+            
+            User user = userOpt.get();
+            if (!user.getRole().equals(User.Role.RESPONDER)) {
+                return ResponseEntity.status(403).body(createErrorResponse("Access denied. User is not a responder"));
+            }
+            
+            String statusStr = request.get("status");
+            if (statusStr == null || statusStr.isEmpty()) {
+                return ResponseEntity.status(400).body(createErrorResponse("Status is required"));
+            }
+            
+            try {
+                Responder.Status status = Responder.Status.valueOf(statusStr.toUpperCase());
+                
+                Optional<Responder> responderOpt = responderRepository.findByUserId(user.getId());
+                if (responderOpt.isEmpty()) {
+                    return ResponseEntity.status(404).body(createErrorResponse("Responder profile not found"));
+                }
+                
+                Responder responder = responderOpt.get();
+                responder.setStatus(status);
+                responderRepository.save(responder);
+                
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", true);
+                response.put("message", "Availability status updated successfully");
+                
+                return ResponseEntity.ok(response);
+                
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.status(400).body(createErrorResponse("Invalid status. Must be AVAILABLE, BUSY, or OFF_DUTY"));
+            }
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(createErrorResponse("Internal server error"));
+        }
+    }
+    
+    @PutMapping("/profile")
+    public ResponseEntity<Object> updateResponderProfile(
+            @RequestBody Map<String, String> request,
+            Authentication authentication) {
+        try {
+            if (authentication == null) {
+                return ResponseEntity.status(401).body(createErrorResponse("Authentication required"));
+            }
+            String email = authentication.getName();
+            Optional<User> userOpt = userRepository.findByEmail(email);
+            
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.status(404).body(createErrorResponse("User not found"));
+            }
+            
+            User user = userOpt.get();
+            if (!user.getRole().equals(User.Role.RESPONDER)) {
+                return ResponseEntity.status(403).body(createErrorResponse("Access denied. User is not a responder"));
+            }
+            
+            Optional<Responder> responderOpt = responderRepository.findByUserId(user.getId());
+            if (responderOpt.isEmpty()) {
+                return ResponseEntity.status(404).body(createErrorResponse("Responder profile not found"));
+            }
+            
+            Responder responder = responderOpt.get();
+            
+            // Update badge number if provided
+            String badgeNumber = request.get("badgeNumber");
+            if (badgeNumber != null && !badgeNumber.isEmpty()) {
+                responder.setBadgeNumber(badgeNumber);
+            }
+            
+            responderRepository.save(responder);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Profile updated successfully");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(createErrorResponse("Internal server error"));
+        }
     }
     
     private Map<String, Object> createErrorResponse(String message) {

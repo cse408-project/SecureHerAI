@@ -1,6 +1,6 @@
-import { AudioModule, RecordingPresets, RecordingOptions } from 'expo-audio';
-import { Platform } from 'react-native';
-import cloudinaryService from './cloudinary';
+import { AudioModule, RecordingPresets, RecordingOptions } from "expo-audio";
+import { Platform } from "react-native";
+import cloudinaryService from "./cloudinary";
 
 export interface AudioRecordingResult {
   success: boolean;
@@ -31,7 +31,7 @@ class AudioRecordingService {
       const response = await AudioModule.requestRecordingPermissionsAsync();
       return response.granted;
     } catch (error) {
-      console.error('Error requesting microphone permissions:', error);
+      console.error("Error requesting microphone permissions:", error);
       return false;
     }
   }
@@ -44,7 +44,7 @@ class AudioRecordingService {
       const response = await AudioModule.getRecordingPermissionsAsync();
       return response.granted;
     } catch (error) {
-      console.error('Error checking microphone permissions:', error);
+      console.error("Error checking microphone permissions:", error);
       return false;
     }
   }
@@ -69,29 +69,30 @@ class AudioRecordingService {
         if (!granted) {
           return {
             success: false,
-            error: 'Microphone permission denied'
+            error: "Microphone permission denied",
           };
         }
       }
 
-      console.log('🎙️ Starting audio recording...');
-      
+      console.log("🎙️ Starting audio recording...");
+
       // Prepare the recorder
       await recorder.prepareToRecordAsync();
-      
+
       // Start recording
       recorder.record();
-      
-      console.log('✅ Recording started successfully');
-      
+
+      console.log("✅ Recording started successfully");
+
       return {
-        success: true
+        success: true,
       };
     } catch (error) {
-      console.error('❌ Error starting recording:', error);
+      console.error("❌ Error starting recording:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to start recording'
+        error:
+          error instanceof Error ? error.message : "Failed to start recording",
       };
     }
   }
@@ -101,32 +102,33 @@ class AudioRecordingService {
    */
   async stopRecording(recorder: any): Promise<AudioRecordingResult> {
     try {
-      console.log('🛑 Stopping audio recording...');
-      
+      console.log("🛑 Stopping audio recording...");
+
       // Stop the recording
       await recorder.stop();
-      
+
       const uri = recorder.uri;
       const duration = recorder.currentTime;
-      
+
       if (!uri) {
-        throw new Error('Recording URI is not available');
+        throw new Error("Recording URI is not available");
       }
-      
-      console.log('✅ Recording stopped successfully');
+
+      console.log("✅ Recording stopped successfully");
       console.log(`📁 Recording saved to: ${uri}`);
       console.log(`⏱️ Duration: ${duration}s`);
-      
+
       return {
         success: true,
         uri,
-        duration
+        duration,
       };
     } catch (error) {
-      console.error('❌ Error stopping recording:', error);
+      console.error("❌ Error stopping recording:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to stop recording'
+        error:
+          error instanceof Error ? error.message : "Failed to stop recording",
       };
     }
   }
@@ -134,31 +136,35 @@ class AudioRecordingService {
   /**
    * Upload recorded audio to Cloudinary
    */
-  async uploadRecording(uri: string, folder: string = 'voice_recordings'): Promise<AudioUploadResult> {
+  async uploadRecording(
+    uri: string,
+    folder: string = "voice_recordings"
+  ): Promise<AudioUploadResult> {
     try {
-      console.log('☁️ Uploading audio to Cloudinary...');
-      
+      console.log("☁️ Uploading audio to Cloudinary...");
+
       if (!uri) {
-        throw new Error('No audio URI provided');
+        throw new Error("No audio URI provided");
       }
 
       // Use the Cloudinary service to upload the audio
       const result = await cloudinaryService.uploadEvidence(uri);
-      
+
       if (result.success && result.url) {
-        console.log('✅ Audio uploaded successfully:', result.url);
+        console.log("✅ Audio uploaded successfully:", result.url);
         return {
           success: true,
-          url: result.url
+          url: result.url,
         };
       } else {
-        throw new Error(result.error || 'Upload failed');
+        throw new Error(result.error || "Upload failed");
       }
     } catch (error) {
-      console.error('❌ Error uploading audio:', error);
+      console.error("❌ Error uploading audio:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to upload audio'
+        error:
+          error instanceof Error ? error.message : "Failed to upload audio",
       };
     }
   }
@@ -193,7 +199,7 @@ class AudioRecordingService {
       platform: Platform.OS,
       supportsRecording: this.isRecordingSupported(),
       maxDuration: this.getMaxDuration(),
-      recordingFormat: Platform.OS === 'web' ? 'webm' : 'wav'
+      recordingFormat: Platform.OS === "web" ? "webm" : "wav",
     };
   }
 }

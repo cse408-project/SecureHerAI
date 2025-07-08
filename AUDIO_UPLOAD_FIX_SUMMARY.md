@@ -1,13 +1,16 @@
 # Audio Upload Fix Summary
 
 ## Issue Identified
+
 The audio recording upload was failing because:
+
 1. Audio recordings on web create blob URIs (e.g., `blob:http://localhost:8081/...`)
 2. The `uploadEvidence` method in Cloudinary service was only checking file extensions and URI patterns to determine file type
 3. Blob URIs don't contain file extensions, so audio files were being misclassified as images
 4. This caused Cloudinary to try uploading audio files to the image endpoint, resulting in "400 Bad Request: Invalid image file" errors
 
 ## Solution Implemented
+
 Modified the `uploadEvidence` method in `services/cloudinary.ts` to:
 
 1. **Detect Blob URIs**: Check if the file URI starts with `blob:`
@@ -19,6 +22,7 @@ Modified the `uploadEvidence` method in `services/cloudinary.ts` to:
 ## Code Changes
 
 ### Before (Problematic)
+
 ```typescript
 async uploadEvidence(fileUri: string): Promise<CloudinaryResponse> {
   const isVideo = this.isVideoFile(fileUri);
@@ -29,18 +33,19 @@ async uploadEvidence(fileUri: string): Promise<CloudinaryResponse> {
 ```
 
 ### After (Fixed)
+
 ```typescript
 async uploadEvidence(fileUri: string): Promise<CloudinaryResponse> {
   try {
     let resourceType: 'image' | 'video' = 'image';
-    
+
     if (fileUri.startsWith('blob:')) {
       try {
         const response = await fetch(fileUri);
         if (response.ok) {
           const blob = await response.blob();
           console.log('Detected blob MIME type:', blob.type);
-          
+
           if (blob.type.startsWith('audio/') || blob.type.startsWith('video/')) {
             resourceType = 'video'; // Cloudinary handles audio under 'video' resource type
           } else if (blob.type.startsWith('image/')) {
@@ -56,9 +61,9 @@ async uploadEvidence(fileUri: string): Promise<CloudinaryResponse> {
       const isAudio = this.isAudioFile(fileUri);
       resourceType = (isVideo || isAudio) ? 'video' : 'image';
     }
-    
+
     console.log(`Uploading evidence with resource type: ${resourceType} for URI: ${fileUri.substring(0, 100)}`);
-    
+
     return this.uploadFile(fileUri, 'report_evidence', resourceType);
   } catch (error) {
     console.error('Error in uploadEvidence:', error);
@@ -68,13 +73,16 @@ async uploadEvidence(fileUri: string): Promise<CloudinaryResponse> {
 ```
 
 ## Expected Result
+
 - Audio recordings should now correctly upload to Cloudinary's video endpoint
 - No more "Invalid image file" errors for audio uploads
 - Audio files will be properly processed and stored in the `report_evidence` folder
 - The upload will work on both web and mobile platforms
 
 ## Testing
+
 To verify the fix:
+
 1. Open the app in web browser
 2. Trigger the SOS modal
 3. Record audio using the modern audio recording interface
@@ -83,4 +91,5 @@ To verify the fix:
 6. Check that the audio file is successfully uploaded to Cloudinary
 
 ---
+
 Generated: July 5, 2025

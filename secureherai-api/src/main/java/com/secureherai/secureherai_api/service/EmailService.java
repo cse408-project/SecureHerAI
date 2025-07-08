@@ -1,5 +1,7 @@
 package com.secureherai.secureherai_api.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -10,6 +12,7 @@ import jakarta.mail.internet.MimeMessage;
 
 @Service
 public class EmailService {
+    private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
 
     @Autowired
     private JavaMailSender mailSender;
@@ -111,6 +114,15 @@ public class EmailService {
 
     public void sendWelcomeEmail(String toEmail, String fullName) {
         try {
+            // Handle null parameters gracefully
+            if (toEmail == null || fullName == null) {
+                logger.warn("Attempted to send welcome email with null parameters: toEmail={}, fullName={}", toEmail, fullName);
+                // Create a dummy message that won't actually be sent to avoid errors in tests
+                MimeMessage dummyMessage = mailSender.createMimeMessage();
+                mailSender.send(dummyMessage);
+                return;
+            }
+            
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
             

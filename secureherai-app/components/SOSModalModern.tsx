@@ -23,12 +23,16 @@ interface SOSModalProps {
   onSuccess: (alertResponse: AlertResponse) => void;
 }
 
-const SOSModalModern: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }) => {
+const SOSModalModern: React.FC<SOSModalProps> = ({
+  visible,
+  onClose,
+  onSuccess,
+}) => {
   const [mode, setMode] = useState<"select" | "voice" | "text">("select");
   const [message, setMessage] = useState("");
   const [keyword, setKeyword] = useState("");
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
-  
+
   // Default location for Dhaka, Bangladesh
   const [location, setLocation] = useState<{
     latitude: number;
@@ -116,7 +120,11 @@ const SOSModalModern: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }
   const handleRecordingComplete = (audioUrl: string) => {
     console.log("✅ Recording completed and uploaded:", audioUrl);
     setRecordingUrl(audioUrl);
-    showAlert("Success", "Audio recorded successfully! You can now submit your SOS alert.", "success");
+    showAlert(
+      "Success",
+      "Audio recorded successfully! You can now submit your SOS alert.",
+      "success"
+    );
   };
 
   const handleRecordingError = (error: string) => {
@@ -137,7 +145,10 @@ const SOSModalModern: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }
       console.log("Location:", location);
 
       // Send to backend
-      const response = await apiService.submitSOSVoiceCommand(recordingUrl, location);
+      const response = await apiService.submitSOSVoiceCommand(
+        recordingUrl,
+        location
+      );
 
       setIsLoading(false);
 
@@ -282,7 +293,10 @@ const SOSModalModern: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }
 
   const renderVoiceMode = () => (
     <View style={styles.content}>
-      <TouchableOpacity style={styles.backButton} onPress={() => setMode("select")}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => setMode("select")}
+      >
         <MaterialIcons name="arrow-back" size={24} color="#007AFF" />
         <Text style={styles.backButtonText}>Back</Text>
       </TouchableOpacity>
@@ -304,10 +318,10 @@ const SOSModalModern: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }
       <View style={styles.instructionsContainer}>
         <Text style={styles.instructionsTitle}>Instructions:</Text>
         <Text style={styles.instructionsText}>
-          • Speak clearly and describe your emergency{"\n"}
-          • Include your location if different from shown{"\n"}
-          • Recording will automatically stop after 10 seconds{"\n"}
-          • Keywords like &quot;help&quot;, &quot;emergency&quot;, &quot;SOS&quot; will be detected
+          • Speak clearly and describe your emergency{"\n"}• Include your
+          location if different from shown{"\n"}• Recording will automatically
+          stop after 10 seconds{"\n"}• Keywords like &quot;help&quot;,
+          &quot;emergency&quot;, &quot;SOS&quot; will be detected
         </Text>
       </View>
 
@@ -340,15 +354,16 @@ const SOSModalModern: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }
 
   const renderTextMode = () => (
     <View style={styles.content}>
-      <TouchableOpacity style={styles.backButton} onPress={() => setMode("select")}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => setMode("select")}
+      >
         <MaterialIcons name="arrow-back" size={24} color="#007AFF" />
         <Text style={styles.backButtonText}>Back</Text>
       </TouchableOpacity>
 
       <Text style={styles.title}>Text Emergency Alert</Text>
-      <Text style={styles.subtitle}>
-        Describe your emergency situation
-      </Text>
+      <Text style={styles.subtitle}>Describe your emergency situation</Text>
 
       <View style={styles.formContainer}>
         <View style={styles.inputContainer}>
@@ -409,7 +424,8 @@ const SOSModalModern: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }
       <TouchableOpacity
         style={[
           styles.submitButton,
-          (!message.trim() || !keyword.trim() || isLoading) && styles.submitButtonDisabled,
+          (!message.trim() || !keyword.trim() || isLoading) &&
+            styles.submitButtonDisabled,
         ]}
         onPress={submitTextCommand}
         disabled={!message.trim() || !keyword.trim() || isLoading}
@@ -445,15 +461,18 @@ const SOSModalModern: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }
             <View style={styles.header}>
               <Text style={styles.headerTitle}>Emergency SOS</Text>
               <TouchableOpacity onPress={handleCancel} disabled={isLoading}>
-                <MaterialIcons 
-                  name="close" 
-                  size={24} 
-                  color={isLoading ? "#ccc" : "#666"} 
+                <MaterialIcons
+                  name="close"
+                  size={24}
+                  color={isLoading ? "#ccc" : "#666"}
                 />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              style={styles.scrollView}
+              showsVerticalScrollIndicator={false}
+            >
               {renderContent()}
             </ScrollView>
 
@@ -490,10 +509,18 @@ const SOSModalModern: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }
                 <Text style={styles.cancelModalButtonText}>Keep Alert</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.cancelModalButton, styles.cancelModalButtonDanger]}
+                style={[
+                  styles.cancelModalButton,
+                  styles.cancelModalButtonDanger,
+                ]}
                 onPress={handleCancel}
               >
-                <Text style={[styles.cancelModalButtonText, styles.cancelModalButtonTextDanger]}>
+                <Text
+                  style={[
+                    styles.cancelModalButtonText,
+                    styles.cancelModalButtonTextDanger,
+                  ]}
+                >
                   Cancel Alert
                 </Text>
               </TouchableOpacity>

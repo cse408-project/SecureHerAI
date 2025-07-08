@@ -1,7 +1,7 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useAudioRecording } from '../hooks/useAudioRecording';
+import React from "react";
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useAudioRecording } from "../hooks/useAudioRecording";
 
 interface AudioRecorderProps {
   onRecordingComplete?: (audioUrl: string) => void;
@@ -16,7 +16,7 @@ export default function AudioRecorder({
   onError,
   maxDuration = 10,
   disabled = false,
-  style
+  style,
 }: AudioRecorderProps) {
   const {
     isRecording,
@@ -29,7 +29,7 @@ export default function AudioRecorder({
     uploadRecording,
     requestPermissions,
     resetRecording,
-    formatDuration
+    formatDuration,
   } = useAudioRecording({
     maxDuration,
     onProgress: (duration) => {
@@ -39,12 +39,12 @@ export default function AudioRecorder({
       if (result.success && result.url) {
         onRecordingComplete?.(result.url);
       } else {
-        onError?.(result.error || 'Upload failed');
+        onError?.(result.error || "Upload failed");
       }
     },
     onError: (error) => {
       onError?.(error);
-    }
+    },
   });
 
   const handleRecordPress = async () => {
@@ -54,9 +54,9 @@ export default function AudioRecorder({
       const granted = await requestPermissions();
       if (!granted) {
         Alert.alert(
-          'Permission Required',
-          'Microphone permission is required to record audio. Please enable it in your device settings.',
-          [{ text: 'OK' }]
+          "Permission Required",
+          "Microphone permission is required to record audio. Please enable it in your device settings.",
+          [{ text: "OK" }]
         );
         return;
       }
@@ -72,16 +72,16 @@ export default function AudioRecorder({
 
   const handleUploadPress = async () => {
     if (!recordingUri) {
-      onError?.('No recording to upload');
+      onError?.("No recording to upload");
       return;
     }
 
     const result = await uploadRecording();
     if (!result?.success) {
       Alert.alert(
-        'Upload Failed',
-        result?.error || 'Failed to upload recording. Please try again.',
-        [{ text: 'OK' }]
+        "Upload Failed",
+        result?.error || "Failed to upload recording. Please try again.",
+        [{ text: "OK" }]
       );
     }
   };
@@ -91,24 +91,24 @@ export default function AudioRecorder({
   };
 
   const getRecordButtonColor = () => {
-    if (disabled) return '#ccc';
-    if (isRecording) return '#ff4444';
-    if (recordingUri) return '#4CAF50';
-    return '#007AFF';
+    if (disabled) return "#ccc";
+    if (isRecording) return "#ff4444";
+    if (recordingUri) return "#4CAF50";
+    return "#007AFF";
   };
 
   const getRecordButtonIcon = () => {
-    if (isProcessing) return 'ellipsis-horizontal';
-    if (isRecording) return 'stop';
-    if (recordingUri) return 'checkmark';
-    return 'mic';
+    if (isProcessing) return "ellipsis-horizontal";
+    if (isRecording) return "stop";
+    if (recordingUri) return "checkmark";
+    return "mic";
   };
 
   const getStatusText = () => {
-    if (isProcessing) return 'Processing...';
+    if (isProcessing) return "Processing...";
     if (isRecording) return `Recording: ${formatDuration(recordingDuration)}`;
     if (recordingUri) return `Recorded: ${formatDuration(recordingDuration)}`;
-    return 'Tap to record';
+    return "Tap to record";
   };
 
   const showUploadButton = recordingUri && !isProcessing;
@@ -118,16 +118,14 @@ export default function AudioRecorder({
     <View style={[styles.container, style]}>
       {/* Status Text */}
       <Text style={styles.statusText}>{getStatusText()}</Text>
-      
+
       {/* Duration Display */}
       {(isRecording || recordingUri) && (
         <View style={styles.durationContainer}>
           <Text style={styles.durationText}>
             {formatDuration(recordingDuration)} / {formatDuration(maxDuration)}
           </Text>
-          {isRecording && (
-            <View style={styles.recordingIndicator} />
-          )}
+          {isRecording && <View style={styles.recordingIndicator} />}
         </View>
       )}
 
@@ -138,17 +136,13 @@ export default function AudioRecorder({
           style={[
             styles.recordButton,
             { backgroundColor: getRecordButtonColor() },
-            disabled && styles.disabledButton
+            disabled && styles.disabledButton,
           ]}
           onPress={handleRecordPress}
           disabled={disabled || isProcessing}
           activeOpacity={0.7}
         >
-          <Ionicons
-            name={getRecordButtonIcon()}
-            size={30}
-            color="white"
-          />
+          <Ionicons name={getRecordButtonIcon()} size={30} color="white" />
         </TouchableOpacity>
 
         {/* Upload Button */}
@@ -191,49 +185,49 @@ export default function AudioRecorder({
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
+    alignItems: "center",
     padding: 20,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: "#f8f9fa",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e9ecef',
+    borderColor: "#e9ecef",
   },
   statusText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#212529',
+    fontWeight: "600",
+    color: "#212529",
     marginBottom: 10,
-    textAlign: 'center',
+    textAlign: "center",
   },
   durationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 15,
   },
   durationText: {
     fontSize: 14,
-    color: '#6c757d',
+    color: "#6c757d",
     marginRight: 8,
   },
   recordingIndicator: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#ff4444',
+    backgroundColor: "#ff4444",
     opacity: 0.8,
   },
   buttonContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 15,
   },
   recordButton: {
     width: 70,
     height: 70,
     borderRadius: 35,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
@@ -243,35 +237,35 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 15,
     paddingVertical: 8,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: "#f8f9fa",
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#dee2e6',
+    borderColor: "#dee2e6",
     gap: 5,
   },
   actionButtonText: {
     fontSize: 14,
-    color: '#007AFF',
-    fontWeight: '500',
+    color: "#007AFF",
+    fontWeight: "500",
   },
   permissionWarning: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: 10,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#fff3cd',
+    backgroundColor: "#fff3cd",
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#ffeaa7',
+    borderColor: "#ffeaa7",
     gap: 5,
   },
   permissionWarningText: {
     fontSize: 12,
-    color: '#856404',
+    color: "#856404",
   },
 });
