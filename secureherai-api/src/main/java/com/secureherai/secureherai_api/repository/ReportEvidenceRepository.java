@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -27,4 +28,14 @@ public interface ReportEvidenceRepository extends JpaRepository<ReportEvidence, 
      * Count evidence files for a report
      */
     long countByReportId(UUID reportId);
+    
+    /**
+     * Find evidence by report ID and file URL
+     */
+    Optional<ReportEvidence> findByReportIdAndFileUrl(UUID reportId, String fileUrl);
+    
+    /**
+     * Delete evidence by report ID and file URL
+     */
+    void deleteByReportIdAndFileUrl(UUID reportId, String fileUrl);
 }

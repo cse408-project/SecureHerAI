@@ -1,4 +1,15 @@
 import * as ImagePicker from 'expo-image-picker';
+import CryptoJS from 'crypto-js';
+import { Platform } from 'react-native';
+
+// Alternative crypto for React Native if needed
+let alternateCrypto: any;
+try {
+  alternateCrypto = require('react-native-crypto-js');
+} catch (e) {
+  // Fallback to crypto-js
+  alternateCrypto = CryptoJS;
+}
 
 interface CloudinaryResponse {
   success: boolean;
@@ -10,11 +21,13 @@ class CloudinaryService {
   private cloudName: string;
   private uploadPreset: string;
   private apiKey: string;
+  private apiSecret: string;
 
   constructor() {
     this.cloudName = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME || '';
     this.uploadPreset = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET || '';
     this.apiKey = process.env.EXPO_PUBLIC_CLOUDINARY_API_KEY || '';
+    this.apiSecret = process.env.EXPO_PUBLIC_CLOUDINARY_API_SECRET || '';
 
     if (!this.cloudName || !this.uploadPreset) {
       console.error('Cloudinary configuration is missing. Please check your environment variables.');
@@ -544,15 +557,235 @@ class CloudinaryService {
   }
 
   /**
-   * Delete an image from Cloudinary (requires authentication)
-   * Note: For production, this should be implemented on the backend for security
+   * Extract public ID from Cloudinary URL
+   */
+  private extractPublicIdFromUrl(cloudinaryUrl: string): { publicId: string; resourceType: string } | null {
+    try {
+      // Example URL: https://res.cloudinary.com/cloudname/image/upload/v1234567890/folder/filename.jpg
+      // Or: https://res.cloudinary.com/cloudname/video/upload/v1234567890/folder/filename.mp4
+      
+      const url = new URL(cloudinaryUrl);
+      const pathParts = url.pathname.split('/');
+      
+      // Find cloudname, resource type, and upload type
+      const cloudNameIndex = pathParts.findIndex(part => part === this.cloudName);
+      if (cloudNameIndex === -1) return null;
+      
+      const resourceType = pathParts[cloudNameIndex + 1]; // 'image', 'video', etc.
+      const uploadType = pathParts[cloudNameIndex + 2]; // 'upload'
+      
+      if (uploadType !== 'upload') return null;
+      
+      // Everything after upload/ is the public ID (including version and folder)
+      const publicIdParts = pathParts.slice(cloudNameIndex + 3);
+      
+      // Remove version if present (starts with 'v' followed by numbers)
+      if (publicIdParts.length > 0 && /^v\d+$/.test(publicIdParts[0])) {
+        publicIdParts.shift();
+      }
+      
+      // Join the remaining parts and remove file extension
+      let publicId = publicIdParts.join('/');
+      
+      // Remove file extension
+      const lastDotIndex = publicId.lastIndexOf('.');
+      if (lastDotIndex > publicId.lastIndexOf('/')) {
+        publicId = publicId.substring(0, lastDotIndex);
+      }
+      
+      return { publicId, resourceType };
+    } catch (error) {
+      console.error('Error extracting public ID from URL:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Generate signature for Cloudinary API requests
+   */  private generateSignature(params: Record<string, any>, apiSecret: string): string {
+    try {
+      // For deletion, we need to include the parameters we're sending in the request
+      // Based on the example and error logs, we need public_id and timestamp
+      const sortedParams = Object.keys(params)
+        .filter(key => key !== 'file' && key !== 'api_key' && key !== 'resource_type' && key !== 'cloud_name')
+        .sort()
+        .map(key => `${key}=${params[key]}`)
+        .join('&');
+
+      // Add API secret directly to the parameter string (no separator)
+      const stringToSign = sortedParams + apiSecret;
+
+      console.log('🔐 String to sign:', stringToSign);
+      console.log('🔐 String to sign length:', stringToSign.length);
+
+      // Generate SHA-1 hash - try multiple methods for React Native compatibility
+      let signature = '';
+
+      // Method 1: Standard crypto-js with explicit hex
+      try {
+        const hash = CryptoJS.SHA1(stringToSign);
+        signature = hash.toString(CryptoJS.enc.Hex);
+        console.log('🔐 Method 1 signature:', signature, 'length:', signature.length);
+      } catch (e) {
+        console.warn('Method 1 failed:', e);
+      }
+
+      // Method 2: Standard crypto-js with default toString
+      if (!signature || signature.length !== 40) {
+        try {
+          signature = CryptoJS.SHA1(stringToSign).toString();
+          console.log('🔐 Method 2 signature:', signature, 'length:', signature.length);
+        } catch (e) {
+          console.warn('Method 2 failed:', e);
+        }
+      }
+
+      // Method 3: Alternative crypto library if available
+      if (!signature || signature.length !== 40) {
+        try {
+          if (alternateCrypto && alternateCrypto.SHA1) {
+            signature = alternateCrypto.SHA1(stringToSign).toString();
+            console.log('🔐 Method 3 signature:', signature, 'length:', signature.length);
+          }
+        } catch (e) {
+          console.warn('Method 3 failed:', e);
+        }
+      }
+
+      console.log('🔐 Generated signature:', signature);
+      console.log('🔐 Signature length:', signature.length);
+      
+      // Ensure we have a proper 40-character hex string
+      if (signature.length !== 40) {
+        console.error('❌ Invalid signature length! Expected 40, got:', signature.length);
+        console.error('❌ Signature:', signature);
+        // Fallback: try with toString()
+        const fallbackSignature = CryptoJS.SHA1(stringToSign).toString();
+        console.log('� Fallback signature:', fallbackSignature);
+        return fallbackSignature;
+      }
+      
+      return signature;
+    } catch (error) {
+      console.error('❌ Error generating signature:', error);
+      // Fallback to a simple hash for debugging
+      const fallbackSignature = CryptoJS.SHA1('test').toString();
+      console.log('🔄 Fallback test signature:', fallbackSignature);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a file from Cloudinary using the file URL
+   */
+  async deleteFileByUrl(cloudinaryUrl: string): Promise<CloudinaryResponse> {
+    try {
+      if (!this.cloudName || !this.apiKey) {
+        return {
+          success: false,
+          error: 'Cloudinary configuration is missing for deletion operations'
+        };
+      }
+
+      if (!this.apiSecret) {
+        return {
+          success: false,
+          error: 'Cloudinary API secret is missing - required for deletion operations'
+        };
+      }
+
+      console.log('🗑️ Attempting to delete file from Cloudinary:', cloudinaryUrl);
+      console.log('🔑 Using API Key:', this.apiKey.substring(0, 8) + '...');
+      console.log('🔐 API Secret available:', this.apiSecret ? 'Yes' : 'No');
+      console.log('🔐 API Secret length:', this.apiSecret?.length || 0);
+
+      // Extract public ID and resource type from URL
+      const extracted = this.extractPublicIdFromUrl(cloudinaryUrl);
+      if (!extracted) {
+        return {
+          success: false,
+          error: 'Could not extract public ID from Cloudinary URL'
+        };
+      }
+
+      const { publicId, resourceType } = extracted;
+      console.log('🔍 Extracted public ID:', publicId, 'Resource type:', resourceType);
+
+      // For client-side deletion, we'll use the unsigned delete approach
+      // Note: This requires your Cloudinary account to allow unsigned deletes for the resource type
+      
+      const timestamp = Math.floor(Date.now() / 1000);
+      const params = {
+        public_id: publicId,
+        timestamp: timestamp,
+        api_key: this.apiKey
+      };
+
+      console.log('📋 Deletion parameters:', {
+        public_id: publicId,
+        timestamp: timestamp,
+        api_key: this.apiKey.substring(0, 8) + '...'
+      });
+
+      // Note: For security reasons, actual signature generation should be done on the backend
+      // This is a simplified approach for demonstration
+      const signature = this.generateSignature(params, this.apiSecret || '');
+
+      const formData = new FormData();
+      formData.append('public_id', publicId);
+      formData.append('timestamp', timestamp.toString());
+      formData.append('api_key', this.apiKey);
+      formData.append('signature', signature);
+
+      const deleteUrl = `https://api.cloudinary.com/v1_1/${this.cloudName}/${resourceType}/destroy`;
+      console.log('🌐 Delete URL:', deleteUrl);
+
+      const response = await fetch(deleteUrl, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        console.error('❌ Cloudinary deletion failed:', result);
+        return {
+          success: false,
+          error: result.error?.message || 'Failed to delete file from Cloudinary'
+        };
+      }
+
+      if (result.result === 'ok') {
+        console.log('✅ File deleted successfully from Cloudinary:', publicId);
+        return {
+          success: true
+        };
+      } else {
+        console.warn('⚠️ Cloudinary deletion result:', result.result);
+        return {
+          success: false,
+          error: `Deletion failed: ${result.result}`
+        };
+      }
+
+    } catch (error) {
+      console.error('❌ Error deleting file from Cloudinary:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred during deletion'
+      };
+    }
+  }
+
+  /**
+   * Delete an image from Cloudinary (deprecated - use deleteFileByUrl instead)
    */
   async deleteImage(publicId: string): Promise<CloudinaryResponse> {
-    console.warn('Delete operation should be implemented on the backend for security');
-    return {
-      success: false,
-      error: 'Delete operation should be implemented on the backend'
-    };
+    console.warn('deleteImage is deprecated. Use deleteFileByUrl instead.');
+    
+    // For backward compatibility, construct a URL and use the new method
+    const imageUrl = `https://res.cloudinary.com/${this.cloudName}/image/upload/${publicId}`;
+    return this.deleteFileByUrl(imageUrl);
   }
 
   /**

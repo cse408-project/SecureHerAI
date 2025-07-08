@@ -173,6 +173,40 @@ public class ReportRequest {
         }
     }
     
+    // Delete evidence request
+    public static class DeleteEvidence {
+        @NotNull(message = "Report ID is required")
+        private UUID reportId;
+        
+        @NotNull(message = "Evidence URL is required")
+        @NotBlank(message = "Evidence URL cannot be blank")
+        private String evidenceUrl;
+        
+        public DeleteEvidence() {}
+        
+        public DeleteEvidence(UUID reportId, String evidenceUrl) {
+            this.reportId = reportId;
+            this.evidenceUrl = evidenceUrl;
+        }
+        
+        // Getters and Setters
+        public UUID getReportId() {
+            return reportId;
+        }
+        
+        public void setReportId(UUID reportId) {
+            this.reportId = reportId;
+        }
+        
+        public String getEvidenceUrl() {
+            return evidenceUrl;
+        }
+        
+        public void setEvidenceUrl(String evidenceUrl) {
+            this.evidenceUrl = evidenceUrl;
+        }
+    }
+    
     // Update report request (comprehensive update for all fields)
     public static class UpdateReport {
         @NotNull(message = "Report ID is required")

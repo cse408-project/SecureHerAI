@@ -594,6 +594,31 @@ class ApiService {
     }
   }
 
+  async deleteEvidence(reportId: string, evidenceUrl: string): Promise<GenericReportResponse> {
+    try {
+      console.log("API: Deleting evidence from report:", reportId, "URL:", evidenceUrl);
+      const response = await fetch(`${API_BASE_URL}/report/delete-evidence`, {
+        method: "POST",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({
+          reportId,
+          evidenceUrl
+        }),
+      });
+
+      const data = await response.json();
+      console.log("API: Delete evidence response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Delete evidence error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while deleting evidence",
+      };
+    }
+  }
+
   async updateReport(updateData: UpdateReportRequest): Promise<GenericReportResponse> {
     try {
       console.log("API: Updating report:", updateData.reportId);
