@@ -1,6 +1,19 @@
 version: "3.8"
 
 services:
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
   api:
     container_name: secureherai_api
     build:
@@ -12,8 +25,8 @@ services:
       - maven_cache:/root/.m2
     working_dir: /app
     command: mvn spring-boot:run -Dspring-boot.run.profiles=dev
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
     env_file:
       - .env
     environment:
@@ -26,8 +39,8 @@ services:
 
       # JWT Configuration
       JWT_SECRET: ${JWT_SECRET:-}
-      JWT_EXPIRATION: ${JWT_EXPIRATION:-} 
-      
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-}
+
       # Email Configuration (Use environment variables for production)
       MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
@@ -49,6 +62,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://api:8080/api/isOk"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     stdin_open: true
     tty: true
     networks:
@@ -84,7 +103,6 @@ networks:
     driver: bridge
     name: app-network
     # external: true
-
 # For pgAdmin (http://localhost:5050):
 
 # Email: admin@admin.com

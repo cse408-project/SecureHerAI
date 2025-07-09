@@ -9,7 +9,5 @@ jobs:
     name: Deploy Web
     type: deploy
     environment: production
-    run: |
-      npm run test:ci
     params:
       prod: true

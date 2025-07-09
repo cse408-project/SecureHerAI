@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y \
     libgstreamer1.0-dev \
     libgstreamer-plugins-base1.0-dev \
     uuid-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pom.xml .
