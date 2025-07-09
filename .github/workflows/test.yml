@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - ans2003
+      - amin
   workflow_dispatch:
 
 jobs:
@@ -47,4 +47,44 @@ jobs:
           else
             echo "Test reports not found."
             exit 1
+          fi
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    environment: development
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: secureherai-app/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: secureherai-app
+        run: npm ci
+
+      - name: Run frontend tests
+        working-directory: secureherai-app
+        run: npm run test:ci
+
+      - name: Upload frontend test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-test-results
+          path: secureherai-app/coverage/
+
+      - name: Verify frontend test results
+        working-directory: secureherai-app
+        run: |
+          echo "Frontend test execution completed."
+          if [ -d "coverage" ]; then
+            echo "Coverage reports generated successfully."
+          else
+            echo "Coverage reports not found."
           fi

@@ -320,6 +320,39 @@ public class ReportService {
             return new ReportResponse.GenericResponse(false, null, "An error occurred while uploading evidence: " + e.getMessage());
         }
     }
+
+    /**
+     * Delete evidence from a report
+     */
+    public ReportResponse.GenericResponse deleteEvidence(UUID userId, ReportRequest.DeleteEvidence request) {
+        try {
+            logger.debug("Deleting evidence from report: {} by user: {}", request.getReportId(), userId);
+            
+            // Verify report exists and user owns it
+            Optional<IncidentReport> reportOpt = reportRepository.findByIdAndUserId(request.getReportId(), userId);
+            if (reportOpt.isEmpty()) {
+                logger.warn("Report not found or access denied for evidence deletion - Report: {}, User: {}", request.getReportId(), userId);
+                return new ReportResponse.GenericResponse(false, null, "Report not found or access denied");
+            }
+            
+            // Check if evidence exists
+            Optional<ReportEvidence> evidenceOpt = evidenceRepository.findByReportIdAndFileUrl(request.getReportId(), request.getEvidenceUrl());
+            if (evidenceOpt.isEmpty()) {
+                logger.warn("Evidence not found for deletion - Report: {}, URL: {}", request.getReportId(), request.getEvidenceUrl());
+                return new ReportResponse.GenericResponse(false, null, "Evidence not found");
+            }
+            
+            // Delete evidence from database
+            evidenceRepository.deleteByReportIdAndFileUrl(request.getReportId(), request.getEvidenceUrl());
+            
+            logger.info("Evidence deleted successfully from report: {} - URL: {}", request.getReportId(), request.getEvidenceUrl());
+            return new ReportResponse.GenericResponse(true, "Evidence deleted successfully", null);
+            
+        } catch (Exception e) {
+            logger.error("Error deleting evidence from report {}: {}", request.getReportId(), e.getMessage(), e);
+            return new ReportResponse.GenericResponse(false, null, "An error occurred while deleting evidence: " + e.getMessage());
+        }
+    }
     
     /**
      * Update report (comprehensive update for all fields)

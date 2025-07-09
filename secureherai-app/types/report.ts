@@ -77,6 +77,11 @@ export interface UploadEvidenceRequest {
   description?: string;
 }
 
+export interface DeleteEvidenceRequest {
+  reportId: string;
+  evidenceUrl: string;
+}
+
 export interface UpdateReportRequest {
   reportId: string;
   incidentType?: 'harassment' | 'theft' | 'assault' | 'other';

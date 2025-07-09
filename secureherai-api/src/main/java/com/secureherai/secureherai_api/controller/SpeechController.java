@@ -26,7 +26,6 @@ import java.util.List;
 @RequestMapping("/api/speech")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = {"http://localhost:8081", "http://localhost:3000"})
 public class SpeechController {
 
     private final AzureSpeechService azureSpeechService;

@@ -174,6 +174,42 @@ public class ReportController {
                 .body(new ReportResponse.GenericResponse(false, null, "An unexpected error occurred"));
         }
     }
+
+    /**
+     * Delete evidence from a report
+     * POST /api/report/delete-evidence
+     */
+    @PostMapping("/delete-evidence")
+    public ResponseEntity<ReportResponse.GenericResponse> deleteEvidence(
+            @RequestHeader("Authorization") String authHeader,
+            @Valid @RequestBody ReportRequest.DeleteEvidence request) {
+        
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            
+            // Validate token
+            if (!jwtService.isTokenValid(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ReportResponse.GenericResponse(false, null, "User not authenticated"));
+            }
+            
+            UUID userId = jwtService.extractUserId(token);
+            ReportResponse.GenericResponse response = reportService.deleteEvidence(userId, request);
+            
+            if (response.isSuccess()) {
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            }
+            
+        } catch (io.jsonwebtoken.JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ReportResponse.GenericResponse(false, null, "Invalid authentication token"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ReportResponse.GenericResponse(false, null, "An unexpected error occurred"));
+        }
+    }
     
     /**
      * Update incident report (comprehensive update for all fields)

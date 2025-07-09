@@ -18,7 +18,8 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useAuth } from "../../context/AuthContext";
 import { useAlert } from "../../context/AlertContext";
 import apiService from "../../services/api";
-import { ReportDetails, UpdateReportRequest } from "../../types/report";
+import cloudinaryService from "../../services/cloudinary";
+import { ReportDetails, UpdateReportRequest, DeleteEvidenceRequest } from "../../types/report";
 import { getIncidentTypeColor, getIncidentTypeIcon, getStatusColor } from "../../utils/incidentHelpers";
 
 export default function ReportDetailsScreen() {
@@ -37,6 +38,7 @@ export default function ReportDetailsScreen() {
   const [playbackProgress, setPlaybackProgress] = useState(0);
   const [playbackDuration, setPlaybackDuration] = useState(0);
   const [hasMediaError, setHasMediaError] = useState(false);
+  const [isDeletingEvidence, setIsDeletingEvidence] = useState(false);
   const videoRef = useRef<Video>(null);
 
   // Extract ID from params, handle both single string and array cases
@@ -295,6 +297,78 @@ export default function ReportDetailsScreen() {
       },
       undefined,
       'warning'
+    );
+  };
+
+  const handleDeleteEvidence = async () => {
+    if (!report || !report.evidence || !report.evidence[selectedEvidenceIndex]) return;
+
+    const evidenceUrl = report.evidence[selectedEvidenceIndex];
+    
+    showConfirmAlert(
+      'Delete Evidence',
+      'Are you sure you want to delete this evidence? This action cannot be undone.',
+      async () => {
+        setIsDeletingEvidence(true);
+        
+        try {
+          console.log('🗑️ Starting evidence deletion process for URL:', evidenceUrl);
+          
+          // First, try to delete from Cloudinary
+          console.log('🗑️ Step 1: Deleting from Cloudinary...');
+          const cloudinaryResult = await cloudinaryService.deleteFileByUrl(evidenceUrl);
+          
+          if (cloudinaryResult.success) {
+            console.log('✅ Successfully deleted from Cloudinary');
+          } else {
+            console.warn('⚠️ Failed to delete from Cloudinary:', cloudinaryResult.error);
+            // Continue with database deletion even if Cloudinary deletion fails
+            // This prevents orphaned database records
+          }
+          
+          // Then delete from database
+          console.log('🗑️ Step 2: Deleting from database...');
+          const response = await apiService.deleteEvidence(report.reportId, evidenceUrl);
+          
+          if (response.success) {
+            console.log('✅ Successfully deleted from database');
+            
+            // Remove evidence from local state
+            const updatedEvidence = report.evidence.filter((_, index) => index !== selectedEvidenceIndex);
+            setReport({
+              ...report,
+              evidence: updatedEvidence,
+            });
+            
+            // Close modal if no more evidence
+            if (updatedEvidence.length === 0) {
+              setShowEvidenceModal(false);
+            } else {
+              // Adjust selected index if necessary
+              if (selectedEvidenceIndex >= updatedEvidence.length) {
+                setSelectedEvidenceIndex(updatedEvidence.length - 1);
+              }
+            }
+            
+            // Show success message
+            const message = cloudinaryResult.success 
+              ? 'Evidence deleted successfully from both storage and database'
+              : 'Evidence deleted from database (Cloudinary deletion failed)';
+            
+            showAlert('Success', message, 'success');
+          } else {
+            console.error('❌ Failed to delete from database:', response.error);
+            showAlert('Error', response.error || 'Failed to delete evidence from database', 'error');
+          }
+        } catch (error) {
+          console.error('❌ Delete evidence error:', error);
+          showAlert('Error', 'An unexpected error occurred during deletion', 'error');
+        } finally {
+          setIsDeletingEvidence(false);
+        }
+      },
+      undefined,
+      'error'
     );
   };
 
@@ -803,12 +877,26 @@ export default function ReportDetailsScreen() {
             <Text className="text-white font-bold text-lg">
               Evidence #{selectedEvidenceIndex + 1}
             </Text>
-            <TouchableOpacity
-              onPress={() => setShowEvidenceModal(false)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <MaterialIcons name="close" size={28} color="white" />
-            </TouchableOpacity>
+            <View className="flex-row items-center space-x-4">
+              <TouchableOpacity
+                onPress={handleDeleteEvidence}
+                disabled={isDeletingEvidence}
+                className="p-2 rounded-full bg-red-600/20"
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                {isDeletingEvidence ? (
+                  <ActivityIndicator size="small" color="#DC2626" />
+                ) : (
+                  <MaterialIcons name="delete" size={24} color="#DC2626" />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShowEvidenceModal(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <MaterialIcons name="close" size={28} color="white" />
+              </TouchableOpacity>
+            </View>
           </View>
           
           {/* Content Container - Centered */}
