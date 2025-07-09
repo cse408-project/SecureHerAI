@@ -14,8 +14,6 @@ jobs:
   deploy-api:
     runs-on: ubuntu-latest
     environment: development
-    # Only deploy if tests passed
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
 
     steps:
       - name: Checkout repository
