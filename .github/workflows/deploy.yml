@@ -130,7 +130,7 @@ jobs:
           echo "Waiting for API to be ready (2 minutes max)..."
           for i in {1..12}; do
             echo "Check attempt $i"
-            if curl --silent --max-time 10 --fail "${{ vars.EXPO_PUBLIC_API_BASE_URL }}/isOk" > /dev/null; then
+            if curl --silent --max-time 10 --fail "${{ vars.EXPO_PUBLIC_API_BASE_URL }}/api/isOk" > /dev/null; then
               echo "✅ API is responding correctly!"
               break
             elif [ $i -eq 12 ]; then
@@ -143,6 +143,16 @@ jobs:
           
           echo "API container logs:"
           docker compose -f docker-compose-deploy.yml logs --tail=100 api
+          
+          echo "Testing API health endpoints directly:"
+          echo "1. Testing /api/isOk endpoint:"
+          curl -v --max-time 10 "${{ vars.EXPO_PUBLIC_API_BASE_URL }}/api/isOk" || true
+          echo "2. Testing /actuator/health endpoint:"
+          curl -v --max-time 10 "${{ vars.EXPO_PUBLIC_API_BASE_URL }}/actuator/health" || true
+          
+          echo "Testing internal container health:"
+          docker exec secureherai_api curl -v --max-time 10 http://localhost:8080/api/isOk || true
+          docker exec secureherai_api curl -v --max-time 10 http://localhost:8080/actuator/health || true
           
           echo "NGINX container logs:"
           docker compose -f docker-compose-deploy.yml logs --tail=30 nginx
