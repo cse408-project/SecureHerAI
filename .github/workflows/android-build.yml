@@ -1,0 +1,110 @@
+name: CI/CD Android Build
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  android-build:
+    name: 📱 Build Android (EAS)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./secureherai-app
+    
+    steps:
+      - name: 🏗 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: './secureherai-app/package-lock.json'
+
+      - name: 🏗 Setup Expo & EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🧪 Run tests
+        run: npm run lint
+
+      - name: 🚀 Build for Android (Preview)
+        if: github.event_name == 'pull_request'
+        run: eas build --platform android --profile preview --non-interactive
+        env:
+          EAS_TOKEN: ${{ secrets.EAS_TOKEN }}
+
+      - name: 🚀 Build for Android (Production)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: eas build --platform android --profile production --non-interactive
+        env:
+          EAS_TOKEN: ${{ secrets.EAS_TOKEN }}
+
+      - name: 📦 Download Android artifact (Production only)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          # Wait for build to complete and get build ID
+          sleep 30
+          build_id=$(eas build:list --platform android --status finished --limit 1 --json | jq -r '.[0].id')
+          echo "Build ID: $build_id"
+          
+          # Download the build
+          mkdir -p ../dist/android
+          eas build:download --platform android --id $build_id --output ../dist/android/
+        env:
+          EAS_TOKEN: ${{ secrets.EAS_TOKEN }}
+
+      - name: 📤 Upload APK/AAB
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-app-${{ github.sha }}
+          path: dist/android/*
+          retention-days: 30
+
+  web-build:
+    name: 🌐 Build Web
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./secureherai-app
+
+    steps:
+      - name: 🏗 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: './secureherai-app/package-lock.json'
+
+      - name: 🏗 Setup Expo CLI
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🚀 Build web
+        run: npm run build:web
+
+      - name: 📤 Upload web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build-${{ github.sha }}
+          path: secureherai-app/web-build/
+          retention-days: 30

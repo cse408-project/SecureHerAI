@@ -45,9 +45,6 @@ public class Alert {
     @Column(name = "verification_status")
     private String verificationStatus = "pending"; // pending, verified, rejected
     
-    @Column(name = "verification_confidence", precision = 5, scale = 4)
-    private BigDecimal verificationConfidence;
-    
     @Column(name = "canceled_at")
     private LocalDateTime canceledAt;
     
@@ -165,14 +162,6 @@ public class Alert {
     
     public void setVerificationStatus(String verificationStatus) {
         this.verificationStatus = verificationStatus;
-    }
-    
-    public BigDecimal getVerificationConfidence() {
-        return verificationConfidence;
-    }
-    
-    public void setVerificationConfidence(BigDecimal verificationConfidence) {
-        this.verificationConfidence = verificationConfidence;
     }
     
     public LocalDateTime getCanceledAt() {

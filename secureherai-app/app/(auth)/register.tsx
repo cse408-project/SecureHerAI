@@ -30,8 +30,9 @@ export default function RegisterScreen() {
   });
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
 
-  const { register } = useAuth();
+  const { register, initiateGoogleLogin } = useAuth();
   const { showAlert } = useAlert();
 
   const updateFormData = (field: keyof RegisterRequest, value: string) => {
@@ -89,6 +90,24 @@ export default function RegisterScreen() {
       showAlert("Error", "An unexpected error occurred", "error");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignUp = async () => {
+    setIsLoadingGoogle(true);
+    try {
+      // Use the AuthContext method to initiate Google login
+      await initiateGoogleLogin();
+      // Navigation will happen in AuthContext's deep link handler
+    } catch (error) {
+      console.error("Google Auth Error:", error);
+      showAlert(
+        "Authentication Error",
+        "Failed to start Google authentication",
+        "error"
+      );
+    } finally {
+      setIsLoadingGoogle(false);
     }
   };
 
@@ -227,7 +246,7 @@ export default function RegisterScreen() {
 
               {/* Register Button */}
               <TouchableOpacity
-                className={`w-full py-4 rounded-lg mb-6 ${
+                className={`w-full py-4 rounded-lg mb-4 ${
                   isLoading
                     ? "bg-[#67082F]/50"
                     : "bg-[#67082F] active:bg-[#67082F]/90"
@@ -241,6 +260,34 @@ export default function RegisterScreen() {
                   <Text className="text-white text-center font-semibold text-lg">
                     Create Account
                   </Text>
+                )}
+              </TouchableOpacity>
+
+              {/* Divider */}
+              <View className="flex-row items-center mb-4">
+                <View className="flex-1 h-px bg-gray-300" />
+                <Text className="mx-4 text-gray-500 text-sm">or</Text>
+                <View className="flex-1 h-px bg-gray-300" />
+              </View>
+
+              {/* Google Sign Up Button */}
+              <TouchableOpacity
+                className="w-full py-4 rounded-lg border border-gray-300 bg-white flex-row items-center justify-center mb-6"
+                onPress={handleGoogleSignUp}
+                disabled={isLoadingGoogle}
+              >
+                {isLoadingGoogle ? (
+                  <ActivityIndicator color="#67082F" className="mr-2" />
+                ) : (
+                  <View className="flex-row items-center justify-center">
+                    <Image
+                      source={require("../../assets/images/google_icon.png")}
+                      style={{ width: 20, height: 20, marginRight: 8 }}
+                    />
+                    <Text className="text-gray-700 font-semibold text-lg">
+                      Sign up with Google
+                    </Text>
+                  </View>
                 )}
               </TouchableOpacity>
             </View>

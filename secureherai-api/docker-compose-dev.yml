@@ -24,22 +24,28 @@ services:
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_PROFILES_ACTIVE: dev
 
-        # JWT Configuration
-      JWT_SECRET: HRVu1xFYfraq/lculzNaXzMHVady85sMReuLwlSzEjcKznYOEPdbbK3F+9hq+4muGxhYfft5nNQYxbDZIGzzAA==
-      JWT_EXPIRATION: 86400000 # Email Configuration (Use environment variables for production)
+      # JWT Configuration
+      JWT_SECRET: ${JWT_SECRET:-}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-} 
+      
+      # Email Configuration (Use environment variables for production)
       MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
 
-      # OAuth2 Configuration
+      # OAuth2 Web Configuration
       OAUTH2_WEB_ORIGIN: ${OAUTH2_WEB_ORIGIN:-}
       OAUTH2_WEB_REDIRECT_URI: ${OAUTH2_WEB_REDIRECT_URI:-}
 
+      # OAuth2 Credential Configuration
       OAUTH2_CLIENT_ID: ${OAUTH2_CLIENT_ID:-}
       OAUTH2_CLIENT_SECRET: ${OAUTH2_CLIENT_SECRET:-}
-
       OAUTH2_CLIENT_ID_ANDROID: ${OAUTH2_CLIENT_ID_ANDROID:-}
+
+      # Azure Speech Service Configuration
+      AZURE_SPEECH_KEY: ${AZURE_SPEECH_KEY:-}
+      AZURE_SPEECH_REGION: ${AZURE_SPEECH_REGION:-}
     depends_on:
       db:
         condition: service_healthy

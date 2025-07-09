@@ -1,0 +1,311 @@
+@baseUrl = http://localhost:8080/api
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIzOGVhOGU1OS0zNzc1LTQxMDItOWRmNS0xMDQzNzU4M2M1ZjMiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc1MTc3NzE3MywiZXhwIjoxNzUyNjQxMTczfQ.hkUe0_GWg8xgj8UsbePKYyYX3B_w4C8FrXO5zK7WUos
+
+### Health check for API
+GET {{baseUrl}}/isOk
+
+### Get user profile
+GET {{baseUrl}}/user/profile
+Authorization: Bearer {{authToken}}
+
+### Health check for Speech Service
+GET {{baseUrl}}/speech/health
+
+### Transcribe audio from file upload
+POST {{baseUrl}}/speech/transcribe
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="audio"; filename="try_again.wav"
+Content-Type: audio/wav
+
+< ../data/try_again.wav
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### SOS Voice Command (URL-based)
+# Requires authentication token
+POST {{baseUrl}}/sos/voice-command
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "audioUrl": "https://res.cloudinary.com/dhb8x5ucj/video/upload/v1751576210/report_evidence/cysdhptvrwgfbk94ghqq.wav",
+    "location": {
+        "latitude": 23.8103,
+        "longitude": 90.4125,
+        "address": "Dhaka, Bangladesh"
+    }
+}
+
+###
+HTTP 200 OK
+
+{
+  "success": true,
+  "message": "SOS Alert triggered successfully",
+  "alertId": "2b2a0e32-d086-4da2-895a-3e2c3b7aaf05",
+  "userId": "6a59614b-8067-41bc-88c6-d8025de7968a",
+  "latitude": 23.8103,
+  "longitude": 90.4125,
+  "address": "Dhaka, Bangladesh",
+  "triggerMethod": "voice",
+  "alertMessage": "Someone following me help?",
+  "audioRecording": "https://res.cloudinary.com/dhb8x5ucj/video/upload/v1751576210/report_evidence/cysdhptvrwgfbk94ghqq.wav",
+  "triggeredAt": "2025-07-03T20:58:30.884331",
+  "status": "active",
+  "verificationStatus": "pending",
+  "canceledAt": null,
+  "resolvedAt": null
+}
+// The transcribed text will be checked for default keywords like "help", "emergency", "sos"
+// If any of these keywords are found in the transcription, an alert will be triggered
+
+### SOS Text Command (with keyword = "help")
+# This should trigger an alert as the keyword is "help"
+# Requires authentication token
+POST {{baseUrl}}/sos/text-command
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "message": "There's an emergency situation here.",
+    "keyword": "help",
+    "location": {
+        "latitude": 23.8103,
+        "longitude": 90.4125,
+        "address": "Dhaka, Bangladesh"
+    }
+}
+
+###
+HTTP 200 OK
+
+{
+  "success": true,
+  "message": "SOS Alert triggered successfully",
+  "alertId": "a871f9a8-2357-48fc-9081-c567aeb2b35e",
+  "userId": "6a59614b-8067-41bc-88c6-d8025de7968a",
+  "latitude": 23.8103,
+  "longitude": 90.4125,
+  "address": "Dhaka, Bangladesh",
+  "triggerMethod": "text",
+  "alertMessage": "There's an emergency situation here.",
+  "audioRecording": null,
+  "triggeredAt": "2025-07-03T21:13:34.354442",
+  "status": "active",
+  "verificationStatus": "pending",
+  "canceledAt": null,
+  "resolvedAt": null
+}
+
+### SOS Text Command (with different keyword)
+# This should NOT trigger an alert as the keyword is not "help"
+# Requires authentication token
+POST {{baseUrl}}/sos/text-command
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "message": "This is an emergency message.",
+    "keyword": "emergency",
+    "location": {
+        "latitude": 23.8103,
+        "longitude": 90.4125,
+        "address": "Dhaka, Bangladesh"
+    }
+}
+
+###
+HTTP 200 OK
+
+{
+  "success": false,
+  "message": "Alert not triggered. Keyword must be 'help'.",
+  "alertId": null,
+  "userId": null,
+  "latitude": null,
+  "longitude": null,
+  "address": null,
+  "triggerMethod": null,
+  "alertMessage": null,
+  "audioRecording": null,
+  "triggeredAt": null,
+  "status": null,
+  "verificationStatus": null,
+  "canceledAt": null,
+  "resolvedAt": null
+}
+
+### Get All Alerts for Current User
+# Retrieves all alerts for the authenticated user
+# Requires authentication token
+GET {{baseUrl}}/sos/alerts
+Authorization: Bearer {{authToken}}
+
+###
+HTTP 200 OK
+
+{
+  "success": true,
+  "alerts": [
+    {
+      "id": "a871f9a8-2357-48fc-9081-c567aeb2b35e",
+      "userId": "6a59614b-8067-41bc-88c6-d8025de7968a",
+      "latitude": 23.8103,
+      "longitude": 90.4125,
+      "address": "Dhaka, Bangladesh",
+      "triggerMethod": "text",
+      "alertMessage": "There's an emergency situation here.",
+      "audioRecording": null,
+      "triggeredAt": "2025-07-03T21:13:34.354442",
+      "status": "active",
+      "verificationStatus": "pending",
+      "canceledAt": null,
+      "resolvedAt": null,
+      "updatedAt": "2025-07-03T21:13:34.354442"
+    },
+    {
+      "id": "2b2a0e32-d086-4da2-895a-3e2c3b7aaf05",
+      "userId": "6a59614b-8067-41bc-88c6-d8025de7968a",
+      "latitude": 23.8103,
+      "longitude": 90.4125,
+      "address": "Dhaka, Bangladesh",
+      "triggerMethod": "voice",
+      "alertMessage": "Someone following me help?",
+      "audioRecording": "https://res.cloudinary.com/dhb8x5ucj/video/upload/v1751576210/report_evidence/cysdhptvrwgfbk94ghqq.wav",
+      "triggeredAt": "2025-07-03T20:58:30.884331",
+      "status": "active",
+      "verificationStatus": "pending",
+      "canceledAt": null,
+      "resolvedAt": null,
+      "updatedAt": "2025-07-03T20:58:30.884331"
+    }
+  ]
+}
+
+### Get All Active Alerts (Responder Only)
+# Retrieves all active alerts across all users (for responders only)
+# Requires authentication token with RESPONDER role
+GET {{baseUrl}}/sos/active-alerts
+Authorization: Bearer {{authToken}}
+
+###
+HTTP 200 OK
+
+{
+  "success": true,
+  "alerts": [
+    {
+      "id": "a871f9a8-2357-48fc-9081-c567aeb2b35e",
+      "userId": "6a59614b-8067-41bc-88c6-d8025de7968a",
+      "latitude": 23.8103,
+      "longitude": 90.4125,
+      "address": "Dhaka, Bangladesh",
+      "triggerMethod": "text",
+      "alertMessage": "There's an emergency situation here.",
+      "audioRecording": null,
+      "triggeredAt": "2025-07-03T21:13:34.354442",
+      "status": "active",
+      "verificationStatus": "pending",
+      "canceledAt": null,
+      "resolvedAt": null,
+      "updatedAt": "2025-07-03T21:13:34.354442"
+    },
+    {
+      "id": "2b2a0e32-d086-4da2-895a-3e2c3b7aaf05",
+      "userId": "6a59614b-8067-41bc-88c6-d8025de7968a",
+      "latitude": 23.8103,
+      "longitude": 90.4125,
+      "address": "Dhaka, Bangladesh",
+      "triggerMethod": "voice",
+      "alertMessage": "Someone following me help?",
+      "audioRecording": "https://res.cloudinary.com/dhb8x5ucj/video/upload/v1751576210/report_evidence/cysdhptvrwgfbk94ghqq.wav",
+      "triggeredAt": "2025-07-03T20:58:30.884331",
+      "status": "active",
+      "verificationStatus": "pending",
+      "canceledAt": null,
+      "resolvedAt": null,
+      "updatedAt": "2025-07-03T20:58:30.884331"
+    },
+    {
+      "id": "3d4b1f43-e197-6ec4-908c-5f4e5d9bbf07",
+      "userId": "7b69725c-9178-52cd-99d7-e9136ef8079b",
+      "latitude": 40.7128,
+      "longitude": -74.0060,
+      "address": "New York, NY, USA",
+      "triggerMethod": "manual",
+      "alertMessage": "Need immediate help!",
+      "audioRecording": null,
+      "triggeredAt": "2025-07-03T22:05:17.123456",
+      "status": "active",
+      "verificationStatus": "pending",
+      "canceledAt": null,
+      "resolvedAt": null,
+      "updatedAt": "2025-07-03T22:05:17.123456"
+    }
+  ]
+}
+
+### Cancel Alert
+# Cancels an active alert
+# Requires authentication token and ownership of the alert
+POST {{baseUrl}}/sos/cancel
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "alertId": "6ef960c2-96d0-4570-8ce2-5e5a4a083b7f"
+}
+
+###
+HTTP 200 OK
+
+{
+  "success": true,
+  "message": "Alert canceled successfully",
+  "alertId": "a871f9a8-2357-48fc-9081-c567aeb2b35e",
+  "userId": "6a59614b-8067-41bc-88c6-d8025de7968a",
+  "latitude": 23.8103,
+  "longitude": 90.4125,
+  "address": "Dhaka, Bangladesh",
+  "triggerMethod": "text",
+  "alertMessage": "There's an emergency situation here.",
+  "audioRecording": null,
+  "triggeredAt": "2025-07-03T21:13:34.354442",
+  "status": "canceled",
+  "verificationStatus": "pending",
+  "canceledAt": "2025-07-03T22:15:47.123456",
+  "resolvedAt": null
+}
+
+### Cancel Alert (Not Found)
+# Attempt to cancel an alert with an invalid ID
+# Should return a 404 Not Found error
+POST {{baseUrl}}/sos/cancel
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "alertId": "00000000-0000-0000-0000-000000000000"
+}
+
+###
+HTTP 404 Not Found
+
+{
+  "success": false,
+  "message": "Alert not found or you are not authorized to cancel it",
+  "alertId": null,
+  "userId": null,
+  "latitude": null,
+  "longitude": null,
+  "address": null,
+  "triggerMethod": null,
+  "alertMessage": null,
+  "audioRecording": null,
+  "triggeredAt": null,
+  "status": null,
+  "verificationStatus": null,
+  "canceledAt": null,
+  "resolvedAt": null
+}

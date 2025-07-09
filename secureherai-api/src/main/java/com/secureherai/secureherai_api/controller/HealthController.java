@@ -12,11 +12,12 @@ import java.util.Map;
 @RequestMapping("/api")
 public class HealthController {
 
-    @GetMapping("/health")
+    @GetMapping("/isOk")
     public ResponseEntity<Map<String, String>> health() {
         Map<String, String> response = new HashMap<>();
         response.put("status", "healthy");
         response.put("service", "SecureHerAI API");
+        response.put("timestamp", String.valueOf(System.currentTimeMillis()));
         return ResponseEntity.ok(response);
     }
 

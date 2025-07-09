@@ -1,10 +1,37 @@
 ### SecureHerAI Authentication API Tests
 
-@baseUrl = https://secureherai.me/api
-@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZDZkMDY4Yi0wNzc3LTRlMTUtYmMyMy1iOWRlNjVlODMzZjMiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc1MDgyMDA0NywiZXhwIjoxNzUwOTA2NDQ3fQ.n5me94blDNu7IXML46nnWBJMyAqpQ8w4giHSzRU1PZ0
+@baseUrl = http://localhost:8080/api
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI2YTU5NjE0Yi04MDY3LTQxYmMtODhjNi1kODAyNWRlNzk2OGEiLCJlbWFpbCI6InNvbmlha2hhdHVuOTQzNThAZ21haWwuY29tIiwicm9sZSI6IlJFU1BPTkRFUiIsImlhdCI6MTc1MTU3NDQ0OCwiZXhwIjoxNzUyNDM4NDQ4fQ.olCnREUT_HnHJhvZLbG4hekLA0yIDrxaQNj2Ipys1YE
 
 ### 1. Health Check
-GET {{baseUrl}}/health
+GET {{baseUrl}}/isOk
+
+### Google OAuth Authentication Endpoints
+
+### 1.1 Get Google OAuth URL
+GET {{baseUrl}}/auth/google/auth-url
+
+### 1.2 Validate Google OAuth token
+POST {{baseUrl}}/auth/google/validate-token
+Content-Type: application/json
+
+{
+  "token": "google_oauth_token_from_redirect"
+}
+
+### Expected Success Response for Google token validation
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "success": true,
+  "token": "jwt_token_string",
+  "userId": "user_id_string",
+  "fullName": "User's Full Name",
+  "email": "user@example.com",
+  "role": "USER",
+  "needsProfileCompletion": false
+}
 
 ### 2. Register User
 POST {{baseUrl}}/auth/register
@@ -147,7 +174,7 @@ POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "arimotokika2005025@gmail.com",
+  "email": "soniakhatun94358@gmail.com",
   "password": "password123"
 }
 
@@ -158,7 +185,7 @@ Content-Type: application/json
 
 {
   "email": "2005009@ugrad.cse.buet.ac.bd",
-  "loginCode": "631843"
+  "loginCode": "888190"
 }
 
 ### Successful Verification Response (User)
@@ -179,8 +206,8 @@ POST {{baseUrl}}/auth/verify-login-code
 Content-Type: application/json
 
 {
-  "email": "arimotokika2005025@gmail.com",
-  "loginCode": "961979"
+  "email": "2005009@ugrad.cse.buet.ac.bd",
+  "loginCode": "077954"
 }
 
 ### Successful Verification Response
@@ -201,8 +228,8 @@ POST {{baseUrl}}/auth/verify-login-code
 Content-Type: application/json
 
 {
-  "email": "2005009@ugrad.cse.buet.ac.bd",
-  "loginCode": "995842"
+  "email": "soniakhatun94358@gmail.com",
+  "loginCode": "077954"
 }
 
 
@@ -464,4 +491,47 @@ Content-Type: application/json
   "role": "RESPONDER",
   "responderType": "POLICE",
   "badgeNumber": "POL-2023"
+}
+
+### 15. Delete Account
+DELETE {{baseUrl}}/auth/delete-account
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "password": "password123",
+  "confirmationText": "DELETE MY ACCOUNT"
+}
+
+### Successful Delete Account Response
+HTTP/1.1 200
+Content-Type: application/json
+
+{
+  "success": true,
+  "token": null,
+  "userId": null,
+  "fullName": null,
+  "role": null,
+  "message": "Account deleted successfully"
+}
+
+### Delete Account - Wrong Password (should fail)
+DELETE {{baseUrl}}/auth/delete-account
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "password": "wrongpassword",
+  "confirmationText": "DELETE MY ACCOUNT"
+}
+
+### Delete Account - Wrong Confirmation Text (should fail)
+DELETE {{baseUrl}}/auth/delete-account
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "password": "password123",
+  "confirmationText": "delete my account"
 }

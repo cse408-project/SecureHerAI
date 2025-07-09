@@ -65,6 +65,7 @@ function RootLayoutComponent() {
       {/* Protected tabs routes - only accessible when authenticated */}
       <Stack.Protected guard={isAuthenticated}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="reports" options={{ headerShown: false }} />
       </Stack.Protected>
 
       {/* Protected auth routes - only accessible when not authenticated */}

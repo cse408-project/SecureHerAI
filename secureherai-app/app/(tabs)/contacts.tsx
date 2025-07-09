@@ -9,7 +9,7 @@ import {
   Modal,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import Header from "../../src/components/Header";
+import Header from "../../components/Header";
 import ContactForm from "../../components/ContactForm";
 import { useAlert } from "../../context/AlertContext";
 import ApiService from "../../services/api";

@@ -256,7 +256,7 @@ CREATE TABLE incident_reports (
     anonymous BOOLEAN NOT NULL DEFAULT FALSE,
     status TEXT NOT NULL DEFAULT 'submitted',
     action_taken TEXT,
-    involved_parties JSONB,
+    involved_parties TEXT, -- Changed from JSONB to TEXT
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE (alert_id), -- One incident report per alert

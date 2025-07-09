@@ -1,0 +1,8 @@
+git pull origin 
+origin  thekei pull korbo 
+
+changes lagle korbo 
+git add . 
+git commit -m "msg:
+git checkout arimotokika 
+git merge main 

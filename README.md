@@ -1,203 +1,231 @@
 # SecureHerAI
 
-Women's Safety Application with AI Integration - A comprehensive safety platform with Spring Boot backend and Expo mobile application.
+A comprehensive women's safety platform with AI integration, featuring a robust Spring Boot backend and a modern Expo React Native mobile application.
 
-## 🏗️ Project Architecture
+**Live Web App:** [https://secureherai.expo.app/](https://secureherai.expo.app/)
+**Production API:** [https://www.secureherai.me/api](https://www.secureherai.me/api) or [https://secureherai.me/api](https://secureherai.me/api)
 
-This project consists of two main components:
+---
 
-1. **Backend**: Spring Boot REST API (`/src`)
-2. **Mobile App**: Expo React Native application (`/secureherai-app`)
+## 🚀 Features
 
-## 📱 Mobile Application (Expo)
+### Mobile App (Expo React Native)
 
-The mobile application is built with Expo for enhanced development experience and easier deployment.
+- **Authentication:** Login, signup, password reset, Google OAuth, profile completion _(Implemented)_
+- **SOS & Alerts:** Emergency SOS button, incident reporting, real-time notifications _(Implemented)_
+- **Trusted Contacts:** Add, edit, delete, batch manage, emergency call integration _(Implemented)_
+- **Notification Preferences:** Email, SMS, push toggles, real-time API sync _(Implemented)_
+- **Universal Alert System:** Consistent alerts across web and native, context/provider-based _(Implemented)_
+- **Professional UI/UX:** Responsive, accessible, SecureHerAI branding, beautiful modals, error handling _(Implemented)_
+- **TypeScript & API Compliance:** Full type safety, matches backend API specs _(Implemented)_
+- **AI Chat Helper:** In-app AI-powered chat for guidance and support _(Planned)_
+- **Live Map & Route Tracking:** Real-time journey tracking and safe route suggestions _(Planned)_
+- **Heatmap & Area Safety:** Visualize area risk and safety intelligence _(Planned)_
 
-### Features
+### Backend API (Spring Boot)
 
-- 🔐 User Authentication (Login/Signup)
-- 🆘 Emergency SOS Button
-- 📝 Incident Reporting
-- 📍 Location Services
-- 🔔 Real-time Notifications
+- **User Management:** Secure registration, login, JWT authentication, Google OAuth _(Implemented)_
+- **Trusted Contacts:** CRUD, validation, user isolation, phone/email validation _(Implemented)_
+- **Notification System:** Preferences management, alert delivery, status tracking, error handling _(Implemented)_
+- **Incident Reporting:** Full-featured reporting with location, time, evidence, privacy controls _(Implemented)_
+- **Security:** Role-based access, robust error handling, JWT validation, input validation _(Implemented)_
+- **Comprehensive API:** Well-structured REST endpoints, detailed error responses, test coverage _(Implemented)_
+- **SOS Alert System (AI-Powered):** Real-time emergency alerting, distress monitoring, auto-generated incident reports _(Partially Implemented, AI features Planned)_
+- **Fake Alert Detection (AI-Powered):** AI analyzes audio, video, image, and metadata to verify alert authenticity _(Planned)_
+- **Map & Route Tracking:** Live journey tracking, encrypted communication, ETA/status updates, offline support _(Planned)_
+- **Heat Map & Safe Routes (AI-Powered):** AI-driven safety intelligence, risk assessment, real-time danger zone alerts _(Planned)_
+- **Responder Module:** Emergency responders view/manage/respond to alerts, communicate with users _(Planned)_
+- **Admin Module:** System administration, statistics, settings management _(Planned)_
+- **AI Chat Helper:** Real-time guidance, safety tips, feature navigation, emotional support _(Planned)_
 
-### Quick Start
+---
 
-```bash
-cd secureherai-app
-npm install
-npx expo start
-```
+## 🧠 Backend Modules & AI Features
 
-The app will be available at `http://localhost:8081` and accessible via:
+> **Note:** Some modules are fully implemented, while others are in progress or planned for future releases. See tags below.
 
-- **Web Browser**: Click the web option in the terminal
-- **Mobile Device**: Scan QR code with Expo Go app
-- **iOS Simulator**: Press `i` in terminal
-- **Android Emulator**: Press `a` in terminal
+- **SOS Alert System (AI-Powered):**
+  - Real-time emergency alerting, distress monitoring, and auto-generated incident reports _(Partially Implemented, AI features Planned)_
+  - Voice command detection for hands-free SOS triggering _(Planned)_
+  - Notifies police, responders, and trusted contacts instantly _(Implemented)_
+- **Fake Alert Detection (AI-Powered):**
+  - AI analyzes audio, video, image, and metadata to verify alert authenticity and reduce false alarms _(Planned)_
+- **Map & Route Tracking:**
+  - Live journey tracking, encrypted communication, ETA/status updates, and offline support _(Planned)_
+- **Heat Map & Safe Routes (AI-Powered):**
+  - AI-driven safety intelligence, risk assessment, and real-time danger zone alerts _(Planned)_
+  - Suggests safest routes and provides area risk levels _(Planned)_
+- **Contacts & Notification:**
+  - Trusted contacts management, flexible notification methods (email, SMS, push), and automatic emergency messaging _(Implemented)_
+- **Incident Report System:**
+  - Submit detailed reports with evidence, privacy controls, and public/private options _(Implemented)_
+- **Responder Module:**
+  - Enables emergency responders to view, manage, and respond to alerts and communicate with users _(Planned)_
+- **Admin Module:**
+  - System administration, statistics, and settings management _(Planned)_
+- **AI Chat Helper (Optional):**
+  - Real-time guidance, safety tips, feature navigation, emotional support, and resource connection via natural language chat _(Planned)_
 
-### Mobile App Documentation
+**All implemented modules are secured with JWT authentication, role-based access, and robust validation.**
 
-- [Why Expo?](./secureherai-app/WHY_EXPO.md) - Architecture decision rationale
-- [Debug Guide](./secureherai-app/DEBUG_GUIDE.md) - Troubleshooting common issues
-- [Implementation Summary](./secureherai-app/IMPLEMENTATION_SUMMARY.md) - Technical details
+---
 
-## 🖥️ Backend API (Spring Boot)
+## 🏗️ Architecture
 
-### Prerequisites
+- **Backend:** Spring Boot 3.x, PostgreSQL, Spring Security, Docker, Azure VM deployment
+- **Frontend:** Expo (React Native), Expo Router, EAS (Expo Application Services), NativeWind/Tailwind, TypeScript
+- **CI/CD:** GitHub Actions (API deploy to Azure), EAS (web & Android builds/deploys), Namecheap DNS
 
-- Java 17+
-- Maven 3.6+
-- PostgreSQL 12+
-
-### Environment Configuration
-
-1. **Copy the environment template:**
-
-   ```bash
-   cp .env.example .env
-   ```
-
-2. **Configure your environment variables in `.env`:**
-
-   - `MAIL_USERNAME`: Your Gmail address
-   - `MAIL_PASSWORD`: Your Gmail App Password (not your regular password)
-
-   To generate Gmail App Password:
-
-   - Go to Google Account settings
-   - Enable 2-factor authentication
-   - Generate an App Password for "Mail"
-   - Use that 16-character password in your `.env` file
-
-3. **Never commit the `.env` file to version control** - it contains sensitive credentials
-
-### Running the Backend
-
-```bash
-docker-compose -f docker-compose-dev.yml down
-export DOCKER_BUILDKIT=1 && docker-compose -f docker-compose-dev.yml up --build
-```
-
-The API will be available at `http://localhost:8080`
-
-### API Testing
-
-Use the HTTP files in `endpoints/` directory:
-
-- `auth_test.http` - Authentication endpoints
-- `structure_test.http` - Other API endpoints
-
-## 🚀 Full Development Setup
-
-### 1. Start Backend Services
-
-```bash
-# Terminal 1: Start database and backend
-docker-compose -f docker-compose-dev.yml up --build
-```
-
-### 2. Start Mobile App
-
-```bash
-# Terminal 2: Start Expo development server
-cd secureherai-app
-npm install
-npx expo start
-```
-
-### 3. Access Applications
-
-- **Backend API**: http://localhost:8080
-- **Mobile App**: http://localhost:8081 (or scan QR code)
+---
 
 ## 📂 Project Structure
 
 ```
 SecureHerAI/
-├── src/                           # Spring Boot backend
-│   ├── main/java/                 # Java source code
-│   └── main/resources/            # Configuration files
-├── secureherai-app/               # Expo mobile application
-│   ├── app/                       # App screens (Expo Router)
-│   ├── components/                # Reusable UI components
-│   ├── services/                  # API services
-│   └── config/                    # Configuration
-├── docker-compose-dev.yml         # Development environment
-├── endpoints/                     # API testing files
-└── README.md                      # This file
+├── secureherai-api/         # Spring Boot backend
+│   ├── src/                 # Java source code
+│   ├── database/            # SQL schema
+│   ├── endpoints/           # API test files
+│   └── ...                  # Docker, docs, etc.
+├── secureherai-app/         # Expo mobile app
+│   ├── app/                 # App screens (Expo Router)
+│   ├── components/          # UI components
+│   ├── services/            # API services
+│   ├── .eas/                # EAS workflows (CI/CD)
+│   └── ...                  # Config, assets, etc.
+├── .github/                 # GitHub Actions workflows
+├── README.md                # This file
+└── ...                      # Docs, design, etc.
 ```
 
-## 🔧 Technology Stack
+---
 
-### Backend
+## ⚙️ Setup & Development
 
-- **Framework**: Spring Boot 3.x
-- **Database**: PostgreSQL
-- **Security**: Spring Security + JWT
-- **Email**: JavaMailSender
-- **Containerization**: Docker
+### Backend (API)
+
+1. **Prerequisites:** Java 17+, Maven 3.6+, PostgreSQL 12+
+2. **Environment:**
+   - Copy `.env.example` to `.env` and fill in secrets (see below)
+   - Never commit `.env` to version control
+3. **Run Locally:**
+   ```bash
+   docker-compose -f docker-compose-dev.yml up --build
+   ```
+   API: [http://localhost:8080](http://localhost:8080)
 
 ### Mobile App
 
-- **Framework**: Expo (React Native)
-- **Navigation**: Expo Router
-- **UI**: React Native + Expo Vector Icons
-- **State Management**: React Hooks
-- **HTTP Client**: Fetch API
+1. **Install dependencies:**
+   ```bash
+   cd secureherai-app
+   npm install
+   ```
+2. **Start development server:**
+   ```bash
+   npx expo start
+   ```
+   - Web: [http://localhost:8081](http://localhost:8081)
+   - Mobile: Scan QR with Expo Go
 
-## 🛠️ Development Workflow
+---
 
-1. **Backend Development**: Make changes to Spring Boot code
-2. **Database Migration**: Update schema via Docker Compose
-3. **Mobile Development**: Edit Expo app with hot reload
-4. **API Integration**: Test endpoints with mobile app
-5. **Testing**: Use HTTP files and Expo Go for testing
+## 🧪 Testing
 
-## 📱 Mobile App Development
+- **API:** Use HTTP files in `secureherai-api/endpoints/` (e.g., `auth_test.http`, `con_not_test.http`)
+- **Mobile:** Use Expo Go, web browser, or emulators.
+- **Test Coverage:** All major modules (auth, contacts, notifications, alerts) have comprehensive tests and error handling for implemented features.
 
-### Key Commands
+---
 
-```bash
-# Install dependencies
-npm install
+## 🔒 Security
 
-# Start development server
-npx expo start
+- JWT authentication and role-based access
+- Input validation (phone, email, required fields)
+- Proper error codes and messages
+- User isolation for sensitive data (contacts, preferences)
+- Secure environment variable management
 
-# Run on specific platform
-npx expo start --web        # Web browser
-npx expo start --ios        # iOS simulator
-npx expo start --android    # Android emulator
+---
 
-# Build for production
-npx expo build
+## 📲 Deployment & CI/CD
 
-# Update Expo SDK
-npx expo install --fix
-```
+### GitHub Actions (API → Azure)
 
-### Important Notes
+- **Workflow:** `.github/workflows/deploy.yml`
+- **Deploys API** to Azure VM on push to `main`
+- **Steps:** Docker build, SSH to VM, deploy with Docker Compose, health checks
+- **Secrets:** Managed via GitHub repository secrets (Azure VM, mail, OAuth, etc.)
 
-- The app uses Expo Router for file-based navigation
-- Authentication state is managed locally
-- API calls are configured in `config/index.ts`
-- Icons use `@expo/vector-icons` instead of `react-native-vector-icons`
+### EAS (Expo Application Services)
 
-## 🚨 Troubleshooting
+- **Workflows:** `secureherai-app/.eas/workflows/deploy.yml`
+- **Builds:** Android APK, deploys web on push to `main`
+- **Config:** `secureherai-app/eas.json` for build profiles
+- **Web App:** [https://secureherai.expo.app/](https://secureherai.expo.app/)
 
-### Backend Issues
+### Namecheap DNS
 
-- Check Docker containers: `docker ps`
-- View logs: `docker-compose logs -f`
-- Database connection: Verify PostgreSQL is running
+- **API Domain:** [https://www.secureherai.me/api](https://www.secureherai.me/api)
+- **Web Domain:** [https://secureherai.expo.app/](https://secureherai.expo.app/)
 
-### Mobile App Issues
+---
 
-- Clear Metro cache: `npx expo start --clear`
-- Reset dependencies: `rm -rf node_modules && npm install`
-- Check [Debug Guide](./secureherai-app/DEBUG_GUIDE.md) for detailed troubleshooting
+## 📖 Documentation
 
-## 📄 License
+- **Backend:**
+  - [Notification System](./NOTIFICATION_SYSTEM_IMPLEMENTATION.md)
+  - [Trusted Contacts](./secureherai-api/TRUSTED_CONTACTS_IMPLEMENTATION.md)
+  - [Error Response Mapping](./secureherai-api/ERROR_RESPONSE_MAPPING.md)
+  - [Token Validation](./secureherai-api/TOKEN_VALIDATION_FIX.md)
+  - [API Modules & Endpoints](./secureherai-api/endpoints/docs/README.md)
+- **Frontend:**
+  - [Contacts & Notifications](./secureherai-app/CONTACTS_NOTIFICATIONS_IMPLEMENTATION.md)
+  - [Universal Alert System](./UNIVERSAL_ALERT_IMPLEMENTATION.md)
+  - [Implementation Summary](./IMPLEMENTATION_SUMMARY.md)
+  - [Routing](./secureherai-app/ROUTING_IMPLEMENTATION.md)
+  - [OTP Implementation](./secureherai-app/OTP_IMPLEMENTATION.md)
+  - [Frontend Update Summary](./secureherai-app/FRONTEND_UPDATE_SUMMARY.md)
+- **Design:** See `/Design files/` for architecture diagrams, BPMN, and UI mockups
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+---
+
+## 🛣️ Roadmap & Future Enhancements
+
+- Real-time notifications (WebSocket) _(Planned)_
+- Notification templates and analytics _(Planned)_
+- Contact import and verification _(Planned)_
+- Location sharing enhancements _(Planned)_
+- Emergency templates and cloud sync _(Planned)_
+- Rate limiting and advanced security _(Planned)_
+
+---
+
+## 📝 License
+
+MIT License. See [LICENSE](./LICENSE).
+
+---
+
+## 🤝 Contributing
+
+PRs and issues welcome! Please see the documentation and follow the established code style and commit conventions.
+
+---
+
+## 🌐 Links
+
+- **Web App:** [https://secureherai.expo.app/](https://secureherai.expo.app/)
+- **API:** [https://www.secureherai.me/api](https://www.secureherai.me/api)
+- **Docs:** See links above and `/Design files/`
+
+---
+
+**Built with ❤️ by the SecureHerAI Team**
+
+---
+
+**References:**
+
+- [SecureHerAI Web App](https://secureherai.expo.app/)
+- [API Production Endpoint](https://www.secureherai.me/api)

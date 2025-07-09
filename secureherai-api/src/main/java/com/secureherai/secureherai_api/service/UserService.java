@@ -44,7 +44,8 @@ public class UserService {
             user.getDateOfBirth(),
             user.getEmailAlerts(),
             user.getSmsAlerts(),
-            user.getPushNotifications()
+            user.getPushNotifications(),
+            user.getRole().toString()
         );
 
         // If user is a responder, include responder-specific information

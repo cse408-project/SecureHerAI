@@ -76,27 +76,34 @@ export function AlertProvider({ children }: { children: ReactNode }) {
     onCancel?: () => void,
     type: "success" | "error" | "warning" | "info" = "info"
   ) => {
+    console.log('🚨 showConfirmAlert called with:', { title, message, type });
+    
     setAlertConfig({
       visible: true,
       title,
       message,
       type,
       onConfirm: () => {
+        console.log('🚨 Confirm button pressed');
         setAlertConfig((prev) => ({ ...prev, visible: false }));
         onConfirm();
       },
       onCancel: onCancel
         ? () => {
+            console.log('🚨 Cancel button pressed');
             setAlertConfig((prev) => ({ ...prev, visible: false }));
             onCancel();
           }
         : () => {
+            console.log('🚨 Default cancel action');
             setAlertConfig((prev) => ({ ...prev, visible: false }));
           },
       confirmText: "Confirm",
       cancelText: "Cancel",
       showCancel: true,
     });
+    
+    console.log('🚨 Alert config set, should show modal now');
   };
 
   return (

@@ -8,14 +8,16 @@ import {
   Image,
   TextInput,
   Modal,
+  Alert,
 } from "react-native";
 import { useAlert } from "../../context/AlertContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
 import ApiService from "../../services/api";
-import Header from "../../src/components/Header";
+import Header from "../../components/Header";
 import DatePicker from "../../components/DatePicker";
+import cloudinaryService from "../../services/cloudinary";
 
 interface UserProfile {
   userId: string;
@@ -48,6 +50,8 @@ export default function SettingsScreen() {
   const [showFullProfileModal, setShowFullProfileModal] = useState(false);
   const [profilePictureUrl, setProfilePictureUrl] = useState("");
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [showImagePickerModal, setShowImagePickerModal] = useState(false);
 
   // Full profile edit state
   const [editProfile, setEditProfile] = useState({
@@ -221,9 +225,76 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleImageUpload = () => {
+    setShowImagePickerModal(true);
+  };
+
+  const handleCameraUpload = async () => {
+    try {
+      setIsUploadingImage(true);
+      showAlert("Info", "Opening camera...", "info");
+      
+      const result = await cloudinaryService.takePhotoWithCamera();
+      
+      if (result && !result.canceled && result.assets && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        await uploadImageToCloudinary(imageUri);
+      } else {
+        showAlert("Info", "Photo capture was cancelled", "info");
+      }
+    } catch (error) {
+      console.error("Camera upload error:", error);
+      showAlert("Error", "Failed to take photo. Please try again.", "error");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleGalleryUpload = async () => {
+    try {
+      setIsUploadingImage(true);
+      showAlert("Info", "Opening gallery...", "info");
+      
+      const result = await cloudinaryService.pickImageFromGallery();
+      
+      if (result && !result.canceled && result.assets && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        await uploadImageToCloudinary(imageUri);
+      } else {
+        showAlert("Info", "Image selection was cancelled", "info");
+      }
+    } catch (error) {
+      console.error("Gallery upload error:", error);
+      showAlert("Error", "Failed to pick image from gallery. Please try again.", "error");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const uploadImageToCloudinary = async (imageUri: string) => {
+    try {
+      setIsUpdatingProfile(true);
+      showAlert("Uploading", "Uploading image to Cloudinary...", "info");
+      
+      const uploadResult = await cloudinaryService.uploadProfilePicture(imageUri);
+      
+      if (uploadResult.success && uploadResult.url) {
+        await updateProfilePicture(uploadResult.url);
+        showAlert("Success", "Profile picture uploaded successfully!", "success");
+      } else {
+        showAlert("Error", uploadResult.error || "Failed to upload image", "error");
+      }
+    } catch (error) {
+      console.error("Upload to Cloudinary error:", error);
+      showAlert("Error", "Failed to upload image. Please try again.", "error");
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
+
   const handleEditProfile = () => {
-    setProfilePictureUrl(profile?.profilePicture || "");
-    setShowEditModal(true);
+    // Show options for updating profile picture
+    handleImageUpload();
   };
 
   const handleFullProfileEdit = () => {
@@ -344,6 +415,71 @@ export default function SettingsScreen() {
     }
   };
 
+  // Delete Account functionality
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [deleteAccountData, setDeleteAccountData] = useState({
+    password: "",
+    confirmationText: "",
+  });
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  const handleDeleteAccount = () => {
+    setShowDeleteAccountModal(true);
+  };
+
+  const executeDeleteAccount = async () => {
+    if (deleteAccountData.confirmationText !== "DELETE MY ACCOUNT") {
+      showAlert(
+        "Error",
+        'Please type exactly "DELETE MY ACCOUNT" to confirm',
+        "error"
+      );
+      return;
+    }
+
+    // For regular users (non-OAuth), password is required
+    if (!deleteAccountData.password) {
+      showAlert("Error", "Password is required", "error");
+      return;
+    }
+
+    try {
+      setIsDeletingAccount(true);
+      const response = await ApiService.deleteAccount(
+        deleteAccountData.password,
+        deleteAccountData.confirmationText
+      );
+
+      if (response.success) {
+        showAlert(
+          "Account Deleted",
+          "Your account has been permanently deleted.",
+          "success"
+        );
+        setShowDeleteAccountModal(false);
+        // Clear form
+        setDeleteAccountData({ password: "", confirmationText: "" });
+        // Logout user after successful deletion
+        await logout();
+      } else {
+        showAlert(
+          "Error",
+          response.error || "Failed to delete account",
+          "error"
+        );
+      }
+    } catch (error) {
+      console.error("Delete account error:", error);
+      showAlert(
+        "Error",
+        "Failed to delete account. Please try again.",
+        "error"
+      );
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <View className="flex-1 bg-[#FFE4D6] max-w-screen-md mx-auto w-full">
@@ -448,7 +584,18 @@ export default function SettingsScreen() {
 
             <TouchableOpacity
               className="flex-row items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200"
+              style={{ 
+                backgroundColor: '#F3E8FF', 
+                borderColor: '#C084FC',
+                borderWidth: 2,
+                elevation: 2,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+              }}
               onPress={handleEditProfile}
+              activeOpacity={0.7}
             >
               <View className="flex-row items-center">
                 <MaterialIcons name="photo-camera" size={20} color="#8B5CF6" />
@@ -555,6 +702,16 @@ export default function SettingsScreen() {
 
           <TouchableOpacity
             className="p-4 flex-row items-center justify-between"
+            onPress={handleDeleteAccount}
+          >
+            <View className="flex-row items-center">
+              <MaterialIcons name="delete-forever" size={24} color="#DC2626" />
+              <Text className="text-red-600 ml-3">Delete Account</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            className="p-4 flex-row items-center justify-between"
             onPress={handleLogout}
           >
             <View className="flex-row items-center">
@@ -599,6 +756,51 @@ export default function SettingsScreen() {
                 </View>
               )}
             </View>
+
+            {/* Camera and Gallery Options */}
+            <View className="flex-row space-x-2 mb-4">
+              <TouchableOpacity
+                className="flex-1 bg-blue-50 rounded-lg p-3 border border-blue-200"
+                onPress={() => {
+                  setShowEditModal(false);
+                  handleCameraUpload();
+                }}
+                disabled={isUploadingImage}
+              >
+                <View className="flex-row items-center justify-center">
+                  {isUploadingImage ? (
+                    <ActivityIndicator size="small" color="#3B82F6" />
+                  ) : (
+                    <>
+                      <MaterialIcons name="photo-camera" size={20} color="#3B82F6" />
+                      <Text className="text-blue-700 font-medium ml-2">Camera</Text>
+                    </>
+                  )}
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className="flex-1 bg-green-50 rounded-lg p-3 border border-green-200"
+                onPress={() => {
+                  setShowEditModal(false);
+                  handleGalleryUpload();
+                }}
+                disabled={isUploadingImage}
+              >
+                <View className="flex-row items-center justify-center">
+                  {isUploadingImage ? (
+                    <ActivityIndicator size="small" color="#10B981" />
+                  ) : (
+                    <>
+                      <MaterialIcons name="photo-library" size={20} color="#10B981" />
+                      <Text className="text-green-700 font-medium ml-2">Gallery</Text>
+                    </>
+                  )}
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            <Text className="text-center text-gray-500 mb-4">— or —</Text>
 
             <Text className="text-gray-600 mb-2">Profile Picture URL:</Text>
             <TextInput
@@ -982,6 +1184,178 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Delete Account Modal */}
+      <Modal
+        visible={showDeleteAccountModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowDeleteAccountModal(false)}
+      >
+        <View className="flex-1 bg-black/50 items-center justify-center p-4">
+          <View className="bg-white rounded-lg p-6 w-full max-w-sm">
+            <Text className="text-lg font-bold mb-4 text-center text-red-600">
+              Delete Account
+            </Text>
+
+            <Text className="text-gray-600 mb-4 text-center">
+              This action cannot be undone. All your data will be permanently
+              deleted.
+            </Text>
+
+            {/* Password field - always show for now since we simplified the logic */}
+            <View className="mb-4">
+              <Text className="text-gray-700 mb-2">Enter your password:</Text>
+              <TextInput
+                className="border border-gray-300 rounded-lg p-3"
+                placeholder="Password (leave empty for Google accounts)"
+                secureTextEntry
+                value={deleteAccountData.password}
+                onChangeText={(text) =>
+                  setDeleteAccountData((prev) => ({ ...prev, password: text }))
+                }
+              />
+            </View>
+
+            <View className="mb-4">
+              <Text className="text-gray-700 mb-2">
+                Type &quot;DELETE MY ACCOUNT&quot; to confirm:
+              </Text>
+              <TextInput
+                className="border border-gray-300 rounded-lg p-3"
+                placeholder="DELETE MY ACCOUNT"
+                value={deleteAccountData.confirmationText}
+                onChangeText={(text) =>
+                  setDeleteAccountData((prev) => ({
+                    ...prev,
+                    confirmationText: text,
+                  }))
+                }
+              />
+            </View>
+
+            <View className="flex-row space-x-3">
+              <TouchableOpacity
+                className="flex-1 bg-gray-200 rounded-lg p-4"
+                onPress={() => {
+                  setShowDeleteAccountModal(false);
+                  setDeleteAccountData({ password: "", confirmationText: "" });
+                }}
+                disabled={isDeletingAccount}
+              >
+                <Text className="text-center text-gray-700 font-semibold">
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className="flex-1 bg-red-600 rounded-lg p-4"
+                onPress={executeDeleteAccount}
+                disabled={isDeletingAccount}
+              >
+                {isDeletingAccount ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Text className="text-center text-white font-semibold">
+                    Delete Account
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Image Picker Modal */}
+      <Modal
+        visible={showImagePickerModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowImagePickerModal(false)}
+      >
+        <View className="flex-1 bg-black/50 items-center justify-center p-4">
+          <View className="bg-white rounded-lg p-6 w-full max-w-sm">
+            <Text className="text-lg font-bold mb-4 text-center text-[#67082F]">
+              Select Image Source
+            </Text>
+            <Text className="text-gray-600 text-center mb-6">
+              Choose how you want to add your profile picture
+            </Text>
+
+            {/* Camera Option */}
+            <TouchableOpacity
+              className="flex-row items-center p-4 bg-blue-50 rounded-lg border border-blue-200 mb-3"
+              onPress={() => {
+                setShowImagePickerModal(false);
+                handleCameraUpload();
+              }}
+              disabled={isUploadingImage}
+            >
+              <MaterialIcons name="photo-camera" size={24} color="#3B82F6" />
+              <Text className="text-blue-700 font-medium ml-3 flex-1">Take Photo</Text>
+              <MaterialIcons name="chevron-right" size={20} color="#3B82F6" />
+            </TouchableOpacity>
+
+            {/* Gallery Option */}
+            <TouchableOpacity
+              className="flex-row items-center p-4 bg-green-50 rounded-lg border border-green-200 mb-3"
+              onPress={() => {
+                setShowImagePickerModal(false);
+                handleGalleryUpload();
+              }}
+              disabled={isUploadingImage}
+            >
+              <MaterialIcons name="photo-library" size={24} color="#10B981" />
+              <Text className="text-green-700 font-medium ml-3 flex-1">Choose from Gallery</Text>
+              <MaterialIcons name="chevron-right" size={20} color="#10B981" />
+            </TouchableOpacity>
+
+            {/* URL Option */}
+            <TouchableOpacity
+              className="flex-row items-center p-4 bg-purple-50 rounded-lg border border-purple-200 mb-6"
+              onPress={() => {
+                setShowImagePickerModal(false);
+                setProfilePictureUrl(profile?.profilePicture || "");
+                setShowEditModal(true);
+              }}
+              disabled={isUploadingImage}
+            >
+              <MaterialIcons name="link" size={24} color="#8B5CF6" />
+              <Text className="text-purple-700 font-medium ml-3 flex-1">Enter URL</Text>
+              <MaterialIcons name="chevron-right" size={20} color="#8B5CF6" />
+            </TouchableOpacity>
+
+            {/* Cancel Button */}
+            <TouchableOpacity
+              className="bg-gray-200 rounded-lg p-4"
+              onPress={() => setShowImagePickerModal(false)}
+            >
+              <Text className="text-center text-gray-700 font-medium">Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Image Upload Loading Overlay */}
+      {(isUploadingImage || isUpdatingProfile) && (
+        <Modal
+          visible={true}
+          transparent={true}
+          animationType="fade"
+        >
+          <View className="flex-1 bg-black/70 items-center justify-center">
+            <View className="bg-white rounded-lg p-6 items-center">
+              <ActivityIndicator size="large" color="#67082F" />
+              <Text className="mt-4 text-lg font-semibold text-[#67082F]">
+                {isUploadingImage ? "Selecting Image..." : "Uploading Image..."}
+              </Text>
+              <Text className="mt-2 text-gray-600 text-center">
+                Please wait while we process your image
+              </Text>
+            </View>
+          </View>
+        </Modal>
+      )}
 
       {/* Note: We've removed the custom WebAlert component since we now use the universal alert system */}
     </View>
