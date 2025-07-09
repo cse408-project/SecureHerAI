@@ -7,7 +7,6 @@
 GET {{baseUrl}}/isOk
 
 ### Google OAuth Authentication Endpoints
-
 ### 1.1 Get Google OAuth URL
 GET {{baseUrl}}/auth/google/auth-url
 
