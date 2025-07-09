@@ -1,13 +1,13 @@
-# name: Create Production Builds and Deploy Web
+name: Create Production Builds and Deploy Web
 
-# on:
-#   push:
-#     branches: ['amin', 'main']
+on:
+  push:
+    branches: ['amin', 'main']
 
-# jobs:
-#   deploy_web:
-#     name: Deploy Web
-#     type: deploy
-#     environment: production
-#     params:
-#       prod: true
+jobs:
+  deploy_web:
+    name: Deploy Web
+    type: deploy
+    environment: production
+    params:
+      prod: true

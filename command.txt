@@ -40,3 +40,8 @@ git commit -m "Merge remote branch and resolve conflicts"
 
 # 7. Push your changes to the remote repository
 git push origin your-branch-name
+
+
+
+Azure VM connection:
+ssh -i ../SecureHerAI-Deploy_key.pem azureuser@98.70.27.208
