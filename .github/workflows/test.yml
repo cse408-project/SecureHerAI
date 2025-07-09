@@ -23,6 +23,10 @@ jobs:
           distribution: "temurin"
           cache: maven
 
+      - name: Make Maven wrapper executable
+        working-directory: secureherai-api
+        run: chmod +x mvnw
+
       - name: Run backend unit tests
         working-directory: secureherai-api
         run: ./mvnw clean test
