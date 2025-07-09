@@ -37,13 +37,20 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H "${{ secrets.AZURE_VM_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Install Docker on Azure VM
+      - name: Install Docker on Azure VM (if needed)
         run: |
           ssh -o StrictHostKeyChecking=no "${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}" << 'EOF'
-            # Install Docker Engine
-            curl -fsSL https://get.docker.com | sh
-            # Allow running docker without sudo
-            sudo usermod -aG docker "$USER"
+            # Check if Docker is already installed
+            if ! command -v docker &> /dev/null; then
+              echo "Docker not found. Installing Docker Engine..."
+              curl -fsSL https://get.docker.com | sh
+              # Allow running docker without sudo
+              sudo usermod -aG docker "$USER"
+              echo "Docker installation completed."
+            else
+              echo "Docker is already installed. Skipping installation."
+              docker --version
+            fi
           EOF
 
       - name: Create & use Docker context for Azure VM
