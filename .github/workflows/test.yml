@@ -2,15 +2,14 @@ name: Test SecureHerAI Application
 
 on:
   push:
-    branches: [ans2003]
-  pull_request:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
-  backend-tests:
+  test-backend:
     runs-on: ubuntu-latest
-    name: Backend Unit Tests
+    environment: development
 
     steps:
       - name: Checkout repository
@@ -19,8 +18,8 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: "17"
-          distribution: "temurin"
+          java-version: '17'
+          distribution: 'temurin'
           cache: maven
 
       - name: Run backend unit tests
@@ -28,27 +27,19 @@ jobs:
         run: ./mvnw clean test
 
       - name: Upload backend test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: backend-test-results
           path: secureherai-api/target/surefire-reports/
 
-  test-summary:
-    runs-on: ubuntu-latest
-    name: Test Summary
-    needs: [backend-tests]
-    if: always()
-
-    steps:
-      - name: Test Results Summary
+      - name: Verify test results
+        working-directory: secureherai-api
         run: |
-          echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- Backend Unit Tests: ${{ needs.backend-tests.result }}" >> $GITHUB_STEP_SUMMARY
-
-          if [[ "${{ needs.backend-tests.result }}" == "success" ]]; then
-            echo "✅ Backend tests passed! Ready for deployment." >> $GITHUB_STEP_SUMMARY
+          echo "Test execution completed."
+          if [ -d "target/surefire-reports" ]; then
+            echo "Test reports generated successfully."
           else
-            echo "❌ Backend tests failed. Please check the logs." >> $GITHUB_STEP_SUMMARY
+            echo "Test reports not found."
             exit 1
           fi
