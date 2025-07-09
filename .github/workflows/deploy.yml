@@ -1,10 +1,7 @@
 name: Deploy SecureHerAI API to Azure VM
 
 on:
-  workflow_run:
-    workflows: ["Test SecureHerAI Application"]
-    types:
-      - completed
+  push:
     branches:
       - main
       - ans2003
@@ -35,20 +32,13 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H "${{ secrets.AZURE_VM_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Install Docker on Azure VM (if needed)
+      - name: Install Docker on Azure VM
         run: |
           ssh -o StrictHostKeyChecking=no "${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}" << 'EOF'
-            # Check if Docker is already installed
-            if ! command -v docker &> /dev/null; then
-              echo "Docker not found. Installing Docker Engine..."
-              curl -fsSL https://get.docker.com | sh
-              # Allow running docker without sudo
-              sudo usermod -aG docker "$USER"
-              echo "Docker installation completed."
-            else
-              echo "Docker is already installed. Skipping installation."
-              docker --version
-            fi
+            # Install Docker Engine
+            curl -fsSL https://get.docker.com | sh
+            # Allow running docker without sudo
+            sudo usermod -aG docker "$USER"
           EOF
 
       - name: Create & use Docker context for Azure VM
@@ -68,12 +58,12 @@ jobs:
 
           OAUTH2_CLIENT_ID=${{ vars.OAUTH2_CLIENT_ID }}
           OAUTH2_CLIENT_ID_ANDROID=${{ vars.OAUTH2_CLIENT_ID_ANDROID }}
-
-
+      
+      
           OAUTH2_CLIENT_SECRET=${{ secrets.OAUTH2_CLIENT_SECRET }}
           OAUTH2_WEB_ORIGIN=${{ vars.OAUTH2_WEB_ORIGIN }}
           OAUTH2_WEB_REDIRECT_URI=${{ vars.OAUTH2_WEB_REDIRECT_URI }}
-
+          
           JWT_SECRET=${{ vars.JWT_SECRET }}
           JWT_EXPIRATION=${{ vars.JWT_EXPIRATION }}
           EOF
@@ -92,7 +82,7 @@ jobs:
 
           # Build and deploy
           docker compose -f docker-compose-deploy.yml up --build -d --remove-orphans
-
+          
           # Wait for services to be healthy
           echo "Waiting for services to start..."
           timeout 300 bash -c 'while [[ "$(docker compose -f docker-compose-deploy.yml ps --services --filter "status=running" | wc -l)" != "2" ]]; do sleep 5; done' || echo "Timeout waiting for services"
