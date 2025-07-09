@@ -10,6 +10,6 @@ jobs:
     type: deploy
     environment: production
     run: |
-      npm test
+      npm run test:ci
     params:
       prod: true
