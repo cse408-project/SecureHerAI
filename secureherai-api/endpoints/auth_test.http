@@ -1,7 +1,7 @@
 ### SecureHerAI Authentication API Tests
 
 @baseUrl = http://localhost:8080/api
-@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJmODA3YWI5Mi02ZDFmLTRkZWItYWYzOC1mZTkwYTA3NmM1NmIiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc1MTQzMjMzNSwiZXhwIjoxNzUyMjk2MzM1fQ.hsX3pdQET1_pUZxVmPA6gtPu2HX4gI8L4h0HmdaClKE
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI2YTU5NjE0Yi04MDY3LTQxYmMtODhjNi1kODAyNWRlNzk2OGEiLCJlbWFpbCI6InNvbmlha2hhdHVuOTQzNThAZ21haWwuY29tIiwicm9sZSI6IlJFU1BPTkRFUiIsImlhdCI6MTc1MTU3NDQ0OCwiZXhwIjoxNzUyNDM4NDQ4fQ.olCnREUT_HnHJhvZLbG4hekLA0yIDrxaQNj2Ipys1YE
 
 ### 1. Health Check
 GET {{baseUrl}}/isOk
@@ -10,6 +10,7 @@ GET {{baseUrl}}/isOk
 
 ### 1.1 Get Google OAuth URL
 GET {{baseUrl}}/auth/google/auth-url
+
 
 ### 1.2 Validate Google OAuth token
 POST {{baseUrl}}/auth/google/validate-token
@@ -174,7 +175,7 @@ POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "arimotokika2005025@gmail.com",
+  "email": "soniakhatun94358@gmail.com",
   "password": "password123"
 }
 
@@ -185,7 +186,7 @@ Content-Type: application/json
 
 {
   "email": "2005009@ugrad.cse.buet.ac.bd",
-  "loginCode": "471499"
+  "loginCode": "888190"
 }
 
 ### Successful Verification Response (User)
@@ -206,8 +207,8 @@ POST {{baseUrl}}/auth/verify-login-code
 Content-Type: application/json
 
 {
-  "email": "arimotokika2005025@gmail.com",
-  "loginCode": "441615"
+  "email": "2005009@ugrad.cse.buet.ac.bd",
+  "loginCode": "077954"
 }
 
 ### Successful Verification Response
@@ -228,8 +229,8 @@ POST {{baseUrl}}/auth/verify-login-code
 Content-Type: application/json
 
 {
-  "email": "2005009@ugrad.cse.buet.ac.bd",
-  "loginCode": "403328"
+  "email": "soniakhatun94358@gmail.com",
+  "loginCode": "077954"
 }
 
 

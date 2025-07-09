@@ -1,0 +1,189 @@
+### Multi-Format Audio Testing for Existing Endpoints
+### Your endpoints now support: WAV, MP3, AAC, WebM, FLAC, OGG, WMA
+
+@baseUrl = http://localhost:8080/api
+@authToken = your-jwt-token-here
+
+### 1. Test WAV File (Original Working Format)
+POST {{baseUrl}}/speech/transcribe
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="audio"; filename="try_again.wav"
+Content-Type: audio/wav
+
+< ../data/try_again.wav
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 2. Test MP3 File (Now Supported)
+POST {{baseUrl}}/speech/transcribe
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="audio"; filename="help.mp3"
+Content-Type: audio/mpeg
+
+< ../data/help.mp3
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 3. Test AAC File (Now Supported)
+POST {{baseUrl}}/speech/transcribe
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="audio"; filename="help.aac"
+Content-Type: audio/aac
+
+< ../data/help.aac
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 4. Test WebM File (Now Supported)
+POST {{baseUrl}}/speech/transcribe
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="audio"; filename="help_.webm"
+Content-Type: audio/webm
+
+< ../data/help_.webm
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 5. Test FLAC File (Already Supported, Enhanced)
+POST {{baseUrl}}/speech/transcribe
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="audio"; filename="test_audio.flac"
+Content-Type: audio/flac
+
+< ../data/test_audio.flac
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 6. Test OGG File (Already Supported, Enhanced)
+POST {{baseUrl}}/speech/transcribe
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="audio"; filename="test_audio.ogg"
+Content-Type: audio/ogg
+
+< ../data/test_audio.ogg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### ===============================================
+### SOS Voice Command Tests (URL-based)
+### ===============================================
+
+### 7. SOS Voice Command with WAV URL (Original Working)
+POST {{baseUrl}}/sos/voice-command
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "audioUrl": "https://res.cloudinary.com/dhb8x5ucj/video/upload/v1751576210/report_evidence/cysdhptvrwgfbk94ghqq.wav",
+    "location": {
+        "latitude": 23.8103,
+        "longitude": 90.4125,
+        "address": "Dhaka, Bangladesh"
+    }
+}
+
+### 8. SOS Voice Command with MP3 URL (Now Supported)
+POST {{baseUrl}}/sos/voice-command
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "audioUrl": "https://example.com/emergency_audio.mp3",
+    "location": {
+        "latitude": 23.8103,
+        "longitude": 90.4125,
+        "address": "Dhaka, Bangladesh"
+    }
+}
+
+### 9. SOS Voice Command with WebM URL (Now Supported)
+POST {{baseUrl}}/sos/voice-command
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "audioUrl": "https://example.com/emergency_recording.webm",
+    "location": {
+        "latitude": 23.8103,
+        "longitude": 90.4125,
+        "address": "Dhaka, Bangladesh"
+    }
+}
+
+### 10. SOS Voice Command with AAC URL (Now Supported)
+POST {{baseUrl}}/sos/voice-command
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "audioUrl": "https://example.com/emergency_voice.aac",
+    "location": {
+        "latitude": 23.8103,
+        "longitude": 90.4125,
+        "address": "Dhaka, Bangladesh"
+    }
+}
+
+### ===============================================
+### Validation Tests
+### ===============================================
+
+### 11. Test Unsupported Format (Should Fail)
+POST {{baseUrl}}/speech/transcribe
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="audio"; filename="test.txt"
+Content-Type: text/plain
+
+This is not an audio file
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 14. Test Large File (Should validate size limit)
+POST {{baseUrl}}/speech/transcribe
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="audio"; filename="large_audio.mp3"
+Content-Type: audio/mpeg
+
+< ../data/large_audio_file.mp3
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### ===============================================
+### Test Summary
+### ===============================================
+
+# ANSWER TO YOUR QUESTION:
+# YES! Your existing endpoints will now work with WebM, AAC, WAV, and MP3!
+
+# What's Changed:
+# 1. ✅ Updated SUPPORTED_FORMATS to include WebM, AAC, WMA
+# 2. ✅ Increased max file size from 10MB to 50MB
+# 3. ✅ Enhanced AzureSpeechService with automatic format conversion
+# 4. ✅ Your existing endpoints now automatically convert non-WAV files to WAV before Azure processing
+
+# File Formats Now Supported:
+# - WAV (native support)
+# - MP3 (converted to WAV)
+# - AAC/M4A (converted to WAV) 
+# - WebM (converted to WAV)
+# - FLAC (converted to WAV)
+# - OGG/Opus (converted to WAV)
+# - WMA (converted to WAV)
+
+# Process Flow:
+# 1. User uploads any supported format
+# 2. System validates format and size
+# 3. If not WAV, automatically converts to WAV using JAVE2/FFmpeg
+# 4. Sends WAV file to Azure Speech service
+# 5. Returns transcription result
+# 6. Cleans up temporary files
+
+# No changes needed to your frontend - just upload different formats!

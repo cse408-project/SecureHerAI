@@ -1,0 +1,24 @@
+1. alert keyword set option in setting entity 
+2. notification sent to contacts and nearby responders
+
+Now for sos alert (Authorized)
+1. voice-commad 2. text-command
+For 1: POST /api/sos/voice-command
+
+json body....
+audio-url (wav)
+"location": {
+    "latitude"
+    "longitude"
+     address //optional (location name)
+  },
+
+using azure transcribe method we will get the text. then:
+1. check if the any of the keywords exist in the text. (some default keyword, like help, save, etc.)
+  2.1 if not then send alert not sent. no keyowrd found.
+  2.2 else continue
+3. store in alert entity (read the alert entity first).
+  3.1 the transcribed text will be saved as alertmessage.
+  3.2 trigger method voice
+4. return the alert entity in response.
+

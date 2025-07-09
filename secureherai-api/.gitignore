@@ -28,3 +28,9 @@ target/
 build/
 !**/src/main/**/build/
 !**/src/test/**/build/
+
+### Mac OS ###
+.DS_Store
+
+data/received/**
+!data/received/.gitkeep
