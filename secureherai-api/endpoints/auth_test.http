@@ -11,6 +11,7 @@ GET {{baseUrl}}/isOk
 ### 1.1 Get Google OAuth URL
 GET {{baseUrl}}/auth/google/auth-url
 
+
 ### 1.2 Validate Google OAuth token
 POST {{baseUrl}}/auth/google/validate-token
 Content-Type: application/json

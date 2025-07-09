@@ -39,8 +39,8 @@ WORKDIR /app
 
 # Install required native libraries for Azure Speech SDK and curl for health checks
 RUN apt-get update && apt-get install -y \
-    libasound2 \
-    libssl3 \
+    libasound2t64 \
+    libssl3t64 \
     libc6 \
     libffi8 \
     libgstreamer1.0-0 \
