@@ -60,6 +60,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/isOk", "/api/health", "/api/auth/**", "/health", "/auth/**", "/api/responder/available", "/api/contacts/test", "/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/oauth2/**", "/login/oauth2/**", "/api/speech/**").permitAll()
+                .requestMatchers("/actuator/health").permitAll()
                 .anyRequest().authenticated()
             )            .oauth2Login(oauth2 -> oauth2
                 .authorizationEndpoint(authorization -> authorization
