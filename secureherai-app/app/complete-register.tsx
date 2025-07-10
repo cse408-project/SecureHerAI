@@ -107,7 +107,7 @@ export default function CompleteRegisterScreen() {
       };
 
       const response = await fetch(
-        `http://localhost:8080/api/auth/complete-oauth-registration`,
+        `${process.env.EXPO_PUBLIC_API_BASE_URL}/auth/complete-oauth-registration`,
         {
           method: "POST",
           headers: {

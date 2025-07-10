@@ -470,7 +470,7 @@ GET {{baseUrl}}/auth/mobile/test-redirect
 GET {{baseUrl}}/auth/mobile/oauth-success?token={{authToken}}
 
 ### 14. Complete Profile after OAuth Login (User)
-POST {{baseUrl}}/user/complete-profile
+POST {{baseUrl}}/auth/complete-oauth-registration
 Authorization: Bearer {{authToken}}
 Content-Type: application/json
 
@@ -481,7 +481,7 @@ Content-Type: application/json
 }
 
 ### 14.1. Complete Profile after OAuth Login (Responder)
-POST {{baseUrl}}/user/complete-profile
+POST {{baseUrl}}/auth/complete-oauth-registration
 Authorization: Bearer {{authToken}}
 Content-Type: application/json
 
