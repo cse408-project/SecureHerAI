@@ -91,15 +91,23 @@ CREATE TABLE alerts (
 );
 
 
--- Alert notifications
-CREATE TABLE alert_notifications (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    alert_id UUID NOT NULL REFERENCES alerts(id) ON DELETE CASCADE,
-    contact_id UUID REFERENCES trusted_contacts(id) ON DELETE SET NULL,
-    recipient_type TEXT NOT NULL, -- trusted_contact, emergency_service
-    recipient_name TEXT NOT NULL,
-    status TEXT NOT NULL, -- notified, notified_of_cancellation, failed
-    notification_time TIMESTAMPTZ NOT NULL DEFAULT NOW()
+-- Notifications
+CREATE TABLE notifications (
+  id                BIGINT       PRIMARY KEY AUTO_INCREMENT,
+  user_id           BIGINT       NOT NULL,               -- recipient
+  type              VARCHAR(30)  NOT NULL,               -- see Type Key enum
+  channel           VARCHAR(10)  NOT NULL,               -- 'IN_APP' or 'EMAIL' or 'BOTH'
+  title             VARCHAR(100) NOT NULL,               -- brief headline
+  message           TEXT         NOT NULL,               -- full body
+  payload           JSON         NULL,                   -- extra data (e.g. { lat, lng, reportId })
+  priority          INT          NOT NULL DEFAULT 0,      -- higher = more urgent
+  status            VARCHAR(15)  NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'SENT', 'READ', 'FAILED'
+  created_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  sent_at           TIMESTAMP    NULL,
+  read_at           TIMESTAMP    NULL,
+  INDEX (user_id),
+  INDEX (type),
+  INDEX (status)
 );
 
 -- Alert responder assignments

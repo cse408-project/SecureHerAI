@@ -1,7 +1,46 @@
-1. alert keyword set option in setting entity 
-2. notification sent to contacts and nearby responders
+CREATE TABLE notifications (
+  id                BIGINT       PRIMARY KEY AUTO_INCREMENT,
+  user_id           BIGINT       NOT NULL,               -- recipient
+  type              VARCHAR(30)  NOT NULL,               -- see Type Key enum
+  channel           VARCHAR(10)  NOT NULL,               -- 'IN_APP' or 'EMAIL' or 'BOTH'
+  title             VARCHAR(100) NOT NULL,               -- brief headline
+  message           TEXT         NOT NULL,               -- full body
+  payload           JSON         NULL,                   -- extra data (e.g. { lat, lng, reportId })
+  priority          INT          NOT NULL DEFAULT 0,      -- higher = more urgent
+  status            VARCHAR(15)  NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'SENT', 'READ', 'FAILED'
+  created_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  sent_at           TIMESTAMP    NULL,
+  read_at           TIMESTAMP    NULL,
+  INDEX (user_id),
+  INDEX (type),
+  INDEX (status)
+);
 
-Now for sos alert (Authorized)
-1. voice-commad 2. text-command
-POST /api/sos/voice-command
-POST /api/sos/text-command
+
+implement this entity. this notification for:
+1. Notification Types
+Type ID	Key	Description
+1	EMERGENCY_NEARBY	Emergency alert sent to nearby responder
+2	EMERGENCY_TRUSTED_CONTACT	Emergency alert sent to user’s trusted contact
+3	HEATMAP_ALERT	Proactive safety warning when entering a high-risk zone
+4	EMERGENCY_ACCEPTED	Confirmation that a responder has accepted your emergency alert
+5	ARE_YOU_SAFE	“Are you safe?” follow-up alert if emergency status remains unresolved
+6	SYSTEM_NOTIFICATION	App/system updates, maintenance notices, policy changes
+
+
+
+for now do not include heatmap functionaliity just though build full entity. and methods. after successful sos alert send alert to all trusted contact and nearest 2 active responder. 
+proposed algo (do whatever should be done):
+B. Rolling Invitation Queue
+Build an ordered queue of all responders sorted by distance at t=0.
+Send invitations in batches of 2, each with a short TTL (e.g., 1 h).
+As invites expire (no “accepted” event), automatically send to the next in queue.
+If someone comes online after SOS, insert them into the queue in distance order and honor their turn.
+This approach guarantees you’re always inviting the closest available responders, even as availability shifts.
+
+
+
+
+you will not need to builld queue or something as youu can use database and see current active responder.
+
+build the backend and right necessary endpoints in sos_test.http or notification_test.http
