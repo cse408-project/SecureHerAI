@@ -34,3 +34,7 @@ build/
 
 data/received/**
 !data/received/.gitkeep
+data/sos/**
+!data/sos/.gitkeep
+data/temp/**
+!data/temp/.gitkeep
