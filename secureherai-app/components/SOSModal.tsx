@@ -386,7 +386,7 @@ const SOSModal: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }) => {
       }
 
       showAlert("Success", "SOS alert sent successfully!", "success");
-      
+
       // Navigate to report page with pre-populated data
       if (response.alertId) {
         navigateToReportPage(response.alertId, audioUrl);
@@ -462,7 +462,7 @@ const SOSModal: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }) => {
       }
 
       showAlert("Success", "SOS alert sent successfully!", "success");
-      
+
       // Navigate to report page with pre-populated data
       if (response.alertId) {
         navigateToReportPage(response.alertId);
@@ -529,22 +529,22 @@ const SOSModal: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }) => {
   const navigateToReportPage = (alertId: string, audioUrl?: string) => {
     // Close the modal first
     onClose();
-    
+
     // Navigate to report page with pre-populated data
     const reportParams = {
       alertId: alertId,
       details: "Emergency SOS alert", // Will be overridden by user input
-      location: location ? `${location.latitude},${location.longitude}` : '',
-      evidence: audioUrl || '', // Include audio URL if available
-      autoFill: 'true' // Flag to indicate this comes from SOS
+      location: location ? `${location.latitude},${location.longitude}` : "",
+      evidence: audioUrl || "", // Include audio URL if available
+      autoFill: "true", // Flag to indicate this comes from SOS
     };
-    
+
     // Create query string
     const queryString = Object.entries(reportParams)
-      .filter(([key, value]) => value !== '')
+      .filter(([key, value]) => value !== "")
       .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-      .join('&');
-    
+      .join("&");
+
     // Navigate using router
     router.push(`/reports/submit?${queryString}`);
   };
