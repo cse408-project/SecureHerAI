@@ -15,6 +15,8 @@ import { Audio } from "expo-av";
 import { useAlert } from "../context/AlertContext";
 import { AlertResponse } from "../types/sos";
 import apiService from "../services/api";
+import cloudinaryService from "../services/cloudinary";
+import { router } from "expo-router";
 
 interface SOSModalProps {
   visible: boolean;
@@ -45,6 +47,7 @@ const SOSModal: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showCancelAlert, setShowCancelAlert] = useState(false);
   const [lastAlertId, setLastAlertId] = useState<string | null>(null);
+  const [uploadedAudioUrl, setUploadedAudioUrl] = useState<string | null>(null);
   const recordingTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const { showAlert } = useAlert();
 
@@ -251,6 +254,7 @@ const SOSModal: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }) => {
           "Using working audio URL for web compatibility:",
           workingAudioUrl
         );
+        setUploadedAudioUrl(workingAudioUrl);
         return workingAudioUrl;
       }
 
@@ -269,6 +273,7 @@ const SOSModal: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }) => {
           console.log("Cloudinary config missing, using test URL");
           const workingAudioUrl =
             "https://res.cloudinary.com/dhb8x5ucj/video/upload/v1751576210/report_evidence/cysdhptvrwgfbk94ghqq.wav";
+          setUploadedAudioUrl(workingAudioUrl);
           return workingAudioUrl;
         }
 
@@ -294,6 +299,7 @@ const SOSModal: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }) => {
         if (response.ok) {
           const data = await response.json();
           console.log("Successfully uploaded to Cloudinary:", data.secure_url);
+          setUploadedAudioUrl(data.secure_url);
           return data.secure_url;
         } else {
           console.log("Cloudinary upload failed, using test URL");
@@ -306,6 +312,7 @@ const SOSModal: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }) => {
       const workingAudioUrl =
         "https://res.cloudinary.com/dhb8x5ucj/video/upload/v1751576210/report_evidence/cysdhptvrwgfbk94ghqq.wav";
       console.log("Using fallback audio URL:", workingAudioUrl);
+      setUploadedAudioUrl(workingAudioUrl);
       return workingAudioUrl;
     } catch (error) {
       console.error("Error processing audio:", error);
@@ -379,9 +386,17 @@ const SOSModal: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }) => {
       }
 
       showAlert("Success", "SOS alert sent successfully!", "success");
-      onSuccess(response);
+      
+      // Navigate to report page with pre-populated data
+      if (response.alertId) {
+        navigateToReportPage(response.alertId, audioUrl);
+      } else {
+        onSuccess(response);
+      }
     } catch (error) {
       console.error("Error submitting voice command:", error);
+      // Delete uploaded audio on error
+      deleteAudioFromStorage();
       showAlert(
         "Error",
         "Failed to send SOS alert. Please try again.",
@@ -447,7 +462,13 @@ const SOSModal: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }) => {
       }
 
       showAlert("Success", "SOS alert sent successfully!", "success");
-      onSuccess(response);
+      
+      // Navigate to report page with pre-populated data
+      if (response.alertId) {
+        navigateToReportPage(response.alertId);
+      } else {
+        onSuccess(response);
+      }
     } catch (error) {
       console.error("Error submitting text command:", error);
       showAlert(
@@ -493,7 +514,44 @@ const SOSModal: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }) => {
     }
   };
 
+  const deleteAudioFromStorage = async () => {
+    if (uploadedAudioUrl) {
+      try {
+        await cloudinaryService.deleteFileByUrl(uploadedAudioUrl);
+        console.log("Audio deleted from storage");
+        setUploadedAudioUrl(null);
+      } catch (error) {
+        console.error("Failed to delete audio from storage:", error);
+      }
+    }
+  };
+
+  const navigateToReportPage = (alertId: string, audioUrl?: string) => {
+    // Close the modal first
+    onClose();
+    
+    // Navigate to report page with pre-populated data
+    const reportParams = {
+      alertId: alertId,
+      details: "Emergency SOS alert", // Will be overridden by user input
+      location: location ? `${location.latitude},${location.longitude}` : '',
+      evidence: audioUrl || '', // Include audio URL if available
+      autoFill: 'true' // Flag to indicate this comes from SOS
+    };
+    
+    // Create query string
+    const queryString = Object.entries(reportParams)
+      .filter(([key, value]) => value !== '')
+      .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+      .join('&');
+    
+    // Navigate using router
+    router.push(`/reports/submit?${queryString}`);
+  };
+
   const resetState = () => {
+    // Delete audio from storage when resetting
+    deleteAudioFromStorage();
     setMode("select");
     setRecording(null);
     setRecordingStatus("idle");
@@ -637,6 +695,8 @@ const SOSModal: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }) => {
           <TouchableOpacity
             style={[styles.actionButton, styles.retryButton]}
             onPress={() => {
+              // Delete uploaded audio before retrying
+              deleteAudioFromStorage();
               setRecordingStatus("idle");
               setRecordingUri(null);
               startRecording();

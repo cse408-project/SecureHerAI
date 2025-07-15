@@ -41,6 +41,20 @@ This approach guarantees you’re always inviting the closest available responde
 
 
 
-you will not need to builld queue or something as youu can use database and see current active responder.
+you will not need to build queue or something as you can use database and see current active responder.
 
 build the backend and right necessary endpoints in sos_test.http or notification_test.http
+
+
+
+
+
+for responder registration, include currentLatitude, currentLongitude, branch name, address. update auth_test.http and backend also frontend. also add this in update profile in frontend and backend accordingly. current location and branch name. current location will add address and currentlongitude and currentlatitude, already currennt location implemented in report and sos service. however add these register and update profile for responder.
+
+
+
+
+
+alert keyword set option in setting entity. use this keyword to verify sos, (for now it is "help"). by default this will be help, user can change and view it, using password in frontend's settings. write the endpoint to view and set keyword in sos_test.http. first read the existing sos endpoint and their implementation where they use keyword then implement. do efficient coding not add any file use existing one in backend and frontend. first implement backend.
+ekta settings entity create koiro. oitai sob settings thakbe. keyword o okhane thakbe. ekhnkar notification settings ja ache (frontend e) okhanei thakbe. backend e notification preference ke delete kore/ change kore settings entity jeno use kore omn banate hbe.
+successful na hole/ voice retry korle storage theke delete audio. and success er por je report ta likhte asbe otake thik kora. existing jeta report er jonno page ache otai use kora. okhane details=alertmessage, evidence  = audio (if available), keyword show  korbe na though, ar location tao set hoe jabe automatic. baki aro nije add korte parbe.

@@ -3,6 +3,7 @@ package com.secureherai.secureherai_api.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,7 +16,12 @@ import com.secureherai.secureherai_api.dto.auth.AuthRequest;
 import com.secureherai.secureherai_api.dto.auth.AuthResponse;
 import com.secureherai.secureherai_api.entity.Responder;
 import com.secureherai.secureherai_api.entity.User;
+import com.secureherai.secureherai_api.repository.AlertRepository;
+import com.secureherai.secureherai_api.repository.IncidentReportRepository;
+import com.secureherai.secureherai_api.repository.NotificationRepository;
+import com.secureherai.secureherai_api.repository.ReportEvidenceRepository;
 import com.secureherai.secureherai_api.repository.ResponderRepository;
+import com.secureherai.secureherai_api.repository.TrustedContactRepository;
 import com.secureherai.secureherai_api.repository.UserRepository;
 
 @Service
@@ -25,6 +31,21 @@ public class AuthService {    @Autowired
     
     @Autowired
     private ResponderRepository responderRepository;
+    
+    @Autowired
+    private TrustedContactRepository trustedContactRepository;
+    
+    @Autowired
+    private AlertRepository alertRepository;
+    
+    @Autowired
+    private NotificationRepository notificationRepository;
+    
+    @Autowired
+    private IncidentReportRepository incidentReportRepository;
+    
+    @Autowired
+    private ReportEvidenceRepository reportEvidenceRepository;
     
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -149,6 +170,19 @@ public class AuthService {    @Autowired
                 responder.setUser(user); // This will handle the mapping with @MapsId
                 responder.setResponderType(Responder.ResponderType.valueOf(request.getResponderType().toUpperCase()));
                 responder.setBadgeNumber(request.getBadgeNumber());
+                
+                // Set new fields if provided
+                if (request.getBranchName() != null && !request.getBranchName().trim().isEmpty()) {
+                    responder.setBranchName(request.getBranchName().trim());
+                }
+                if (request.getAddress() != null && !request.getAddress().trim().isEmpty()) {
+                    responder.setAddress(request.getAddress().trim());
+                }
+                if (request.getCurrentLatitude() != null && request.getCurrentLongitude() != null) {
+                    responder.setCurrentLatitude(java.math.BigDecimal.valueOf(request.getCurrentLatitude()));
+                    responder.setCurrentLongitude(java.math.BigDecimal.valueOf(request.getCurrentLongitude()));
+                }
+                
                 responderRepository.save(responder);
             } catch (Exception e) {
                 // Log the error
@@ -270,6 +304,19 @@ public class AuthService {    @Autowired
                 responder.setUser(user);
                 responder.setResponderType(responderType);
                 responder.setBadgeNumber(request.getBadgeNumber());
+                
+                // Set new fields if provided
+                if (request.getBranchName() != null && !request.getBranchName().trim().isEmpty()) {
+                    responder.setBranchName(request.getBranchName().trim());
+                }
+                if (request.getAddress() != null && !request.getAddress().trim().isEmpty()) {
+                    responder.setAddress(request.getAddress().trim());
+                }
+                if (request.getCurrentLatitude() != null && request.getCurrentLongitude() != null) {
+                    responder.setCurrentLatitude(java.math.BigDecimal.valueOf(request.getCurrentLatitude()));
+                    responder.setCurrentLongitude(java.math.BigDecimal.valueOf(request.getCurrentLongitude()));
+                }
+                
                 responder.setIsActive(true);
                 
                 responderRepository.save(responder);
@@ -423,12 +470,38 @@ public class AuthService {    @Autowired
             }
             // OAuth users don't need password verification
             
-            // Delete associated responder record if exists
+            // Delete associated data in correct order to avoid foreign key constraints
+            
+            // 1. Delete notifications (they reference both user and alerts)
+            notificationRepository.deleteByUserId(user.getId());
+            
+            // 2. Delete report evidence (they reference incident reports)
+            // First get all user's incident reports to delete their evidence
+            List<UUID> userReportIds = incidentReportRepository.findByUserId(user.getId())
+                .stream()
+                .map(report -> report.getId())
+                .toList();
+            
+            // Delete evidence for each report
+            for (UUID reportId : userReportIds) {
+                reportEvidenceRepository.deleteByReportId(reportId);
+            }
+            
+            // 3. Delete incident reports (they reference user)
+            incidentReportRepository.deleteByUserId(user.getId());
+            
+            // 4. Delete alerts (they reference user)
+            alertRepository.deleteByUserId(user.getId());
+            
+            // 5. Delete trusted contacts (they reference user)
+            trustedContactRepository.deleteByUserId(user.getId());
+            
+            // 6. Delete associated responder record if exists
             if (user.getRole() == User.Role.RESPONDER) {
                 responderRepository.deleteByUserId(user.getId());
             }
             
-            // Delete the user account
+            // 7. Finally delete the user account
             userRepository.delete(user);
             
             // Send account deletion confirmation email
@@ -445,6 +518,45 @@ public class AuthService {    @Autowired
             System.err.println("Error deleting account: " + e.getMessage());
             e.printStackTrace();
             return new AuthResponse.Error("Failed to delete account. Please try again.");
+        }
+    }
+    
+    public Object validateGoogleToken(String token) {
+        try {
+            // Validate the JWT token from Google OAuth flow
+            if (!jwtService.isTokenValid(token)) {
+                return new AuthResponse.Error("Invalid or expired token");
+            }
+            
+            // Extract user info from the token
+            String email = jwtService.extractEmail(token);
+            if (email == null) {
+                return new AuthResponse.Error("Token does not contain valid email");
+            }
+            
+            // Check if user exists
+            Optional<User> userOpt = userRepository.findByEmail(email);
+            if (userOpt.isEmpty()) {
+                return new AuthResponse.Error("User not found");
+            }
+            
+            User user = userOpt.get();
+            
+            // Generate new JWT token for the user
+            String jwtToken = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole().toString());
+            
+            AuthResponse.Success response = new AuthResponse.Success(
+                jwtToken,
+                user.getId().toString(),
+                user.getFullName(),
+                user.getRole().toString()
+            );
+            response.setMessage("Google token validated successfully");
+            return response;
+            
+        } catch (Exception e) {
+            System.err.println("Error validating Google token: " + e.getMessage());
+            return new AuthResponse.Error("Token validation failed");
         }
     }
 }

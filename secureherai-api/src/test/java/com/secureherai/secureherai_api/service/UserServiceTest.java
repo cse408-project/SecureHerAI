@@ -2,7 +2,7 @@ package com.secureherai.secureherai_api.service;
 
 import com.secureherai.secureherai_api.dto.auth.AuthRequest;
 import com.secureherai.secureherai_api.dto.auth.AuthResponse;
-import com.secureherai.secureherai_api.dto.user.CompleteProfileRequest;
+
 import com.secureherai.secureherai_api.entity.User;
 import com.secureherai.secureherai_api.entity.Responder;
 import com.secureherai.secureherai_api.repository.UserRepository;

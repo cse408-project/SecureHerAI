@@ -274,16 +274,6 @@ class ApiService {
     return response.json();
   }
 
-  async completeProfile(data: any) {
-    const response = await fetch(`${API_BASE_URL}/user/complete-profile`, {
-      method: "POST",
-      headers: await this.getHeaders(true),
-      body: JSON.stringify(data),
-    });
-
-    return response.json();
-  }
-
   // Trusted Contacts API Methods
   async getTrustedContacts() {
     try {
@@ -407,16 +397,72 @@ class ApiService {
     }
   }
 
-  // Notification Preferences API Methods
+  // Settings API Methods (including notification preferences and SOS keyword)
+  async getSettings() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/settings`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to fetch settings",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error fetching settings:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  async updateSettings(settings: {
+    emailAlerts?: boolean;
+    smsAlerts?: boolean;
+    pushNotifications?: boolean;
+    sosKeyword?: string;
+  }) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/settings`, {
+        method: "PUT",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify(settings),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to update settings",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error updating settings:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  // Notification Preferences API Methods (backward compatibility)
   async getNotificationPreferences() {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/notifications/preferences`,
-        {
-          method: "GET",
-          headers: await this.getHeaders(true),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/settings`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
 
       const data = await response.json();
 
@@ -430,7 +476,15 @@ class ApiService {
         };
       }
 
-      return { success: true, data: data };
+      // Return data in the format expected by existing code
+      return {
+        success: true,
+        data: {
+          emailAlerts: data.settings.emailAlerts,
+          smsAlerts: data.settings.smsAlerts,
+          pushNotifications: data.settings.pushNotifications,
+        },
+      };
     } catch (error) {
       console.error("API: Error fetching notification preferences:", error);
       return {
@@ -446,14 +500,11 @@ class ApiService {
     pushNotifications: boolean;
   }) {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/notifications/update-preferences`,
-        {
-          method: "PUT",
-          headers: await this.getHeaders(true),
-          body: JSON.stringify({ preferences }),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/settings/notifications`, {
+        method: "PUT",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({ preferences }),
+      });
 
       const data = await response.json();
 
@@ -470,6 +521,60 @@ class ApiService {
       return { success: true, data: data };
     } catch (error) {
       console.error("API: Error updating notification preferences:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  // SOS Keyword API Methods
+  async getSosKeyword() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/settings/sos-keyword`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to fetch SOS keyword",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error fetching SOS keyword:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  async updateSosKeyword(sosKeyword: string, password?: string) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/settings/sos-keyword`, {
+        method: "PUT",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({ sosKeyword, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to update SOS keyword",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error updating SOS keyword:", error);
       return {
         success: false,
         error: "Network error. Please check your connection and try again.",
@@ -598,15 +703,23 @@ class ApiService {
     }
   }
 
-  async deleteEvidence(reportId: string, evidenceUrl: string): Promise<GenericReportResponse> {
+  async deleteEvidence(
+    reportId: string,
+    evidenceUrl: string
+  ): Promise<GenericReportResponse> {
     try {
-      console.log("API: Deleting evidence from report:", reportId, "URL:", evidenceUrl);
+      console.log(
+        "API: Deleting evidence from report:",
+        reportId,
+        "URL:",
+        evidenceUrl
+      );
       const response = await fetch(`${API_BASE_URL}/report/delete-evidence`, {
         method: "POST",
         headers: await this.getHeaders(true),
         body: JSON.stringify({
           reportId,
-          evidenceUrl
+          evidenceUrl,
         }),
       });
 
@@ -623,7 +736,9 @@ class ApiService {
     }
   }
 
-  async updateReport(updateData: UpdateReportRequest): Promise<GenericReportResponse> {
+  async updateReport(
+    updateData: UpdateReportRequest
+  ): Promise<GenericReportResponse> {
     try {
       console.log("API: Updating report:", updateData.reportId);
       const response = await fetch(`${API_BASE_URL}/report/update`, {
@@ -984,6 +1099,284 @@ class ApiService {
       return {
         success: false,
         error: "Network error occurred while canceling alert",
+      };
+    }
+  }
+
+  // New TTL Notification System API Methods
+
+  /**
+   * Get all notifications for the authenticated user
+   */
+  async getNotifications(page?: number, size?: number) {
+    try {
+      let url = `${API_BASE_URL}/notifications`;
+      if (page !== undefined && size !== undefined) {
+        url += `?page=${page}&size=${size}`;
+      }
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to fetch notifications",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error fetching notifications:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  /**
+   * Get unread notifications for the authenticated user
+   */
+  async getUnreadNotifications() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/notifications/unread`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error:
+            data.error ||
+            data.message ||
+            "Failed to fetch unread notifications",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error fetching unread notifications:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  /**
+   * Get notification count for the authenticated user
+   */
+  async getNotificationCount() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/notifications/count`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error:
+            data.error || data.message || "Failed to fetch notification count",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error fetching notification count:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  /**
+   * Mark a notification as read
+   */
+  async markNotificationAsRead(notificationId: string) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/notifications/mark-read`, {
+        method: "POST",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({ notificationId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error:
+            data.error || data.message || "Failed to mark notification as read",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error marking notification as read:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  /**
+   * Mark all notifications as read
+   */
+  async markAllNotificationsAsRead() {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/notifications/mark-all-read`,
+        {
+          method: "POST",
+          headers: await this.getHeaders(true),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error:
+            data.error ||
+            data.message ||
+            "Failed to mark all notifications as read",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error marking all notifications as read:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  /**
+   * Accept emergency response (for responders)
+   */
+  async acceptEmergencyResponse(requestData: {
+    alertId: string;
+    alertUserId: string;
+    responderName: string;
+    notificationId?: string;
+  }) {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/notifications/accept-emergency`,
+        {
+          method: "POST",
+          headers: await this.getHeaders(true),
+          body: JSON.stringify(requestData),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error:
+            data.error || data.message || "Failed to accept emergency response",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error accepting emergency response:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  /**
+   * Get all notifications for a specific alert (both in-app and email)
+   */
+  async getNotificationsForAlert(alertId: string) {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/notifications/alert/${alertId}`,
+        {
+          method: "GET",
+          headers: await this.getHeaders(true),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error:
+            data.error ||
+            data.message ||
+            "Failed to fetch notifications for alert",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error fetching notifications for alert:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  /**
+   * Create a notification (admin/system use)
+   */
+  async createNotification(requestData: {
+    type: string;
+    title: string;
+    message: string;
+    recipientId: string;
+    alertId?: string;
+    emergencyLocation?: {
+      latitude: number;
+      longitude: number;
+    };
+  }) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/notifications/create`, {
+        method: "POST",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify(requestData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to create notification",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error creating notification:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
       };
     }
   }

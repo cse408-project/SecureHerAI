@@ -8,7 +8,6 @@ import {
   Image,
   TextInput,
   Modal,
-  Alert,
 } from "react-native";
 import { useAlert } from "../../context/AlertContext";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -18,6 +17,7 @@ import ApiService from "../../services/api";
 import Header from "../../components/Header";
 import DatePicker from "../../components/DatePicker";
 import cloudinaryService from "../../services/cloudinary";
+import * as Location from "expo-location";
 
 interface UserProfile {
   userId: string;
@@ -26,6 +26,12 @@ interface UserProfile {
   phoneNumber?: string;
   profilePicture?: string;
   dateOfBirth?: string;
+  settings?: {
+    emailAlerts: boolean;
+    smsAlerts: boolean;
+    pushNotifications: boolean;
+    sosKeyword: string;
+  };
   notificationPreferences?: {
     emailAlerts: boolean;
     smsAlerts: boolean;
@@ -35,6 +41,10 @@ interface UserProfile {
   responderInfo?: {
     responderType: string;
     badgeNumber: string;
+    branchName?: string;
+    address?: string;
+    currentLatitude?: number;
+    currentLongitude?: number;
     status: string;
     active: boolean;
   };
@@ -46,12 +56,18 @@ export default function SettingsScreen() {
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [smsAlerts, setSmsAlerts] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
+  const [sosKeyword, setSosKeyword] = useState("help");
+  const [showSosKeywordModal, setShowSosKeywordModal] = useState(false);
+  const [newSosKeyword, setNewSosKeyword] = useState("");
+  const [sosKeywordPassword, setSosKeywordPassword] = useState("");
+  const [isUpdatingSosKeyword, setIsUpdatingSosKeyword] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showFullProfileModal, setShowFullProfileModal] = useState(false);
   const [profilePictureUrl, setProfilePictureUrl] = useState("");
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [showImagePickerModal, setShowImagePickerModal] = useState(false);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
 
   // Full profile edit state
   const [editProfile, setEditProfile] = useState({
@@ -63,6 +79,10 @@ export default function SettingsScreen() {
     status: "",
     responderType: "",
     badgeNumber: "",
+    branchName: "",
+    address: "",
+    currentLatitude: "",
+    currentLongitude: "",
   });
 
   const { showAlert, showConfirmAlert } = useAlert();
@@ -85,18 +105,19 @@ export default function SettingsScreen() {
 
   const loadNotificationPreferences = useCallback(async () => {
     try {
-      const response = await ApiService.getNotificationPreferences();
-      if (response.success && response.data) {
-        const prefs = response.data.preferences;
-        setEmailAlerts(prefs.emailAlerts);
-        setSmsAlerts(prefs.smsAlerts);
-        setPushNotifications(prefs.pushNotifications);
+      const response = await ApiService.getSettings();
+      if (response.success && response.data && response.data.settings) {
+        const settings = response.data.settings;
+        setEmailAlerts(settings.emailAlerts);
+        setSmsAlerts(settings.smsAlerts);
+        setPushNotifications(settings.pushNotifications);
+        setSosKeyword(settings.sosKeyword || "help");
       } else {
-        // If no preferences exist, keep defaults
-        console.log("No notification preferences found, using defaults");
+        // If no settings exist, keep defaults
+        console.log("No settings found, using defaults");
       }
     } catch (error) {
-      console.error("Failed to load notification preferences:", error);
+      console.error("Failed to load settings:", error);
       // Keep defaults if loading fails
     }
   }, []);
@@ -233,9 +254,9 @@ export default function SettingsScreen() {
     try {
       setIsUploadingImage(true);
       showAlert("Info", "Opening camera...", "info");
-      
+
       const result = await cloudinaryService.takePhotoWithCamera();
-      
+
       if (result && !result.canceled && result.assets && result.assets[0]) {
         const imageUri = result.assets[0].uri;
         await uploadImageToCloudinary(imageUri);
@@ -254,9 +275,9 @@ export default function SettingsScreen() {
     try {
       setIsUploadingImage(true);
       showAlert("Info", "Opening gallery...", "info");
-      
+
       const result = await cloudinaryService.pickImageFromGallery();
-      
+
       if (result && !result.canceled && result.assets && result.assets[0]) {
         const imageUri = result.assets[0].uri;
         await uploadImageToCloudinary(imageUri);
@@ -265,7 +286,11 @@ export default function SettingsScreen() {
       }
     } catch (error) {
       console.error("Gallery upload error:", error);
-      showAlert("Error", "Failed to pick image from gallery. Please try again.", "error");
+      showAlert(
+        "Error",
+        "Failed to pick image from gallery. Please try again.",
+        "error"
+      );
     } finally {
       setIsUploadingImage(false);
     }
@@ -275,14 +300,24 @@ export default function SettingsScreen() {
     try {
       setIsUpdatingProfile(true);
       showAlert("Uploading", "Uploading image to Cloudinary...", "info");
-      
-      const uploadResult = await cloudinaryService.uploadProfilePicture(imageUri);
-      
+
+      const uploadResult = await cloudinaryService.uploadProfilePicture(
+        imageUri
+      );
+
       if (uploadResult.success && uploadResult.url) {
         await updateProfilePicture(uploadResult.url);
-        showAlert("Success", "Profile picture uploaded successfully!", "success");
+        showAlert(
+          "Success",
+          "Profile picture uploaded successfully!",
+          "success"
+        );
       } else {
-        showAlert("Error", uploadResult.error || "Failed to upload image", "error");
+        showAlert(
+          "Error",
+          uploadResult.error || "Failed to upload image",
+          "error"
+        );
       }
     } catch (error) {
       console.error("Upload to Cloudinary error:", error);
@@ -307,6 +342,12 @@ export default function SettingsScreen() {
         status: profile.responderInfo?.status || "",
         responderType: profile.responderInfo?.responderType || "",
         badgeNumber: profile.responderInfo?.badgeNumber || "",
+        branchName: profile.responderInfo?.branchName || "",
+        address: profile.responderInfo?.address || "",
+        currentLatitude:
+          profile.responderInfo?.currentLatitude?.toString() || "",
+        currentLongitude:
+          profile.responderInfo?.currentLongitude?.toString() || "",
       });
       setShowFullProfileModal(true);
     }
@@ -353,6 +394,20 @@ export default function SettingsScreen() {
         updateData.status = editProfile.status || "AVAILABLE";
         updateData.responderType = editProfile.responderType.trim();
         updateData.badgeNumber = editProfile.badgeNumber.trim();
+        if (editProfile.branchName.trim()) {
+          updateData.branchName = editProfile.branchName.trim();
+        }
+        if (editProfile.address.trim()) {
+          updateData.address = editProfile.address.trim();
+        }
+        if (editProfile.currentLatitude.trim()) {
+          updateData.currentLatitude = parseFloat(editProfile.currentLatitude);
+        }
+        if (editProfile.currentLongitude.trim()) {
+          updateData.currentLongitude = parseFloat(
+            editProfile.currentLongitude
+          );
+        }
       }
 
       const response = await ApiService.updateProfile(updateData);
@@ -372,6 +427,10 @@ export default function SettingsScreen() {
                       status: updateData.status,
                       responderType: updateData.responderType,
                       badgeNumber: updateData.badgeNumber,
+                      branchName: updateData.branchName,
+                      address: updateData.address,
+                      currentLatitude: updateData.currentLatitude,
+                      currentLongitude: updateData.currentLongitude,
                     }
                   : prev.responderInfo,
               }
@@ -480,6 +539,119 @@ export default function SettingsScreen() {
     }
   };
 
+  const detectCurrentLocation = async () => {
+    try {
+      setIsDetectingLocation(true);
+
+      // Request location permissions
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        showAlert(
+          "Error",
+          "Location permission is required to detect your current location.",
+          "error"
+        );
+        return;
+      }
+
+      // Get current position
+      const userLocation = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      // Get address from coordinates
+      let address = "Unknown location";
+      try {
+        const reverseGeocode = await Location.reverseGeocodeAsync({
+          latitude: userLocation.coords.latitude,
+          longitude: userLocation.coords.longitude,
+        });
+
+        if (reverseGeocode.length > 0) {
+          const addr = reverseGeocode[0];
+          const addressParts = [
+            addr.name,
+            addr.street,
+            addr.district,
+            addr.city,
+            addr.region,
+          ].filter(Boolean);
+          address = addressParts.join(", ");
+        }
+      } catch (geocodeError) {
+        console.warn("Failed to reverse geocode location:", geocodeError);
+      }
+
+      // Update form with detected location
+      setEditProfile((prev) => ({
+        ...prev,
+        currentLatitude: userLocation.coords.latitude.toString(),
+        currentLongitude: userLocation.coords.longitude.toString(),
+        address: address !== "Unknown location" ? address : prev.address,
+      }));
+
+      showAlert("Success", "Location detected successfully!", "success");
+    } catch (error) {
+      console.error("Failed to detect location:", error);
+      showAlert(
+        "Error",
+        "Failed to detect current location. Please check your GPS settings.",
+        "error"
+      );
+    } finally {
+      setIsDetectingLocation(false);
+    }
+  };
+
+  const updateSosKeyword = async () => {
+    if (!newSosKeyword.trim()) {
+      showAlert("Error", "SOS keyword cannot be empty", "error");
+      return;
+    }
+
+    if (newSosKeyword.trim().length < 2) {
+      showAlert(
+        "Error",
+        "SOS keyword must be at least 2 characters long",
+        "error"
+      );
+      return;
+    }
+
+    try {
+      setIsUpdatingSosKeyword(true);
+      const response = await ApiService.updateSosKeyword(
+        newSosKeyword.trim(),
+        sosKeywordPassword
+      );
+
+      if (response.success) {
+        setSosKeyword(newSosKeyword.trim());
+        setShowSosKeywordModal(false);
+        setNewSosKeyword("");
+        setSosKeywordPassword("");
+        showAlert("Success", "SOS keyword updated successfully", "success");
+      } else {
+        showAlert(
+          "Error",
+          response.error || "Failed to update SOS keyword",
+          "error"
+        );
+      }
+    } catch (error) {
+      console.error("Failed to update SOS keyword:", error);
+      showAlert("Error", "Failed to update SOS keyword", "error");
+    } finally {
+      setIsUpdatingSosKeyword(false);
+    }
+  };
+
+  const openSosKeywordModal = () => {
+    setNewSosKeyword(sosKeyword);
+    setSosKeywordPassword("");
+    setShowSosKeywordModal(true);
+  };
+
   if (isLoading) {
     return (
       <View className="flex-1 bg-[#FFE4D6] max-w-screen-md mx-auto w-full">
@@ -551,8 +723,26 @@ export default function SettingsScreen() {
                     👮‍♀️ {profile.responderInfo.responderType} -{" "}
                     {profile.responderInfo.badgeNumber}
                   </Text>
+                  {profile.responderInfo.branchName && (
+                    <Text className="text-[#67082F] text-xs mt-1">
+                      🏢 Branch: {profile.responderInfo.branchName}
+                    </Text>
+                  )}
+                  {(profile.responderInfo.address ||
+                    (profile.responderInfo.currentLatitude &&
+                      profile.responderInfo.currentLongitude)) && (
+                    <Text className="text-[#67082F] text-xs mt-1">
+                      📍 Location:{" "}
+                      {profile.responderInfo.address ||
+                        `${profile.responderInfo.currentLatitude?.toFixed(
+                          6
+                        )}, ${profile.responderInfo.currentLongitude?.toFixed(
+                          6
+                        )}`}
+                    </Text>
+                  )}
                   <Text
-                    className={`text-xs font-medium ${
+                    className={`text-xs font-medium mt-1 ${
                       profile.responderInfo.status === "AVAILABLE"
                         ? "text-green-600"
                         : profile.responderInfo.status === "BUSY"
@@ -584,12 +774,12 @@ export default function SettingsScreen() {
 
             <TouchableOpacity
               className="flex-row items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200"
-              style={{ 
-                backgroundColor: '#F3E8FF', 
-                borderColor: '#C084FC',
+              style={{
+                backgroundColor: "#F3E8FF",
+                borderColor: "#C084FC",
                 borderWidth: 2,
                 elevation: 2,
-                shadowColor: '#000',
+                shadowColor: "#000",
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.1,
                 shadowRadius: 4,
@@ -669,6 +859,33 @@ export default function SettingsScreen() {
               }
               trackColor={{ false: "#767577", true: "#67082F" }}
             />
+          </TouchableOpacity>
+        </View>
+
+        {/* SOS Keyword Setting */}
+        <Text className="text-lg font-semibold text-gray-800 mb-3 mt-6">
+          Emergency Settings
+        </Text>
+        <View className="bg-white rounded-lg shadow-sm">
+          <TouchableOpacity
+            className="p-4 flex-row items-center justify-between"
+            onPress={openSosKeywordModal}
+          >
+            <View className="flex-row items-center">
+              <MaterialIcons
+                name="crisis-alert"
+                size={24}
+                color="#67082F"
+                className="mr-3"
+              />
+              <View className="ml-3">
+                <Text className="text-gray-800 font-medium">SOS Keyword</Text>
+                <Text className="text-gray-500 text-sm">
+                  Current: &quot;{sosKeyword}&quot;
+                </Text>
+              </View>
+            </View>
+            <MaterialIcons name="chevron-right" size={24} color="#67082F" />
           </TouchableOpacity>
         </View>
 
@@ -772,8 +989,14 @@ export default function SettingsScreen() {
                     <ActivityIndicator size="small" color="#3B82F6" />
                   ) : (
                     <>
-                      <MaterialIcons name="photo-camera" size={20} color="#3B82F6" />
-                      <Text className="text-blue-700 font-medium ml-2">Camera</Text>
+                      <MaterialIcons
+                        name="photo-camera"
+                        size={20}
+                        color="#3B82F6"
+                      />
+                      <Text className="text-blue-700 font-medium ml-2">
+                        Camera
+                      </Text>
                     </>
                   )}
                 </View>
@@ -792,8 +1015,14 @@ export default function SettingsScreen() {
                     <ActivityIndicator size="small" color="#10B981" />
                   ) : (
                     <>
-                      <MaterialIcons name="photo-library" size={20} color="#10B981" />
-                      <Text className="text-green-700 font-medium ml-2">Gallery</Text>
+                      <MaterialIcons
+                        name="photo-library"
+                        size={20}
+                        color="#10B981"
+                      />
+                      <Text className="text-green-700 font-medium ml-2">
+                        Gallery
+                      </Text>
                     </>
                   )}
                 </View>
@@ -1150,6 +1379,114 @@ export default function SettingsScreen() {
                         autoCapitalize="characters"
                       />
                     </View>
+
+                    {/* Branch Name */}
+                    <View className="mb-4">
+                      <Text className="text-sm font-medium text-gray-700 mb-2">
+                        Branch Name
+                      </Text>
+                      <TextInput
+                        className="border border-gray-300 rounded-lg p-3 bg-white text-gray-900"
+                        placeholder="Enter your branch/station name"
+                        value={editProfile.branchName}
+                        onChangeText={(value) =>
+                          setEditProfile((prev) => ({
+                            ...prev,
+                            branchName: value,
+                          }))
+                        }
+                      />
+                    </View>
+
+                    {/* Address */}
+                    <View className="mb-4">
+                      <Text className="text-sm font-medium text-gray-700 mb-2">
+                        Address
+                      </Text>
+                      <TextInput
+                        className="border border-gray-300 rounded-lg p-3 bg-white text-gray-900"
+                        placeholder="Enter your station/office address"
+                        value={editProfile.address}
+                        onChangeText={(value) =>
+                          setEditProfile((prev) => ({
+                            ...prev,
+                            address: value,
+                          }))
+                        }
+                        multiline
+                        numberOfLines={2}
+                      />
+                    </View>
+
+                    {/* Location Coordinates */}
+                    <View className="mb-4">
+                      <Text className="text-sm font-medium text-gray-700 mb-2">
+                        Current Location (Optional)
+                      </Text>
+
+                      {/* GPS Detection Button */}
+                      <TouchableOpacity
+                        className="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200 flex-row items-center justify-center"
+                        onPress={detectCurrentLocation}
+                        disabled={isDetectingLocation}
+                      >
+                        {isDetectingLocation ? (
+                          <ActivityIndicator size="small" color="#3B82F6" />
+                        ) : (
+                          <MaterialIcons
+                            name="my-location"
+                            size={20}
+                            color="#3B82F6"
+                          />
+                        )}
+                        <Text className="text-blue-700 font-medium ml-2">
+                          {isDetectingLocation
+                            ? "Detecting Location..."
+                            : "Detect Current Location"}
+                        </Text>
+                      </TouchableOpacity>
+
+                      <View className="flex-row space-x-2">
+                        <View className="flex-1">
+                          <Text className="text-xs text-gray-500 mb-1">
+                            Latitude
+                          </Text>
+                          <TextInput
+                            className="border border-gray-300 rounded-lg p-3 bg-white text-gray-900"
+                            placeholder="23.8103"
+                            value={editProfile.currentLatitude}
+                            onChangeText={(value) =>
+                              setEditProfile((prev) => ({
+                                ...prev,
+                                currentLatitude: value,
+                              }))
+                            }
+                            keyboardType="numeric"
+                          />
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-xs text-gray-500 mb-1">
+                            Longitude
+                          </Text>
+                          <TextInput
+                            className="border border-gray-300 rounded-lg p-3 bg-white text-gray-900"
+                            placeholder="90.4125"
+                            value={editProfile.currentLongitude}
+                            onChangeText={(value) =>
+                              setEditProfile((prev) => ({
+                                ...prev,
+                                currentLongitude: value,
+                              }))
+                            }
+                            keyboardType="numeric"
+                          />
+                        </View>
+                      </View>
+                      <Text className="text-xs text-gray-400 mt-1">
+                        Use the button above to automatically detect your
+                        location, or enter coordinates manually
+                      </Text>
+                    </View>
                   </View>
                 </>
               )}
@@ -1292,7 +1629,9 @@ export default function SettingsScreen() {
               disabled={isUploadingImage}
             >
               <MaterialIcons name="photo-camera" size={24} color="#3B82F6" />
-              <Text className="text-blue-700 font-medium ml-3 flex-1">Take Photo</Text>
+              <Text className="text-blue-700 font-medium ml-3 flex-1">
+                Take Photo
+              </Text>
               <MaterialIcons name="chevron-right" size={20} color="#3B82F6" />
             </TouchableOpacity>
 
@@ -1306,7 +1645,9 @@ export default function SettingsScreen() {
               disabled={isUploadingImage}
             >
               <MaterialIcons name="photo-library" size={24} color="#10B981" />
-              <Text className="text-green-700 font-medium ml-3 flex-1">Choose from Gallery</Text>
+              <Text className="text-green-700 font-medium ml-3 flex-1">
+                Gallery
+              </Text>
               <MaterialIcons name="chevron-right" size={20} color="#10B981" />
             </TouchableOpacity>
 
@@ -1321,7 +1662,9 @@ export default function SettingsScreen() {
               disabled={isUploadingImage}
             >
               <MaterialIcons name="link" size={24} color="#8B5CF6" />
-              <Text className="text-purple-700 font-medium ml-3 flex-1">Enter URL</Text>
+              <Text className="text-purple-700 font-medium ml-3 flex-1">
+                Enter URL
+              </Text>
               <MaterialIcons name="chevron-right" size={20} color="#8B5CF6" />
             </TouchableOpacity>
 
@@ -1330,19 +1673,88 @@ export default function SettingsScreen() {
               className="bg-gray-200 rounded-lg p-4"
               onPress={() => setShowImagePickerModal(false)}
             >
-              <Text className="text-center text-gray-700 font-medium">Cancel</Text>
+              <Text className="text-center text-gray-700 font-medium">
+                Cancel
+              </Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* SOS Keyword Modal */}
+      <Modal
+        visible={showSosKeywordModal}
+        transparent={true}
+        animationType="slide"
+      >
+        <View className="flex-1 bg-black/50 justify-center items-center">
+          <View className="bg-white rounded-lg p-6 mx-4 w-full max-w-md">
+            <Text className="text-xl font-bold text-gray-800 mb-4">
+              Update SOS Keyword
+            </Text>
+
+            <Text className="text-gray-600 mb-4">
+              This keyword will trigger emergency alerts when used in voice or
+              text commands.
+            </Text>
+
+            <Text className="text-sm font-medium text-gray-700 mb-2">
+              New SOS Keyword
+            </Text>
+            <TextInput
+              className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4"
+              value={newSosKeyword}
+              onChangeText={setNewSosKeyword}
+              placeholder="Enter new keyword (e.g., emergency)"
+              autoCapitalize="none"
+            />
+
+            <Text className="text-sm font-medium text-gray-700 mb-2">
+              Confirm with Password (optional)
+            </Text>
+            <TextInput
+              className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-6"
+              value={sosKeywordPassword}
+              onChangeText={setSosKeywordPassword}
+              placeholder="Enter your password"
+              secureTextEntry
+            />
+
+            <View className="flex-row space-x-3">
+              <TouchableOpacity
+                className="flex-1 bg-gray-200 rounded-lg p-3"
+                onPress={() => {
+                  setShowSosKeywordModal(false);
+                  setNewSosKeyword("");
+                  setSosKeywordPassword("");
+                }}
+              >
+                <Text className="text-center text-gray-700 font-medium">
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className="flex-1 bg-[#67082F] rounded-lg p-3"
+                onPress={updateSosKeyword}
+                disabled={isUpdatingSosKeyword}
+              >
+                {isUpdatingSosKeyword ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text className="text-center text-white font-medium">
+                    Update
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
 
       {/* Image Upload Loading Overlay */}
       {(isUploadingImage || isUpdatingProfile) && (
-        <Modal
-          visible={true}
-          transparent={true}
-          animationType="fade"
-        >
+        <Modal visible={true} transparent={true} animationType="fade">
           <View className="flex-1 bg-black/70 items-center justify-center">
             <View className="bg-white rounded-lg p-6 items-center">
               <ActivityIndicator size="large" color="#67082F" />

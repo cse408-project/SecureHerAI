@@ -1,9 +1,8 @@
 ### Trusted Contacts Module Tests
 
 ### Variables for testing
-@baseUrl = https://secureherai.me/api
-@authToken= eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZDZkMDY4Yi0wNzc3LTRlMTUtYmMyMy1iOWRlNjVlODMzZjMiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc1MDgyMDA0NywiZXhwIjoxNzUwOTA2NDQ3fQ.n5me94blDNu7IXML46nnWBJMyAqpQ8w4giHSzRU1PZ0
-
+@baseUrl = http://localhost:8080/api
+@authToken= eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI2YTU5NjE0Yi04MDY3LTQxYmMtODhjNi1kODAyNWRlNzk2OGEiLCJlbWFpbCI6InNvbmlha2hhdHVuOTQzNThAZ21haWwuY29tIiwicm9sZSI6IlJFU1BPTkRFUiIsImlhdCI6MTc1MjM1MDI5NSwiZXhwIjoxNzUzMjE0Mjk1fQ.yelJx2esOCl1kQG0uIekUyCTMrEAPJ18FmaV8gSjCeg
 
 
 ### 1. Add Trusted Contact - Friend

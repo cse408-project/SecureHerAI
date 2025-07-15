@@ -2,6 +2,7 @@ package com.secureherai.secureherai_api.repository;
 
 import com.secureherai.secureherai_api.entity.Alert;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -43,4 +44,9 @@ public interface AlertRepository extends JpaRepository<Alert, UUID> {
     // Count alerts by user and status
     @Query("SELECT COUNT(a) FROM Alert a WHERE a.userId = :userId AND a.status = :status")
     Long countByUserIdAndStatus(@Param("userId") UUID userId, @Param("status") String status);
+    
+    // Delete all alerts by user ID (for account deletion)
+    @Modifying
+    @Query("DELETE FROM Alert a WHERE a.userId = :userId")
+    void deleteByUserId(@Param("userId") UUID userId);
 }

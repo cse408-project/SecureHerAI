@@ -40,7 +40,7 @@ public class SecurityConfig {
                 .requestMatchers("/oauth2/**", "/login/oauth2/**", "/api/speech/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .anyRequest().authenticated()
-            )            .oauth2Login(oauth2 -> oauth2
+            )   .oauth2Login(oauth2 -> oauth2
                 .authorizationEndpoint(authorization -> authorization
                     .baseUri("/oauth2/authorize")
                     .authorizationRequestRepository(authorizationRequestRepository())

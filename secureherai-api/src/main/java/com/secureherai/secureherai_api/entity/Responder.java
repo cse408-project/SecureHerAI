@@ -36,6 +36,12 @@ public class Responder {
     @Column(name = "badge_number", unique = true)
     private String badgeNumber;
     
+    @Column(name = "branch_name")
+    private String branchName;
+    
+    @Column(name = "address")
+    private String address;
+    
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Status status = Status.AVAILABLE;
@@ -79,6 +85,15 @@ public class Responder {
         this.status = Status.AVAILABLE;
     }
 
+    public Responder(User user, ResponderType responderType, String badgeNumber, String branchName, String address) {
+        this.user = user;
+        this.responderType = responderType;
+        this.badgeNumber = badgeNumber;
+        this.branchName = branchName;
+        this.address = address;
+        this.status = Status.AVAILABLE;
+    }
+
     // Getters and Setters
     public UUID getUserId() { return userId; }
     // With @MapsId, we don't need to set userId explicitly
@@ -95,6 +110,12 @@ public class Responder {
     
     public String getBadgeNumber() { return badgeNumber; }
     public void setBadgeNumber(String badgeNumber) { this.badgeNumber = badgeNumber; }
+    
+    public String getBranchName() { return branchName; }
+    public void setBranchName(String branchName) { this.branchName = branchName; }
+    
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
     
     public Status getStatus() { return status; }
     public void setStatus(Status status) { this.status = status; }

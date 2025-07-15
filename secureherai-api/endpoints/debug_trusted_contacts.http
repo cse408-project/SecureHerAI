@@ -1,0 +1,75 @@
+### Debug Trusted Contacts and Email Notifications
+
+@baseUrl = http://localhost:8080/api
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI2YTU5NjE0Yi04MDY3LTQxYmMtODhjNi1kODAyNWRlNzk2OGEiLCJlbWFpbCI6InNvbmlha2hhdHVuOTQzNThAZ21haWwuY29tIiwicm9sZSI6IlJFU1BPTkRFUiIsImlhdCI6MTc1MjM1MDI5NSwiZXhwIjoxNzUzMjE0Mjk1fQ.yelJx2esOCl1kQG0uIekUyCTMrEAPJ18FmaV8gSjCeg
+
+### Step 1: Check if you have any trusted contacts
+GET {{baseUrl}}/contacts
+Authorization: Bearer {{authToken}}
+
+### Expected: Should show your trusted contacts list
+### If empty, that's why no emails were sent!
+
+###
+
+### Step 2: Add a trusted contact for testing (if none exist)
+POST {{baseUrl}}/contacts/add
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "contact": {
+    "name": "Emergency Test Contact",
+    "phone": "+8801712345678",
+    "relationship": "friend",
+    "email": "your-real-email@gmail.com",
+    "shareLocation": true
+  }
+}
+
+### Expected: Trusted contact added successfully
+
+###
+
+### Step 3: Trigger SOS alert again (now it should send emails)
+POST {{baseUrl}}/sos/text-command
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "message": "Testing emergency email system",
+    "keyword": "help",
+    "location": {
+        "latitude": 23.8103,
+        "longitude": 90.4125,
+        "address": "Dhaka, Bangladesh"
+    }
+}
+
+### Expected: 
+### - SOS alert created ✅
+### - HTML email sent to your-real-email@gmail.com ✅
+### - In-app notifications sent to responders ✅
+
+###
+
+### Step 4: Check responder notifications again
+GET {{baseUrl}}/notifications
+Authorization: Bearer {{authToken}}
+
+### Expected: Should see new EMERGENCY_NEARBY notification for responders
+
+###
+
+### Step 5: Check application logs for email confirmation
+### Run in terminal: docker logs secureherai_api --tail 50 | grep -i "email"
+### Should see: "Emergency email sent to trusted contact: Emergency Test Contact (your-real-email@gmail.com)"
+
+###
+
+### Step 6: Check your email inbox!
+### You should receive a professional HTML email with:
+### - Subject: "🚨 EMERGENCY ALERT - Immediate Attention Required"
+### - Red emergency styling
+### - Contact information and emergency details
+### - Clear action instructions

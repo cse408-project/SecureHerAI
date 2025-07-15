@@ -14,6 +14,10 @@ export interface User {
   responderInfo?: {
     responderType: "POLICE" | "MEDICAL" | "FIRE";
     badgeNumber: string;
+    branchName?: string;
+    address?: string;
+    currentLatitude?: number;
+    currentLongitude?: number;
     status: "AVAILABLE" | "BUSY" | "OFF_DUTY";
     lastStatusUpdate: string;
     active: boolean;
@@ -50,6 +54,10 @@ export interface RegisterRequest {
   role: "USER" | "RESPONDER";
   responderType?: "POLICE" | "MEDICAL" | "FIRE";
   badgeNumber?: string;
+  branchName?: string;
+  address?: string;
+  currentLatitude?: number;
+  currentLongitude?: number;
 }
 
 export interface AuthContextType {
@@ -68,14 +76,6 @@ export interface AuthContextType {
   checkAuthState?: () => Promise<void>; // Optional method to check auth state
 }
 
-export interface CompleteProfileRequest {
-  phoneNumber: string;
-  dateOfBirth: string;
-  role: "USER" | "RESPONDER";
-  responderType?: "POLICE" | "MEDICAL" | "FIRE";
-  badgeNumber?: string;
-}
-
 export interface UpdateProfileRequest {
   fullName?: string;
   phoneNumber?: string;
@@ -87,6 +87,10 @@ export interface UpdateProfileRequest {
   status?: "AVAILABLE" | "BUSY" | "OFF_DUTY";
   responderType?: "POLICE" | "MEDICAL" | "FIRE";
   badgeNumber?: string;
+  branchName?: string;
+  address?: string;
+  currentLatitude?: number;
+  currentLongitude?: number;
 }
 
 export interface ForgotPasswordRequest {

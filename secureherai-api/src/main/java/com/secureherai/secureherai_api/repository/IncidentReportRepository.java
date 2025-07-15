@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -88,4 +89,9 @@ public interface IncidentReportRepository extends JpaRepository<IncidentReport, 
     
     // Find reports by user and incident time range
     List<IncidentReport> findByUserIdAndIncidentTimeBetween(UUID userId, LocalDateTime startTime, LocalDateTime endTime);
+    
+    // Delete all incident reports by user ID (for account deletion)
+    @Modifying
+    @Query("DELETE FROM IncidentReport ir WHERE ir.userId = :userId")
+    void deleteByUserId(@Param("userId") UUID userId);
 }

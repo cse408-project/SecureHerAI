@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useAlert } from "../../context/AlertContext";
+import { useNotifications } from "../../context/NotificationContext";
 import Header from "../../components/Header";
 import QuickAction from "../../components/QuickAction";
 import NotificationModal from "../../components/NotificationModal";
@@ -22,6 +23,7 @@ export default function Home() {
   );
   const [showNotifications, setShowNotifications] = useState(false);
   const { showAlert, showConfirmAlert } = useAlert();
+  const { refreshNotificationCount } = useNotifications();
 
   // Added states for SOS flow
   const [showSOSModal, setShowSOSModal] = useState(false);
@@ -29,12 +31,6 @@ export default function Home() {
   const [alertResponse, setAlertResponse] = useState<AlertResponse | null>(
     null
   );
-
-  const notifications = [
-    { id: 1, message: "SOS Alert sent successfully!" },
-    { id: 2, message: "Location shared with trusted contacts." },
-    { id: 3, message: "Test notification." },
-  ];
 
   useEffect(() => {
     const anim = Animated.loop(
@@ -100,6 +96,9 @@ export default function Home() {
   const handleSOSSuccess = (response: AlertResponse) => {
     setAlertResponse(response);
     setShowSOSModal(false);
+
+    // Refresh notifications since emergency notifications have been sent
+    refreshNotificationCount();
 
     // Show confirmation and ask if user wants to submit a report
     showConfirmAlert(
@@ -168,7 +167,7 @@ export default function Home() {
       <Header
         title="SecureHer AI"
         onNotificationPress={() => setShowNotifications(true)}
-        showNotificationDot={notifications.length > 0}
+        useRealNotificationCount={true}
       />
       <View className="flex-1 items-center justify-center p-6 pb-28">
         <TouchableOpacity
@@ -289,6 +288,11 @@ export default function Home() {
               label="Alert History"
               onPress={handleViewAlertHistory}
             />
+            <QuickAction
+              icon="notifications"
+              label="Test Notifications"
+              onPress={() => router.push("/notification-test" as any)}
+            />
           </View>
         </View>
       </View>
@@ -312,7 +316,6 @@ export default function Home() {
 
       <NotificationModal
         visible={showNotifications}
-        notifications={notifications}
         onClose={() => setShowNotifications(false)}
       />
     </View>

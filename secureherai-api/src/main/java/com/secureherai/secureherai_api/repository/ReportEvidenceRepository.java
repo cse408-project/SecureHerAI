@@ -2,6 +2,7 @@ package com.secureherai.secureherai_api.repository;
 
 import com.secureherai.secureherai_api.entity.ReportEvidence;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -38,4 +39,11 @@ public interface ReportEvidenceRepository extends JpaRepository<ReportEvidence, 
      * Delete evidence by report ID and file URL
      */
     void deleteByReportIdAndFileUrl(UUID reportId, String fileUrl);
+    
+    /**
+     * Delete all evidence for a specific report (for report deletion)
+     */
+    @Modifying
+    @Query("DELETE FROM ReportEvidence e WHERE e.reportId = :reportId")
+    void deleteByReportId(@Param("reportId") UUID reportId);
 }

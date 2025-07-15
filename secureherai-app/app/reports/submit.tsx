@@ -12,7 +12,7 @@ import {
   Image,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useAuth } from "../../context/AuthContext";
 import apiService from "../../services/api";
 import cloudinaryService from "../../services/cloudinary";
@@ -34,6 +34,7 @@ interface EvidenceFile {
 
 export default function SubmitReportScreen() {
   const { user } = useAuth();
+  const searchParams = useLocalSearchParams();
   const [loading, setLoading] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null);
   const [gettingLocation, setGettingLocation] = useState(false);
@@ -103,8 +104,42 @@ export default function SubmitReportScreen() {
     setIncidentDate(now.toISOString().split('T')[0]);
     setIncidentTime(now.toTimeString().slice(0, 5));
     
-    getCurrentLocation();
-  }, []);
+    // Handle SOS pre-populated data
+    if (searchParams.autoFill === 'true') {
+      // Set incident type to assault for SOS alerts
+      setIncidentType('assault');
+      
+      // Set description if provided
+      if (searchParams.details && typeof searchParams.details === 'string') {
+        setDescription(searchParams.details);
+      }
+      
+      // Set location if provided
+      if (searchParams.location && typeof searchParams.location === 'string') {
+        const [lat, lng] = searchParams.location.split(',');
+        if (lat && lng) {
+          setCurrentLocation({
+            latitude: lat.trim(),
+            longitude: lng.trim(),
+          });
+          setAddress('Emergency SOS Location');
+        }
+      }
+      
+      // Add evidence file if provided
+      if (searchParams.evidence && typeof searchParams.evidence === 'string') {
+        const evidenceFile: EvidenceFile = {
+          uri: searchParams.evidence,
+          cloudinaryUrl: searchParams.evidence,
+          type: 'audio',
+          name: 'SOS Audio Recording',
+        };
+        setEvidenceFiles([evidenceFile]);
+      }
+    } else {
+      getCurrentLocation();
+    }
+  }, [searchParams]);
 
   const getCurrentLocation = async () => {
     setGettingLocation(true);

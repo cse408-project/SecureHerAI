@@ -2,7 +2,6 @@ package com.secureherai.secureherai_api.controller;
 
 import com.secureherai.secureherai_api.dto.auth.AuthRequest;
 import com.secureherai.secureherai_api.dto.auth.AuthResponse;
-import com.secureherai.secureherai_api.dto.user.CompleteProfileRequest;
 import com.secureherai.secureherai_api.service.UserService;
 import com.secureherai.secureherai_api.service.JwtService;
 import jakarta.validation.Valid;
@@ -63,30 +62,6 @@ public class UserController {
             
             UUID userId = UUID.fromString(jwtService.extractSubject(token));
             Object response = userService.updateProfile(userId, request);
-            
-            if (response instanceof AuthResponse.Error) {
-                return ResponseEntity.badRequest().body(response);
-            }
-            
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new AuthResponse.Error("An error occurred: " + e.getMessage()));
-        }
-    }
-    
-    @PostMapping("/complete-profile")
-    public ResponseEntity<Object> completeProfile(@RequestHeader("Authorization") String authHeader,
-                                              @Valid @RequestBody CompleteProfileRequest request) {
-        try {
-            String token = authHeader.replace("Bearer ", "");
-            if (!jwtService.isTokenValid(token)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(new AuthResponse.Error("Invalid or expired token"));
-            }
-            
-            UUID userId = UUID.fromString(jwtService.extractSubject(token));
-            Object response = userService.completeProfile(userId, request);
             
             if (response instanceof AuthResponse.Error) {
                 return ResponseEntity.badRequest().body(response);

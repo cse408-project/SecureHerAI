@@ -1,6 +1,7 @@
 import { Stack } from "expo-router";
 import { AuthProvider, useAuth } from "../context/AuthContext";
 import { AlertProvider } from "../context/AlertContext";
+import { NotificationProvider } from "../context/NotificationContext";
 import "./global.css";
 import React, { useEffect, useState } from "react";
 import { Platform } from "react-native";
@@ -48,14 +49,14 @@ function RootLayoutComponent() {
           }
         );
 
-        return () => subscription.remove();
+        return subscription;
       };
 
       subscribeToDeepLinks();
     }
   }, []);
 
-  // Show custom splash until auth resolves and minimum time passes
+  // Show splash screen while loading or while app is initializing
   if (isLoading || !splashFinished) {
     return <SplashScreen onFinish={() => setSplashFinished(true)} />;
   }
@@ -84,7 +85,9 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <AlertProvider>
-        <RootLayoutComponent />
+        <NotificationProvider>
+          <RootLayoutComponent />
+        </NotificationProvider>
       </AlertProvider>
     </AuthProvider>
   );

@@ -47,6 +47,10 @@ public class AuthRequest {
         // Responder-specific fields (only required if role is "RESPONDER")
         private String responderType; // "POLICE", "MEDICAL", "FIRE", "SECURITY", "OTHER"
         private String badgeNumber;
+        private String branchName;
+        private String address;
+        private Double currentLatitude;
+        private Double currentLongitude;
 
         public String getFullName() { return fullName; }
         public void setFullName(String fullName) { this.fullName = fullName; }
@@ -64,6 +68,14 @@ public class AuthRequest {
         public void setResponderType(String responderType) { this.responderType = responderType; }
         public String getBadgeNumber() { return badgeNumber; }
         public void setBadgeNumber(String badgeNumber) { this.badgeNumber = badgeNumber; }
+        public String getBranchName() { return branchName; }
+        public void setBranchName(String branchName) { this.branchName = branchName; }
+        public String getAddress() { return address; }
+        public void setAddress(String address) { this.address = address; }
+        public Double getCurrentLatitude() { return currentLatitude; }
+        public void setCurrentLatitude(Double currentLatitude) { this.currentLatitude = currentLatitude; }
+        public Double getCurrentLongitude() { return currentLongitude; }
+        public void setCurrentLongitude(Double currentLongitude) { this.currentLongitude = currentLongitude; }
     }
 
     // Forgot Password Request
@@ -124,6 +136,10 @@ public class AuthRequest {
         // Responder-specific fields (only required if role is "RESPONDER")
         private String responderType; // "POLICE", "FIRE_DEPARTMENT", "MEDICAL", "SECURITY"
         private String badgeNumber;
+        private String branchName;
+        private String address;
+        private Double currentLatitude;
+        private Double currentLongitude;
 
         // Getters and Setters
         public String getToken() { return token; }
@@ -143,6 +159,14 @@ public class AuthRequest {
 
         public String getBadgeNumber() { return badgeNumber; }
         public void setBadgeNumber(String badgeNumber) { this.badgeNumber = badgeNumber; }
+        public String getBranchName() { return branchName; }
+        public void setBranchName(String branchName) { this.branchName = branchName; }
+        public String getAddress() { return address; }
+        public void setAddress(String address) { this.address = address; }
+        public Double getCurrentLatitude() { return currentLatitude; }
+        public void setCurrentLatitude(Double currentLatitude) { this.currentLatitude = currentLatitude; }
+        public Double getCurrentLongitude() { return currentLongitude; }
+        public void setCurrentLongitude(Double currentLongitude) { this.currentLongitude = currentLongitude; }
     }    // Update Profile Request
     public static class UpdateProfile {
         @Size(max = 100, message = "Full name cannot exceed 100 characters")
@@ -166,6 +190,10 @@ public class AuthRequest {
         private String status; // AVAILABLE, BUSY, OFF_DUTY
         private String responderType; // POLICE, MEDICAL, FIRE
         private String badgeNumber;
+        private String branchName;
+        private String address;
+        private Double currentLatitude;
+        private Double currentLongitude;
 
         public String getFullName() { return fullName; }
         public void setFullName(String fullName) { this.fullName = fullName; }
@@ -187,6 +215,14 @@ public class AuthRequest {
         public void setResponderType(String responderType) { this.responderType = responderType; }
         public String getBadgeNumber() { return badgeNumber; }
         public void setBadgeNumber(String badgeNumber) { this.badgeNumber = badgeNumber; }
+        public String getBranchName() { return branchName; }
+        public void setBranchName(String branchName) { this.branchName = branchName; }
+        public String getAddress() { return address; }
+        public void setAddress(String address) { this.address = address; }
+        public Double getCurrentLatitude() { return currentLatitude; }
+        public void setCurrentLatitude(Double currentLatitude) { this.currentLatitude = currentLatitude; }
+        public Double getCurrentLongitude() { return currentLongitude; }
+        public void setCurrentLongitude(Double currentLongitude) { this.currentLongitude = currentLongitude; }
     }
     
     // Delete Account Request

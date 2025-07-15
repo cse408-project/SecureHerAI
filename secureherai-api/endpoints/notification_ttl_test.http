@@ -1,0 +1,210 @@
+### TTL Notification System Test
+### This file tests the complete TTL (Time To Live) system for emergency notifications
+### Including batch processing, expiration, and 10-responder limit
+
+@baseUrl = http://localhost:8080/api
+@authToken = your_auth_token_here
+@responderToken1 = responder1_token_here
+@responderToken2 = responder2_token_here
+@responderToken3 = responder3_token_here
+
+### Step 1: Trigger SOS Alert (This starts the TTL batch process)
+### This will automatically send notifications to the first batch of 2 nearest responders
+POST {{baseUrl}}/sos/voice-command
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "audioUrl": "https://example.com/emergency-audio.wav",
+    "location": {
+        "latitude": 23.8103,
+        "longitude": 90.4125,
+        "address": "Dhaka University Campus, Dhaka"
+    }
+}
+
+### Expected: 
+### - SOS alert created
+### - Emails sent to trusted contacts
+### - Batch 1 notifications sent to nearest 2 responders with 1-hour TTL
+### - TTL timer started automatically
+
+###
+
+### Step 2: Check notifications received by first responder (Batch 1)
+GET {{baseUrl}}/notifications
+Authorization: Bearer {{responderToken1}}
+
+### Expected: Should see emergency notification with:
+### - type: "EMERGENCY_NEARBY"
+### - batchNumber: 1
+### - expiresAt: 1 hour from creation
+### - Emergency details and location
+
+###
+
+### Step 3: Check notifications received by second responder (Batch 1)
+GET {{baseUrl}}/notifications
+Authorization: Bearer {{responderToken2}}
+
+### Expected: Similar to above, batch 1 notification
+
+###
+
+### Step 4: Simulate TTL Expiration (for testing)
+### In production, this happens automatically after 1 hour
+### This endpoint simulates the expiration for testing purposes
+POST {{baseUrl}}/notifications/simulate-ttl-expiration
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "alertId": "{{alertId}}",
+    "batchNumber": 1
+}
+
+### Expected:
+### - Batch 1 notifications marked as FAILED
+### - Batch 2 notifications sent to next 2 responders
+### - New TTL timer started for batch 2
+
+###
+
+### Step 5: Check that batch 2 responders received notifications
+GET {{baseUrl}}/notifications
+Authorization: Bearer {{responderToken3}}
+
+### Expected: Should see emergency notification with:
+### - type: "EMERGENCY_NEARBY"
+### - batchNumber: 2
+### - New 1-hour TTL
+
+###
+
+### Step 6: Responder accepts emergency (stops TTL process)
+POST {{baseUrl}}/notifications/accept-emergency
+Authorization: Bearer {{responderToken1}}
+Content-Type: application/json
+
+{
+    "alertId": "{{alertId}}",
+    "alertUserId": "{{originalUserId}}",
+    "responderName": "John Responder"
+}
+
+### Expected:
+### - Acceptance recorded
+### - All other pending notifications for this alert cancelled
+### - TTL process stopped
+### - "Emergency Accepted" notification sent to original user
+
+###
+
+### Step 7: Verify other pending invitations are cancelled
+GET {{baseUrl}}/notifications
+Authorization: Bearer {{responderToken2}}
+
+### Expected: Previous emergency notifications marked as READ (cancelled)
+
+###
+
+### Step 8: Check original user received acceptance notification
+GET {{baseUrl}}/notifications
+Authorization: Bearer {{authToken}}
+
+### Expected: Should see "Emergency Accepted" notification from responder
+
+###
+
+### Step 9: Test maximum responder limit (10 responders)
+### Trigger multiple TTL expirations to verify 10-responder limit
+POST {{baseUrl}}/notifications/test-max-responders
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "alertId": "{{alertId}}"
+}
+
+### Expected: System stops sending after 10 responders notified
+
+###
+
+### Step 10: Check TTL status and batch information
+GET {{baseUrl}}/notifications/ttl-status/{{alertId}}
+Authorization: Bearer {{authToken}}
+
+### Expected: Complete TTL process information including:
+### - Total batches sent
+### - Number of responders notified
+### - Current status of each batch
+### - Expiration times
+
+###
+
+### Step 11: Test concurrent SOS alerts (multiple TTL processes)
+POST {{baseUrl}}/sos/text-command
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "keyword": "help urgent",
+    "location": {
+        "latitude": 23.7275,
+        "longitude": 90.4069,
+        "address": "Gulshan, Dhaka"
+    }
+}
+
+### Expected: New independent TTL process starts for new alert
+
+###
+
+### Step 12: Verify both TTL processes run independently
+GET {{baseUrl}}/notifications
+Authorization: Bearer {{responderToken1}}
+
+### Expected: May see notifications from both alerts with different alertIds
+
+###
+
+### Admin Endpoints for Testing and Monitoring
+
+### Get all notifications for debugging (admin only)
+GET {{baseUrl}}/notifications/admin/all
+Authorization: Bearer {{adminToken}}
+
+### Get TTL statistics
+GET {{baseUrl}}/notifications/admin/ttl-stats
+Authorization: Bearer {{adminToken}}
+
+### Manual TTL cleanup (for testing)
+POST {{baseUrl}}/notifications/admin/cleanup-expired
+Authorization: Bearer {{adminToken}}
+
+### Emergency stop all TTL processes (emergency use only)
+POST {{baseUrl}}/notifications/admin/stop-all-ttl
+Authorization: Bearer {{adminToken}}
+
+###
+### TTL System Verification Checklist:
+### 
+### ✅ SOS triggers first batch (2 responders)
+### ✅ TTL timer starts (1 hour)
+### ✅ After expiration, next batch sent automatically
+### ✅ Maximum 10 responders per alert enforced
+### ✅ Responder acceptance stops TTL process
+### ✅ Other invitations cancelled when accepted
+### ✅ Multiple concurrent TTL processes work independently
+### ✅ Database tracks batches, expiration times, alert references
+### ✅ Proper error handling and logging
+### ✅ Email notifications to trusted contacts still work
+
+###
+### Performance Notes:
+### - Each TTL process runs independently in background
+### - Database indexes optimize TTL queries
+### - Batch size of 2 balances response time vs resource usage
+### - 1-hour TTL provides reasonable response window
+### - 10-responder limit prevents spam and resource exhaustion
+###

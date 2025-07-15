@@ -128,11 +128,11 @@ public class SOSController {
                 requestDto.getLocation()
             );
             
-            // If no alert was created (keyword is not "help"), return appropriate response
+            // If no alert was created (keyword doesn't match user's SOS keyword), return appropriate response
             if (alert == null) {
                 return ResponseEntity.ok(new SOSAlertResponseDto(
                     false, 
-                    "Alert not triggered. Keyword must be 'help'."
+                    "Alert not triggered. Keyword does not match your configured SOS keyword."
                 ));
             }
             

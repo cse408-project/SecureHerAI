@@ -1,6 +1,5 @@
 @baseUrl = http://localhost:8080/api
-@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIzOGVhOGU1OS0zNzc1LTQxMDItOWRmNS0xMDQzNzU4M2M1ZjMiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc1MTc3NzE3MywiZXhwIjoxNzUyNjQxMTczfQ.hkUe0_GWg8xgj8UsbePKYyYX3B_w4C8FrXO5zK7WUos
-
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI2YTU5NjE0Yi04MDY3LTQxYmMtODhjNi1kODAyNWRlNzk2OGEiLCJlbWFpbCI6InNvbmlha2hhdHVuOTQzNThAZ21haWwuY29tIiwicm9sZSI6IlJFU1BPTkRFUiIsImlhdCI6MTc1MjM1MDI5NSwiZXhwIjoxNzUzMjE0Mjk1fQ.yelJx2esOCl1kQG0uIekUyCTMrEAPJ18FmaV8gSjCeg
 ### Health check for API
 GET {{baseUrl}}/isOk
 
@@ -22,8 +21,11 @@ Content-Type: audio/wav
 < ../data/try_again.wav
 ------WebKitFormBoundary7MA4YWxkTrZu0gW--
 
-### SOS Voice Command (URL-based)
+### SOS Voice Command (URL-based) - This will trigger notifications
 # Requires authentication token
+# This will create an alert AND automatically send notifications to:
+# 1. All trusted contacts (via HTML EMAIL with emergency styling)
+# 2. Nearest 2 active responders (via in-app notifications)
 POST {{baseUrl}}/sos/voice-command
 Authorization: Bearer {{authToken}}
 Content-Type: application/json
@@ -60,8 +62,11 @@ HTTP 200 OK
 // The transcribed text will be checked for default keywords like "help", "emergency", "sos"
 // If any of these keywords are found in the transcription, an alert will be triggered
 
-### SOS Text Command (with keyword = "help")
+### SOS Text Command (with keyword = "help") - This will trigger notifications
 # This should trigger an alert as the keyword is "help"
+# This will create an alert AND automatically send notifications to:
+# 1. All trusted contacts (via HTML EMAIL with emergency styling)
+# 2. Nearest 2 active responders (via in-app notifications)
 # Requires authentication token
 POST {{baseUrl}}/sos/text-command
 Authorization: Bearer {{authToken}}
@@ -308,4 +313,133 @@ HTTP 404 Not Found
   "verificationStatus": null,
   "canceledAt": null,
   "resolvedAt": null
+}
+
+### Check notifications created after SOS alert
+# After triggering an SOS alert, check what notifications were created
+GET {{baseUrl}}/notifications
+Authorization: Bearer {{authToken}}
+
+### Check notification count after SOS alert
+# This should show unread notifications created by the SOS alert
+GET {{baseUrl}}/notifications/count
+Authorization: Bearer {{authToken}}
+
+### Check for responder notifications
+# If you have a responder account, use their token to check for nearby emergency notifications
+# GET {{baseUrl}}/notifications
+# Authorization: Bearer <responder_token>
+
+### Simulate emergency response acceptance
+# This would be called by a responder when they accept an emergency
+POST {{baseUrl}}/notifications/create
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "userId": "38ea8e59-3775-4102-9df5-10437583c5f3",
+    "type": "EMERGENCY_ACCEPTED",
+    "channel": "IN_APP",
+    "title": "✅ Emergency Response Accepted",
+    "message": "Your emergency alert has been accepted by Officer John Smith. Help is on the way!",
+    "payload": {
+        "responderId": "7b69725c-9178-52cd-99d7-e9136ef8079b",
+        "responderName": "Officer John Smith",
+        "acceptedAt": "2025-01-05T15:35:00"
+    },
+    "priority": 8
+}
+
+### Simulate "Are you safe?" follow-up notification
+# This would be sent if an emergency alert remains unresolved for too long
+POST {{baseUrl}}/notifications/create
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "userId": "38ea8e59-3775-4102-9df5-10437583c5f3",
+    "type": "ARE_YOU_SAFE",
+    "channel": "BOTH",
+    "title": "🔍 Safety Check",
+    "message": "Are you safe? Your emergency alert is still active. Please respond to confirm your status.",
+    "payload": {
+        "alertId": "a871f9a8-2357-48fc-9081-c567aeb2b35e",
+        "followUpType": "safety_check"
+    },
+    "priority": 12
+}
+
+### Get User Settings (including notification preferences and SOS keyword)
+GET {{baseUrl}}/settings
+Authorization: Bearer {{authToken}}
+
+### Update User Settings (notification preferences and SOS keyword)
+PUT {{baseUrl}}/settings
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "emailAlerts": true,
+    "smsAlerts": true,
+    "pushNotifications": true,
+    "sosKeyword": "emergency"
+}
+
+### Get SOS Keyword Only
+GET {{baseUrl}}/settings/sos-keyword
+Authorization: Bearer {{authToken}}
+
+### Update SOS Keyword with Password (for security)
+PUT {{baseUrl}}/settings/sos-keyword
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "sosKeyword": "emergency",
+    "password": "user_password_here"
+}
+
+### Update Notification Preferences Only (backward compatibility)
+PUT {{baseUrl}}/settings/notifications
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "preferences": {
+        "emailAlerts": true,
+        "smsAlerts": false,
+        "pushNotifications": true
+    }
+}
+
+### SOS Text Command with Custom Keyword (should work if keyword matches)
+# Test with the updated SOS keyword (e.g., "emergency")
+POST {{baseUrl}}/sos/text-command
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "message": "I need help, this is an emergency situation!",
+    "keyword": "emergency",
+    "location": {
+        "latitude": 23.8103,
+        "longitude": 90.4125,
+        "address": "Dhaka, Bangladesh"
+    }
+}
+
+### SOS Text Command with Wrong Keyword (should NOT trigger)
+# Test with wrong keyword
+POST {{baseUrl}}/sos/text-command
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "message": "This is a test message.",
+    "keyword": "wrongkeyword",
+    "location": {
+        "latitude": 23.8103,
+        "longitude": 90.4125,
+        "address": "Dhaka, Bangladesh"
+    }
 }

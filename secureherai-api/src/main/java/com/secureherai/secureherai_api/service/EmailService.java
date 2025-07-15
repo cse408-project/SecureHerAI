@@ -312,4 +312,94 @@ public class EmailService {
             System.err.println("Failed to send account deletion confirmation email: " + e.getMessage());
         }
     }
+
+    /**
+     * Send emergency alert email to trusted contact
+     */
+    public void sendEmergencyAlertEmail(String toEmail, String contactName, String userPhoneOrName, 
+                                       String alertMessage, String location, String triggeredTime) {
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            
+            helper.setFrom(fromEmail);
+            helper.setTo(toEmail);
+            helper.setSubject("🚨 EMERGENCY ALERT - Immediate Attention Required");
+            
+            StringBuilder emailBody = new StringBuilder();
+            emailBody.append(createEmailHeader("🚨 EMERGENCY ALERT"));
+            
+            // Emergency alert styling - red background for urgency
+            emailBody.append("<div style='background-color: #fee; border: 2px solid #f44; border-radius: 8px; padding: 20px; margin: 20px 0;'>");
+            emailBody.append("<h3 style='color: #d44; margin: 0 0 15px 0; font-size: 18px;'>⚠️ Your trusted contact has triggered an emergency alert</h3>");
+            
+            emailBody.append("<p style='margin: 10px 0; font-size: 16px;'><strong>Contact:</strong> " + contactName + "</p>");
+            if (userPhoneOrName != null && !userPhoneOrName.isEmpty()) {
+                emailBody.append("<p style='margin: 10px 0; font-size: 16px;'><strong>Phone:</strong> " + userPhoneOrName + "</p>");
+            }
+            emailBody.append("<p style='margin: 10px 0; font-size: 16px;'><strong>Time:</strong> " + triggeredTime + "</p>");
+            emailBody.append("<p style='margin: 10px 0; font-size: 16px;'><strong>Location:</strong> " + location + "</p>");
+            emailBody.append("<p style='margin: 10px 0; font-size: 16px;'><strong>Message:</strong> " + alertMessage + "</p>");
+            emailBody.append("</div>");
+            
+            // Action instructions with prominent styling
+            emailBody.append("<div style='background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;'>");
+            emailBody.append("<h4 style='color: #856404; margin: 0 0 10px 0;'>⚡ IMMEDIATE ACTION REQUIRED</h4>");
+            emailBody.append("<p style='margin: 10px 0; font-weight: bold; color: #856404;'>1. Contact them immediately at their phone number</p>");
+            emailBody.append("<p style='margin: 10px 0; font-weight: bold; color: #856404;'>2. If you cannot reach them, call local emergency services (911, 999, etc.)</p>");
+            emailBody.append("<p style='margin: 10px 0; font-weight: bold; color: #856404;'>3. If possible, go to their location to provide assistance</p>");
+            emailBody.append("</div>");
+            
+            emailBody.append("<p style='color: #666; font-style: italic; margin-top: 30px;'>This is an automated emergency alert from SecureHerAI. Please take immediate action to ensure your trusted contact's safety.</p>");
+            
+            emailBody.append(createEmailFooter());
+            
+            helper.setText(emailBody.toString(), true);
+            
+            mailSender.send(mimeMessage);
+            logger.info("Emergency alert email sent successfully to: {}", toEmail);
+            
+        } catch (MessagingException e) {
+            logger.error("Failed to send emergency alert email to: {}", toEmail, e);
+            throw new RuntimeException("Failed to send emergency alert email", e);
+        }
+    }
+
+    /**
+     * Send general notification email
+     */
+    public void sendNotificationEmail(String toEmail, String subject, String title, String message) {
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            
+            helper.setFrom(fromEmail);
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            
+            StringBuilder emailBody = new StringBuilder();
+            emailBody.append(createEmailHeader(title));
+            
+            // Convert plain text message to HTML paragraphs
+            String[] paragraphs = message.split("\n\n");
+            for (String paragraph : paragraphs) {
+                if (!paragraph.trim().isEmpty()) {
+                    emailBody.append("<p style='margin: 15px 0; line-height: 1.6;'>");
+                    emailBody.append(paragraph.replace("\n", "<br>"));
+                    emailBody.append("</p>");
+                }
+            }
+            
+            emailBody.append(createEmailFooter());
+            
+            helper.setText(emailBody.toString(), true);
+            
+            mailSender.send(mimeMessage);
+            logger.info("Notification email sent successfully to: {}", toEmail);
+            
+        } catch (MessagingException e) {
+            logger.error("Failed to send notification email to: {}", toEmail, e);
+            throw new RuntimeException("Failed to send notification email", e);
+        }
+    }
 }

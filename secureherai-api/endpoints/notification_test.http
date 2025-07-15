@@ -1,0 +1,209 @@
+@baseUrl = http://localhost:8080/api
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIzOGVhOGU1OS0zNzc1LTQxMDItOWRmNS0xMDQzNzU4M2M1ZjMiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc1MTc3NzE3MywiZXhwIjoxNzUyNjQxMTczfQ.hkUe0_GWg8xgj8UsbePKYyYX3B_w4C8FrXO5zK7WUos
+
+### Get all notifications for authenticated user
+GET {{baseUrl}}/notifications
+Authorization: Bearer {{authToken}}
+
+### Get all notifications with pagination
+GET {{baseUrl}}/notifications?page=0&size=10
+Authorization: Bearer {{authToken}}
+
+### Get unread notifications only
+GET {{baseUrl}}/notifications/unread
+Authorization: Bearer {{authToken}}
+
+### Get notification count (unread count)
+GET {{baseUrl}}/notifications/count
+Authorization: Bearer {{authToken}}
+
+### Mark a specific notification as read
+POST {{baseUrl}}/notifications/mark-read
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "notificationId": 1
+}
+
+### Mark all notifications as read
+POST {{baseUrl}}/notifications/mark-all-read
+Authorization: Bearer {{authToken}}
+
+### Create a new notification (system/admin use)
+POST {{baseUrl}}/notifications/create
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "userId": "38ea8e59-3775-4102-9df5-10437583c5f3",
+    "type": "SYSTEM_NOTIFICATION",
+    "channel": "IN_APP",
+    "title": "System Maintenance Notice",
+    "message": "The system will undergo scheduled maintenance on Sunday from 2:00 AM to 4:00 AM.",
+    "priority": 3
+}
+
+### Create emergency notification (for testing)
+# This will create a notification AND send an email if the channel is EMAIL or BOTH
+POST {{baseUrl}}/notifications/create
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "userId": "38ea8e59-3775-4102-9df5-10437583c5f3",
+    "type": "EMERGENCY_NEARBY",
+    "channel": "BOTH",
+    "title": "🚨 Emergency Alert Nearby",
+    "message": "Emergency alert 2.5 km away. Location: Dhaka, Bangladesh. Triggered at: 2025-01-05T15:30:00",
+    "payload": {
+        "alertId": "a871f9a8-2357-48fc-9081-c567aeb2b35e",
+        "latitude": 23.8103,
+        "longitude": 90.4125,
+        "address": "Dhaka, Bangladesh",
+        "distance": 2.5,
+        "triggerMethod": "voice",
+        "alertMessage": "Someone following me help?"
+    },
+    "priority": 15
+}
+
+### Create trusted contact notification (for testing)
+POST {{baseUrl}}/notifications/create
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "userId": "38ea8e59-3775-4102-9df5-10437583c5f3",
+    "type": "EMERGENCY_TRUSTED_CONTACT",
+    "channel": "BOTH",
+    "title": "🚨 Emergency Alert from Sarah",
+    "message": "Emergency alert from Sarah at 2025-01-05T15:30:00. Message: Help! Someone is following me. Location: Dhaka University Campus",
+    "payload": {
+        "alertId": "a871f9a8-2357-48fc-9081-c567aeb2b35e",
+        "latitude": 23.8103,
+        "longitude": 90.4125,
+        "address": "Dhaka University Campus",
+        "triggerMethod": "voice",
+        "alertMessage": "Help! Someone is following me",
+        "contactName": "Sarah"
+    },
+    "priority": 10
+}
+
+### Create emergency accepted notification (for testing)
+POST {{baseUrl}}/notifications/create
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "userId": "38ea8e59-3775-4102-9df5-10437583c5f3",
+    "type": "EMERGENCY_ACCEPTED",
+    "channel": "IN_APP",
+    "title": "✅ Emergency Response Accepted",
+    "message": "Your emergency alert has been accepted by Officer John Smith. Help is on the way!",
+    "payload": {
+        "responderId": "7b69725c-9178-52cd-99d7-e9136ef8079b",
+        "responderName": "Officer John Smith",
+        "acceptedAt": "2025-01-05T15:35:00"
+    },
+    "priority": 8
+}
+
+### Create "Are you safe?" notification (for testing)
+POST {{baseUrl}}/notifications/create
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "userId": "38ea8e59-3775-4102-9df5-10437583c5f3",
+    "type": "ARE_YOU_SAFE",
+    "channel": "BOTH",
+    "title": "🔍 Safety Check",
+    "message": "Are you safe? Your emergency alert is still active. Please respond to confirm your status.",
+    "payload": {
+        "alertId": "a871f9a8-2357-48fc-9081-c567aeb2b35e",
+        "followUpType": "safety_check"
+    },
+    "priority": 12
+}
+
+### Test SOS Voice Command that should trigger notifications
+# This should create an alert AND send notifications to trusted contacts and nearby responders
+POST {{baseUrl}}/sos/voice-command
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "audioUrl": "https://res.cloudinary.com/dhb8x5ucj/video/upload/v1751576210/report_evidence/cysdhptvrwgfbk94ghqq.wav",
+    "location": {
+        "latitude": 23.8103,
+        "longitude": 90.4125,
+        "address": "Dhaka, Bangladesh"
+    }
+}
+
+### Test SOS Text Command that should trigger notifications  
+# This should create an alert AND send notifications to trusted contacts and nearby responders
+POST {{baseUrl}}/sos/text-command
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "message": "There's an emergency situation here. I need help immediately!",
+    "keyword": "help",
+    "location": {
+        "latitude": 23.8103,
+        "longitude": 90.4125,
+        "address": "Dhaka University Campus"
+    }
+}
+
+### Expected Response Examples
+
+### GET /notifications Response
+###
+# {
+#   "success": true,
+#   "message": "Notifications retrieved successfully",
+#   "notifications": [
+#     {
+#       "id": 1,
+#       "userId": "38ea8e59-3775-4102-9df5-10437583c5f3",
+#       "type": "EMERGENCY_NEARBY",
+#       "channel": "IN_APP",
+#       "title": "🚨 Emergency Alert Nearby",
+#       "message": "Emergency alert 2.5 km away...",
+#       "payload": { ... },
+#       "priority": 15,
+#       "status": "PENDING",
+#       "createdAt": "2025-01-05T15:30:00",
+#       "sentAt": null,
+#       "readAt": null
+#     }
+#   ],
+#   "totalCount": 5,
+#   "unreadCount": 3
+# }
+
+### GET /notifications/count Response
+###
+# {
+#   "success": true,
+#   "unreadCount": 3
+# }
+
+### POST /notifications/mark-read Response
+###
+# {
+#   "success": true,
+#   "message": "Notification marked as read successfully"
+# }
+
+### POST /notifications/mark-all-read Response
+###
+# {
+#   "success": true,
+#   "message": "All notifications marked as read successfully",
+#   "markedCount": 3
+# }

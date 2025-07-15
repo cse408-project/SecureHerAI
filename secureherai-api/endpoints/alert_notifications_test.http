@@ -1,0 +1,327 @@
+### Alert Notifications Test - Get All Notifications for Specific Alert
+### This endpoint shows ALL notifications for a specific alert (both in-app and email)
+
+@baseUrl = http://localhost:8080/api
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI2YTU5NjE0Yi04MDY3LTQxYmMtODhjNi1kODAyNWRlNzk2OGEiLCJlbWFpbCI6InNvbmlha2hhdHVuOTQzNThAZ21haWwuY29tIiwicm9sZSI6IlJFU1BPTkRFUiIsImlhdCI6MTc1MjM1MDI5NSwiZXhwIjoxNzUzMjE0Mjk1fQ.yelJx2esOCl1kQG0uIekUyCTMrEAPJ18FmaV8gSjCeg
+
+### Step 1: First, trigger an SOS alert to get an alertId
+POST {{baseUrl}}/sos/text-command
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "keyword": "help emergency",
+    "location": {
+        "latitude": 23.8103,
+        "longitude": 90.4125,
+        "address": "Dhaka University Campus, Dhaka"
+    }
+}
+
+### Expected Response: 
+### {
+###   "success": true,
+###   "message": "SOS alert created successfully",
+###   "alert": {
+###     "id": "a8bbcb13-6cea-4542-afbf-aae499aaad9b",  <- COPY THIS ALERT ID
+###     ...
+###   }
+### }
+
+###
+
+### Step 2: Get ALL notifications for the specific alert
+### Replace {alertId} with the actual alert ID from Step 1
+GET {{baseUrl}}/notifications/alert/ee863535-0e7b-4aa4-ab03-f506ebaf41e2
+Authorization: Bearer {{authToken}}
+
+###
+{
+  "summary": {
+    "totalNotifications": 5,
+    "emailNotifications": 3,
+    "inAppNotifications": 2,
+    "statusCounts": {
+      "SENT": 2
+    },
+    "trustedContacts": 3,
+    "batchCounts": {
+      "1": 2
+    },
+    "alertId": "ee863535-0e7b-4aa4-ab03-f506ebaf41e2",
+    "respondersNotified": 2,
+    "emailsSent": 2
+  },
+  "emailNotifications": [
+    {
+      "contactId": "143fb0d2-ae9a-4bd9-acec-370cc081e6b7",
+      "contactEmail": null,
+      "contactName": "Bob Wilson(ar)",
+      "channel": "PHONE_ONLY",
+      "sentAt": "2025-07-12T20:45:38.527001",
+      "contactPhone": "+8801555555555",
+      "relationship": "colleague",
+      "type": "EMERGENCY_TRUSTED_CONTACT",
+      "title": "\uD83D\uDEA8 Emergency Alert - Immediate Attention Required",
+      "message": "Emergency alert from Bob Wilson(ar). Please contact them immediately at +8801555555555 or go to their location.",
+      "status": "NO_EMAIL_ADDRESS"
+    },
+    {
+      "contactId": "f51ea0d9-0a01-4e2f-bf14-3147326b6963",
+      "contactEmail": "john.doe@example.com",
+      "contactName": "John Doe (ar)",
+      "channel": "EMAIL",
+      "sentAt": "2025-07-12T20:45:38.527001",
+      "contactPhone": "+8801712345678",
+      "relationship": "friend",
+      "type": "EMERGENCY_TRUSTED_CONTACT",
+      "title": "\uD83D\uDEA8 Emergency Alert - Immediate Attention Required",
+      "message": "Emergency alert from John Doe (ar). Please contact them immediately at +8801712345678 or go to their location.",
+      "status": "EMAIL_SENT"
+    },
+    {
+      "contactId": "6f4dd46c-1038-40d5-a4b4-c6cc66e8948b",
+      "contactEmail": "jane.smith@example.com",
+      "contactName": "Jane Smith(ar)",
+      "channel": "EMAIL",
+      "sentAt": "2025-07-12T20:45:38.527001",
+      "contactPhone": "+8801987654321",
+      "relationship": "family",
+      "type": "EMERGENCY_TRUSTED_CONTACT",
+      "title": "\uD83D\uDEA8 Emergency Alert - Immediate Attention Required",
+      "message": "Emergency alert from Jane Smith(ar). Please contact them immediately at +8801987654321 or go to their location.",
+      "status": "EMAIL_SENT"
+    }
+  ],
+  "inAppNotifications": [
+    {
+      "id": 5,
+      "userId": "9a1ffc25-0900-4e4d-be55-1eda075d3ace",
+      "type": "EMERGENCY_NEARBY",
+      "channel": "IN_APP",
+      "title": "\uD83D\uDEA8 Emergency Alert - Immediate Response Needed",
+      "message": "Emergency alert 179769313486231570000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.00km away. Location: Dhaka, Bangladesh. Please respond within 1 hour if available. Batch 1.",
+      "payload": {
+        "address": "Dhaka, Bangladesh",
+        "alertId": "ee863535-0e7b-4aa4-ab03-f506ebaf41e2",
+        "distance": 179769313486231570000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+        "latitude": 23.8103,
+        "expiresAt": [
+          2025,
+          7,
+          12,
+          21,
+          45,
+          36,
+          348998377
+        ],
+        "longitude": 90.4125,
+        "batchNumber": 1,
+        "triggeredAt": null,
+        "alertMessage": "There's an emergency situation here.",
+        "responderType": "POLICE",
+        "triggerMethod": "text",
+        "audioRecording": null
+      },
+      "priority": 15,
+      "status": "SENT",
+      "createdAt": "2025-07-12T20:45:38.527001",
+      "sentAt": "2025-07-12T20:45:41.643793",
+      "readAt": null
+    },
+    {
+      "id": 6,
+      "userId": "6a59614b-8067-41bc-88c6-d8025de7968a",
+      "type": "EMERGENCY_NEARBY",
+      "channel": "IN_APP",
+      "title": "\uD83D\uDEA8 Emergency Alert - Immediate Response Needed",
+      "message": "Emergency alert 179769313486231570000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.00km away. Location: Dhaka, Bangladesh. Please respond within 1 hour if available. Batch 1.",
+      "payload": {
+        "address": "Dhaka, Bangladesh",
+        "alertId": "ee863535-0e7b-4aa4-ab03-f506ebaf41e2",
+        "distance": 179769313486231570000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+        "latitude": 23.8103,
+        "expiresAt": [
+          2025,
+          7,
+          12,
+          21,
+          45,
+          41,
+          649044451
+        ],
+        "longitude": 90.4125,
+        "batchNumber": 1,
+        "triggeredAt": [
+          2025,
+          7,
+          12,
+          20,
+          45,
+          37,
+          466518000
+        ],
+        "alertMessage": "There's an emergency situation here.",
+        "responderType": "MEDICAL",
+        "triggerMethod": "text",
+        "audioRecording": null
+      },
+      "priority": 15,
+      "status": "SENT",
+      "createdAt": "2025-07-12T20:45:41.650996",
+      "sentAt": "2025-07-12T20:45:41.655122",
+      "readAt": null
+    }
+  ],
+  "success": true,
+  "alertId": "ee863535-0e7b-4aa4-ab03-f506ebaf41e2",
+  "message": "All notifications for alert retrieved successfully"
+}
+
+### Expected Response Format:
+### {
+###   "success": true,
+###   "message": "All notifications for alert retrieved successfully",
+###   "alertId": "a8bbcb13-6cea-4542-afbf-aae499aaad9b",
+###   "summary": {
+###     "totalNotifications": 5,      // Total of both types
+###     "inAppNotifications": 2,      // Sent to responders
+###     "emailNotifications": 3,      // Sent to trusted contacts
+###     "trustedContacts": 3,         // Number of trusted contacts
+###     "respondersNotified": 2,      // Number of responders notified
+###     "emailsSent": 2,             // Actual emails sent (contacts with email addresses)
+###     "statusCounts": {
+###       "SENT": 2,
+###       "PENDING": 0,
+###       "FAILED": 0
+###     },
+###     "batchCounts": {
+###       "1": 2                      // Batch 1 had 2 notifications
+###     }
+###   },
+###   "inAppNotifications": [
+###     {
+###       "id": 4,
+###       "userId": "responder-user-id",
+###       "type": "EMERGENCY_NEARBY",
+###       "channel": "IN_APP",
+###       "title": "🚨 Emergency Alert Nearby",
+###       "status": "SENT",
+###       "batchNumber": 1,
+###       "expiresAt": "2025-07-12T21:00:02",
+###       ...
+###     }
+###   ],
+###   "emailNotifications": [
+###     {
+###       "contactId": "f51ea0d9-0a01-4e2f-bf14-3147326b6963",
+###       "contactName": "John Doe (ar)",
+###       "contactPhone": "+8801712345678",
+###       "contactEmail": "john.doe@example.com",
+###       "relationship": "friend",
+###       "type": "EMERGENCY_TRUSTED_CONTACT",
+###       "channel": "EMAIL",
+###       "status": "EMAIL_SENT",
+###       "title": "🚨 Emergency Alert - Immediate Attention Required",
+###       "message": "Emergency alert from John Doe (ar). Please contact them immediately...",
+###       "sentAt": "2025-07-12T20:00:02.036062"
+###     },
+###     {
+###       "contactId": "6f4dd46c-1038-40d5-a4b4-c6cc66e8948b",
+###       "contactName": "Jane Smith(ar)",
+###       "contactPhone": "+8801987654321",
+###       "contactEmail": "jane.smith@example.com",
+###       "relationship": "family",
+###       "type": "EMERGENCY_TRUSTED_CONTACT",
+###       "channel": "EMAIL",
+###       "status": "EMAIL_SENT"
+###     },
+###     {
+###       "contactId": "143fb0d2-ae9a-4bd9-acec-370cc081e6b7",
+###       "contactName": "Bob Wilson(ar)",
+###       "contactPhone": "+8801555555555",
+###       "contactEmail": null,
+###       "relationship": "colleague",
+###       "type": "EMERGENCY_TRUSTED_CONTACT",
+###       "channel": "PHONE_ONLY",
+###       "status": "NO_EMAIL_ADDRESS"
+###     }
+###   ]
+### }
+
+###
+
+### Step 3: Test with a different alert ID (should return different results)
+GET {{baseUrl}}/notifications/alert/16c1013c-da1a-415e-8ec6-bc76873f4386
+Authorization: Bearer {{authToken}}
+
+###
+
+### Step 4: Test with invalid alert ID (should return 400 error)
+GET {{baseUrl}}/notifications/alert/invalid-uuid-format
+Authorization: Bearer {{authToken}}
+
+### Expected: 400 Bad Request with "Invalid alert ID format"
+
+###
+
+### Step 5: Test with non-existent alert ID (should return empty results)
+GET {{baseUrl}}/notifications/alert/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{authToken}}
+
+### Expected: 200 OK but with empty notifications arrays
+
+###
+
+### Step 6: Test without authentication (should return 401 error)
+GET {{baseUrl}}/notifications/alert/a8bbcb13-6cea-4542-afbf-aae499aaad9b
+
+### Expected: 401 Unauthorized
+
+###
+
+### Step 7: Trigger another SOS alert and immediately check its notifications
+POST {{baseUrl}}/sos/voice-command
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "audioUrl": "https://example.com/emergency-audio.wav",
+    "location": {
+        "latitude": 23.7275,
+        "longitude": 90.4069,
+        "address": "Gulshan, Dhaka"
+    }
+}
+
+### Then immediately check the new alert's notifications
+### (Replace with the new alert ID from the response above)
+GET {{baseUrl}}/notifications/alert/NEW_ALERT_ID_HERE
+Authorization: Bearer {{authToken}}
+
+###
+### What This Endpoint Shows You:
+###
+### ✅ IN-APP NOTIFICATIONS (to responders):
+### - Which responders were notified
+### - Batch numbers and TTL information
+### - Status (SENT, PENDING, FAILED)
+### - Distance and responder type
+### - Expiration times
+###
+### ✅ EMAIL NOTIFICATIONS (to trusted contacts):
+### - Which trusted contacts were contacted
+### - Email addresses (if available)
+### - Status (EMAIL_SENT or NO_EMAIL_ADDRESS)
+### - Contact relationship and phone numbers
+### - When emails were sent
+###
+### ✅ SUMMARY STATISTICS:
+### - Total notifications sent
+### - Count by type (in-app vs email)
+### - Status distribution
+### - Batch information for TTL tracking
+### - Success rates for email delivery
+###
+### This gives you complete visibility into where every alert notification went!
+###

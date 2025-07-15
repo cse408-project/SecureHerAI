@@ -113,6 +113,29 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
     
+    @PostMapping("/google/validate-token")
+    public ResponseEntity<Object> validateGoogleToken(@RequestBody Map<String, String> request) {
+        try {
+            String token = request.get("token");
+            if (token == null || token.isEmpty()) {
+                return ResponseEntity.badRequest()
+                    .body(new AuthResponse.Error("Token is required"));
+            }
+            
+            Object response = authService.validateGoogleToken(token);
+            
+            if (response instanceof AuthResponse.Error) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            }
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new AuthResponse.Error("Token validation failed"));
+        }
+    }
+    
     @DeleteMapping("/delete-account")
     public ResponseEntity<Object> deleteAccount(@Valid @RequestBody AuthRequest.DeleteAccount request, 
                                                @RequestHeader("Authorization") String authHeader) {

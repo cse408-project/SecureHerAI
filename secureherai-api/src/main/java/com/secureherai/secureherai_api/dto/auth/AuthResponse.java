@@ -56,24 +56,6 @@ public class AuthResponse {
         public void setError(String error) { this.error = error; }
     }
     
-    // Complete Profile Response
-    public static class CompleteProfile {
-        private boolean success;
-        private String token;
-        private String message;
-        
-        public CompleteProfile() {}
-        
-        public boolean isSuccess() { return success; }
-        public void setSuccess(boolean success) { this.success = success; }
-        
-        public String getToken() { return token; }
-        public void setToken(String token) { this.token = token; }
-        
-        public String getMessage() { return message; }
-        public void setMessage(String message) { this.message = message; }
-    }
-    
     // Profile Response
     public static class Profile {
         private boolean success = true;
@@ -95,7 +77,7 @@ public class AuthResponse {
             private String phoneNumber;
             private String profilePicture;
             private LocalDate dateOfBirth;
-            private NotificationPreferences notificationPreferences;
+            private UserSettings settings;
             private String role;
             // Responder-specific fields (only populated if role is RESPONDER)
             private ResponderInfo responderInfo;
@@ -111,7 +93,7 @@ public class AuthResponse {
                 this.phoneNumber = phoneNumber;
                 this.profilePicture = profilePicture;
                 this.dateOfBirth = dateOfBirth;
-                this.notificationPreferences = new NotificationPreferences(emailAlerts, smsAlerts, pushNotifications);
+                this.settings = new UserSettings(emailAlerts, smsAlerts, pushNotifications, "help");
             }
 
             // Constructor with role
@@ -136,8 +118,8 @@ public class AuthResponse {
             public void setProfilePicture(String profilePicture) { this.profilePicture = profilePicture; }
             public LocalDate getDateOfBirth() { return dateOfBirth; }
             public void setDateOfBirth(LocalDate dateOfBirth) { this.dateOfBirth = dateOfBirth; }
-            public NotificationPreferences getNotificationPreferences() { return notificationPreferences; }
-            public void setNotificationPreferences(NotificationPreferences notificationPreferences) { this.notificationPreferences = notificationPreferences; }
+            public UserSettings getSettings() { return settings; }
+            public void setSettings(UserSettings settings) { this.settings = settings; }
             public String getRole() { return role; }
             public void setRole(String role) { this.role = role; }
             public ResponderInfo getResponderInfo() { return responderInfo; }
@@ -146,6 +128,10 @@ public class AuthResponse {
             public static class ResponderInfo {
                 private String responderType;
                 private String badgeNumber;
+                private String branchName;
+                private String address;
+                private java.math.BigDecimal currentLatitude;
+                private java.math.BigDecimal currentLongitude;
                 private String status;
                 private boolean isActive;
                 private LocalDateTime lastStatusUpdate;
@@ -161,11 +147,33 @@ public class AuthResponse {
                     this.lastStatusUpdate = lastStatusUpdate;
                 }
 
+                public ResponderInfo(String responderType, String badgeNumber, String branchName, String address,
+                                   java.math.BigDecimal currentLatitude, java.math.BigDecimal currentLongitude,
+                                   String status, boolean isActive, LocalDateTime lastStatusUpdate) {
+                    this.responderType = responderType;
+                    this.badgeNumber = badgeNumber;
+                    this.branchName = branchName;
+                    this.address = address;
+                    this.currentLatitude = currentLatitude;
+                    this.currentLongitude = currentLongitude;
+                    this.status = status;
+                    this.isActive = isActive;
+                    this.lastStatusUpdate = lastStatusUpdate;
+                }
+
                 // Getters and Setters
                 public String getResponderType() { return responderType; }
                 public void setResponderType(String responderType) { this.responderType = responderType; }
                 public String getBadgeNumber() { return badgeNumber; }
                 public void setBadgeNumber(String badgeNumber) { this.badgeNumber = badgeNumber; }
+                public String getBranchName() { return branchName; }
+                public void setBranchName(String branchName) { this.branchName = branchName; }
+                public String getAddress() { return address; }
+                public void setAddress(String address) { this.address = address; }
+                public java.math.BigDecimal getCurrentLatitude() { return currentLatitude; }
+                public void setCurrentLatitude(java.math.BigDecimal currentLatitude) { this.currentLatitude = currentLatitude; }
+                public java.math.BigDecimal getCurrentLongitude() { return currentLongitude; }
+                public void setCurrentLongitude(java.math.BigDecimal currentLongitude) { this.currentLongitude = currentLongitude; }
                 public String getStatus() { return status; }
                 public void setStatus(String status) { this.status = status; }
                 public boolean isActive() { return isActive; }
@@ -173,25 +181,33 @@ public class AuthResponse {
                 public LocalDateTime getLastStatusUpdate() { return lastStatusUpdate; }
                 public void setLastStatusUpdate(LocalDateTime lastStatusUpdate) { this.lastStatusUpdate = lastStatusUpdate; }
             }
+        }
 
-            public static class NotificationPreferences {
-                private boolean emailAlerts;
-                private boolean smsAlerts;
-                private boolean pushNotifications;
+        // UserSettings class for profile response
+        public static class UserSettings {
+            private boolean emailAlerts;
+            private boolean smsAlerts;
+            private boolean pushNotifications;
+            private String sosKeyword;
 
-                public NotificationPreferences(boolean emailAlerts, boolean smsAlerts, boolean pushNotifications) {
-                    this.emailAlerts = emailAlerts;
-                    this.smsAlerts = smsAlerts;
-                    this.pushNotifications = pushNotifications;
-                }
+            public UserSettings() {}
 
-                public boolean isEmailAlerts() { return emailAlerts; }
-                public void setEmailAlerts(boolean emailAlerts) { this.emailAlerts = emailAlerts; }
-                public boolean isSmsAlerts() { return smsAlerts; }
-                public void setSmsAlerts(boolean smsAlerts) { this.smsAlerts = smsAlerts; }
-                public boolean isPushNotifications() { return pushNotifications; }
-                public void setPushNotifications(boolean pushNotifications) { this.pushNotifications = pushNotifications; }
+            public UserSettings(boolean emailAlerts, boolean smsAlerts, boolean pushNotifications, String sosKeyword) {
+                this.emailAlerts = emailAlerts;
+                this.smsAlerts = smsAlerts;
+                this.pushNotifications = pushNotifications;
+                this.sosKeyword = sosKeyword;
             }
+
+            // Getters and Setters
+            public boolean isEmailAlerts() { return emailAlerts; }
+            public void setEmailAlerts(boolean emailAlerts) { this.emailAlerts = emailAlerts; }
+            public boolean isSmsAlerts() { return smsAlerts; }
+            public void setSmsAlerts(boolean smsAlerts) { this.smsAlerts = smsAlerts; }
+            public boolean isPushNotifications() { return pushNotifications; }
+            public void setPushNotifications(boolean pushNotifications) { this.pushNotifications = pushNotifications; }
+            public String getSosKeyword() { return sosKeyword; }
+            public void setSosKeyword(String sosKeyword) { this.sosKeyword = sosKeyword; }
         }
     }
 }

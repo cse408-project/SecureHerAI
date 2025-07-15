@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.secureherai.secureherai_api.config.TestSecurityConfig;
 import com.secureherai.secureherai_api.dto.auth.AuthRequest;
 import com.secureherai.secureherai_api.dto.auth.AuthResponse;
-import com.secureherai.secureherai_api.dto.user.CompleteProfileRequest;
 import com.secureherai.secureherai_api.service.JwtService;
 import com.secureherai.secureherai_api.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -174,65 +173,5 @@ class UserControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Phone number already in use"));
-    }
-
-    @Test
-    void completeProfile_WithValidData_ReturnsSuccess() throws Exception {
-        // Arrange
-        when(jwtService.isTokenValid(validToken)).thenReturn(true);
-        when(jwtService.extractSubject(validToken)).thenReturn(testUserId.toString());
-        
-        CompleteProfileRequest request = new CompleteProfileRequest();
-        request.setDateOfBirth(LocalDate.of(1990, 1, 1));
-        request.setPhoneNumber("+1234567890");
-        
-        AuthResponse.Success successResponse = new AuthResponse.Success("Profile completed successfully");
-        when(userService.completeProfile(any(UUID.class), any(CompleteProfileRequest.class)))
-                .thenReturn(successResponse);
-
-        // Act & Assert
-        mockMvc.perform(post("/api/user/complete-profile")
-                .header("Authorization", "Bearer " + validToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
-    }
-
-    @Test
-    void completeProfile_WithInvalidToken_ReturnsUnauthorized() throws Exception {
-        // Arrange
-        when(jwtService.isTokenValid(anyString())).thenReturn(false);
-        
-        CompleteProfileRequest request = new CompleteProfileRequest();
-        request.setPhoneNumber("+1234567890");
-        request.setDateOfBirth(LocalDate.of(1990, 1, 1)); // Provide valid data so validation passes
-
-        // Act & Assert
-        mockMvc.perform(post("/api/user/complete-profile")
-                .header("Authorization", "Bearer invalid.token")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("Invalid or expired token"));
-    }
-
-    @Test
-    void completeProfile_WithServiceError_ReturnsBadRequest() throws Exception {
-        // Arrange
-        when(jwtService.isTokenValid(validToken)).thenReturn(true);
-        when(jwtService.extractSubject(validToken)).thenReturn(testUserId.toString());
-        
-        CompleteProfileRequest request = new CompleteProfileRequest();
-        request.setPhoneNumber("+1234567890");
-        // Deliberately not setting dateOfBirth to trigger validation error
-        
-        // Act & Assert
-        mockMvc.perform(post("/api/user/complete-profile")
-                .header("Authorization", "Bearer " + validToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").exists()); // Just check that error field exists
     }
 }

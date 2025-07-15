@@ -35,6 +35,8 @@ public class SOSService {
     
     private final AlertRepository alertRepository;
     private final AzureSpeechService azureSpeechService;
+    private final NotificationService notificationService;
+    private final SettingsService settingsService;
     
     // Default SOS keywords
     private static final List<String> DEFAULT_KEYWORDS = Arrays.asList("help", "emergency", "sos");
@@ -73,7 +75,7 @@ public class SOSService {
             log.info("Transcribed text: {}", transcribedText);
             
             // Check if any keywords are present in the transcribed text
-            if (containsKeyword(transcribedText)) {
+            if (containsKeyword(transcribedText, userId)) {
                 // Save the audio file to a persistent location
                 String audioUrl = saveAudioFile(audioFile, userId);
                 
@@ -87,8 +89,13 @@ public class SOSService {
                 alert.setAlertMessage(transcribedText);
                 alert.setAudioRecording(audioUrl);
                 
-                // Save and return the alert
-                return alertRepository.save(alert);
+                // Save the alert
+                Alert savedAlert = alertRepository.save(alert);
+                
+                // Send notifications to trusted contacts and nearby responders
+                notificationService.sendSOSAlertNotifications(savedAlert);
+                
+                return savedAlert;
             } else {
                 log.info("No keywords detected in voice command");
                 return null;
@@ -125,7 +132,7 @@ public class SOSService {
         log.info("Transcribed text from URL: {}", transcribedText);
         
         // Check if any default keywords are present in the transcribed text
-        if (containsKeyword(transcribedText)) {
+        if (containsKeyword(transcribedText, userId)) {
             // Create alert
             Alert alert = new Alert();
             alert.setUserId(userId);
@@ -136,8 +143,13 @@ public class SOSService {
             alert.setAlertMessage(transcribedText);
             alert.setAudioRecording(audioUrl); // Use the provided URL directly
             
-            // Save and return the alert
-            return alertRepository.save(alert);
+            // Save the alert
+            Alert savedAlert = alertRepository.save(alert);
+            
+            // Send notifications to trusted contacts and nearby responders
+            notificationService.sendSOSAlertNotifications(savedAlert);
+            
+            return savedAlert;
         } else {
             log.info("No keywords detected in voice command from URL");
             return null;
@@ -145,51 +157,78 @@ public class SOSService {
     }
     
     /**
-     * Process text command and create an alert if the provided keyword is "help"
+     * Process text command and create an alert if the provided keyword matches user's SOS keyword
      *
      * @param userId The user ID from authentication
      * @param message The text message
-     * @param keyword The keyword to check (should be "help")
+     * @param keyword The keyword to check
      * @param location Location information
-     * @return The created alert or null if the keyword is not "help"
+     * @return The created alert or null if the keyword doesn't match
      */
     @Transactional
     public Alert processTextCommand(UUID userId, String message, String keyword, LocationDto location) {
         
         log.info("Processing text command for user: {}", userId);
         
-        // Check if the provided keyword is "help" (case-insensitive)
-        if (keyword != null && keyword.toLowerCase().equals("help")) {
-            // Create alert
-            Alert alert = new Alert();
-            alert.setUserId(userId);
-            alert.setLatitude(location.getLatitude());
-            alert.setLongitude(location.getLongitude());
-            alert.setAddress(location.getAddress());
-            alert.setTriggerMethod("text");
-            alert.setAlertMessage(message);
+        try {
+            // Get user's custom SOS keyword
+            String userSosKeyword = settingsService.getSosKeyword(userId);
             
-            // Save and return the alert
-            return alertRepository.save(alert);
-        } else {
-            log.info("Keyword is not 'help' in text command");
+            // Check if the provided keyword matches the user's SOS keyword (case-insensitive)
+            if (keyword != null && keyword.toLowerCase().equals(userSosKeyword.toLowerCase())) {
+                // Create alert
+                Alert alert = new Alert();
+                alert.setUserId(userId);
+                alert.setLatitude(location.getLatitude());
+                alert.setLongitude(location.getLongitude());
+                alert.setAddress(location.getAddress());
+                alert.setTriggerMethod("text");
+                alert.setAlertMessage(message);
+                
+                // Save the alert
+                Alert savedAlert = alertRepository.save(alert);
+                
+                // Send notifications to trusted contacts and nearby responders
+                notificationService.sendSOSAlertNotifications(savedAlert);
+                
+                return savedAlert;
+            } else {
+                log.info("Keyword '{}' does not match user's SOS keyword '{}' in text command", keyword, userSosKeyword);
+                return null;
+            }
+        } catch (Exception e) {
+            log.error("Error processing text command for user: {}", userId, e);
             return null;
         }
     }
     
     /**
-     * Check if text contains any of the default keywords
+     * Check if text contains any of the default keywords or user's custom keyword
      *
      * @param text The text to check
+     * @param userId The user ID to get custom keyword
      * @return True if any keyword is found, false otherwise
      */
-    private boolean containsKeyword(String text) {
+    private boolean containsKeyword(String text, UUID userId) {
         if (text == null || text.isEmpty()) {
             return false;
         }
         
         String lowercaseText = text.toLowerCase();
-        return DEFAULT_KEYWORDS.stream().anyMatch(lowercaseText::contains);
+        
+        // Check default keywords
+        boolean hasDefaultKeyword = DEFAULT_KEYWORDS.stream().anyMatch(lowercaseText::contains);
+        
+        // Check user's custom keyword
+        try {
+            String userKeyword = settingsService.getSosKeyword(userId);
+            boolean hasUserKeyword = userKeyword != null && lowercaseText.contains(userKeyword.toLowerCase());
+            
+            return hasDefaultKeyword || hasUserKeyword;
+        } catch (Exception e) {
+            log.warn("Error getting user's SOS keyword for user: {}, using default keywords only", userId, e);
+            return hasDefaultKeyword;
+        }
     }
     
     /**

@@ -2,6 +2,9 @@ package com.secureherai.secureherai_api.repository;
 
 import com.secureherai.secureherai_api.entity.TrustedContact;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -22,6 +25,10 @@ public interface TrustedContactRepository extends JpaRepository<TrustedContact, 
     boolean existsByUserIdAndPhone(UUID userId, String phone);
     
     void deleteByIdAndUserId(UUID id, UUID userId);
+    
+    @Modifying
+    @Query("DELETE FROM TrustedContact tc WHERE tc.userId = :userId")
+    void deleteByUserId(@Param("userId") UUID userId);
     
     long countByUserId(UUID userId);
 }

@@ -1,7 +1,7 @@
 ### SecureHerAI Authentication API Tests
 
 @baseUrl = http://localhost:8080/api
-@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI2YTU5NjE0Yi04MDY3LTQxYmMtODhjNi1kODAyNWRlNzk2OGEiLCJlbWFpbCI6InNvbmlha2hhdHVuOTQzNThAZ21haWwuY29tIiwicm9sZSI6IlJFU1BPTkRFUiIsImlhdCI6MTc1MTU3NDQ0OCwiZXhwIjoxNzUyNDM4NDQ4fQ.olCnREUT_HnHJhvZLbG4hekLA0yIDrxaQNj2Ipys1YE
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI2YTU5NjE0Yi04MDY3LTQxYmMtODhjNi1kODAyNWRlNzk2OGEiLCJlbWFpbCI6InNvbmlha2hhdHVuOTQzNThAZ21haWwuY29tIiwicm9sZSI6IlJFU1BPTkRFUiIsImlhdCI6MTc1MjM1MDI5NSwiZXhwIjoxNzUzMjE0Mjk1fQ.yelJx2esOCl1kQG0uIekUyCTMrEAPJ18FmaV8gSjCeg
 
 ### 1. Health Check
 GET {{baseUrl}}/isOk
@@ -101,7 +101,11 @@ Content-Type: application/json
   "dateOfBirth": "1985-03-20",
   "role": "RESPONDER",
   "responderType": "POLICE",
-  "badgeNumber": "POL-0011"
+  "badgeNumber": "POL-0011",
+  "branchName": "Dhaka Metropolitan Police",
+  "address": "Ramna Police Station, Dhaka-1000",
+  "currentLatitude": 23.7465,
+  "currentLongitude": 90.3765
 }
 
 ### 2.3 Register Responder (Medical Professional)
@@ -116,7 +120,11 @@ Content-Type: application/json
   "dateOfBirth": "1980-08-10",
   "role": "RESPONDER",
   "responderType": "MEDICAL",
-  "badgeNumber": "MED-001"
+  "badgeNumber": "MED-001",
+  "branchName": "Dhaka Medical College Hospital",
+  "address": "Dhaka Medical College Hospital, Dhaka-1000",
+  "currentLatitude": 23.7295,
+  "currentLongitude": 90.3972
 }
 
 ### 2.4 Register Responder - Invalid Type (should fail)
@@ -130,7 +138,11 @@ Content-Type: application/json
   "phoneNumber": "+8801712345682",
   "role": "RESPONDER",
   "responderType": "INVALID_TYPE",
-  "badgeNumber": "INV-001"
+  "badgeNumber": "INV-001",
+  "branchName": "Invalid Branch",
+  "address": "Invalid Address",
+  "currentLatitude": 23.7465,
+  "currentLongitude": 90.3765
 }
 
 ### 2.5 Register Responder - Missing Badge Number (should fail)
@@ -229,7 +241,7 @@ Content-Type: application/json
 
 {
   "email": "soniakhatun94358@gmail.com",
-  "loginCode": "077954"
+  "loginCode": "538458"
 }
 
 
@@ -355,7 +367,11 @@ Content-Type: application/json
   "pushNotifications": true,
   "status": "AVAILABLE",
   "responderType": "POLICE",
-  "badgeNumber": "POL-0012"
+  "badgeNumber": "POL-0012",
+  "branchName": "Dhanmondi Police Station",
+  "address": "Dhanmondi 27, Dhaka-1209",
+  "currentLatitude": 23.7461,
+  "currentLongitude": 90.3742
 }
 
 ### Successful Update Response for Responder 
@@ -490,7 +506,11 @@ Content-Type: application/json
   "dateOfBirth": "1985-07-15",
   "role": "RESPONDER",
   "responderType": "POLICE",
-  "badgeNumber": "POL-2023"
+  "badgeNumber": "POL-2023",
+  "branchName": "Gulshan Police Station",
+  "address": "Gulshan Circle-1, Dhaka-1212",
+  "currentLatitude": 23.7925,
+  "currentLongitude": 90.4078
 }
 
 ### 15. Delete Account

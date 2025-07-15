@@ -21,9 +21,10 @@ public class UserService {
     private UserRepository userRepository;
     @Autowired
     private JwtService jwtService;
-
     @Autowired
     private ResponderRepository responderRepository;
+    @Autowired
+    private SettingsService settingsService;
 
     public Object getProfile(UUID userId) {
         
@@ -35,6 +36,9 @@ public class UserService {
         
         User user = userOpt.get();
         
+        // Get user settings
+        com.secureherai.secureherai_api.entity.Settings userSettings = settingsService.getUserSettings(userId);
+        
         AuthResponse.Profile.UserProfile userProfile = new AuthResponse.Profile.UserProfile(
             user.getId().toString(),
             user.getFullName(),
@@ -42,11 +46,20 @@ public class UserService {
             user.getPhone(),
             user.getProfilePicture(),
             user.getDateOfBirth(),
-            user.getEmailAlerts(),
-            user.getSmsAlerts(),
-            user.getPushNotifications(),
+            userSettings.getEmailAlerts(),
+            userSettings.getSmsAlerts(),
+            userSettings.getPushNotifications(),
             user.getRole().toString()
         );
+        
+        // Set the settings directly
+        AuthResponse.Profile.UserSettings settingsDto = new AuthResponse.Profile.UserSettings(
+            userSettings.getEmailAlerts(),
+            userSettings.getSmsAlerts(),
+            userSettings.getPushNotifications(),
+            userSettings.getSosKeyword()
+        );
+        userProfile.setSettings(settingsDto);
 
         // If user is a responder, include responder-specific information
         if (user.getRole() == User.Role.RESPONDER) {
@@ -57,6 +70,10 @@ public class UserService {
                     new AuthResponse.Profile.UserProfile.ResponderInfo(
                         responder.getResponderType().toString(),
                         responder.getBadgeNumber(),
+                        responder.getBranchName(),
+                        responder.getAddress(),
+                        responder.getCurrentLatitude(),
+                        responder.getCurrentLongitude(),
                         responder.getStatus().toString(),
                         responder.getIsActive(),
                         responder.getLastStatusUpdate()
@@ -122,17 +139,14 @@ public class UserService {
             }
         }
         
-        // Update notification preferences if provided
-        if (request.getEmailAlerts() != null) {
-            user.setEmailAlerts(request.getEmailAlerts());
-        }
-        
-        if (request.getSmsAlerts() != null) {
-            user.setSmsAlerts(request.getSmsAlerts());
-        }
-        
-        if (request.getPushNotifications() != null) {
-            user.setPushNotifications(request.getPushNotifications());
+        // Update notification preferences using Settings service if provided
+        if (request.getEmailAlerts() != null || request.getSmsAlerts() != null || request.getPushNotifications() != null) {
+            settingsService.updateNotificationPreferences(
+                userId, 
+                request.getEmailAlerts(), 
+                request.getSmsAlerts(), 
+                request.getPushNotifications()
+            );
         }
         
         // Handle responder-specific updates
@@ -169,91 +183,27 @@ public class UserService {
                 responder.setBadgeNumber(request.getBadgeNumber().trim());
             }
             
+            // Update branch name if provided
+            if (request.getBranchName() != null && !request.getBranchName().trim().isEmpty()) {
+                responder.setBranchName(request.getBranchName().trim());
+            }
+            
+            // Update address if provided
+            if (request.getAddress() != null && !request.getAddress().trim().isEmpty()) {
+                responder.setAddress(request.getAddress().trim());
+            }
+            
+            // Update current location if provided
+            if (request.getCurrentLatitude() != null && request.getCurrentLongitude() != null) {
+                responder.setCurrentLatitude(java.math.BigDecimal.valueOf(request.getCurrentLatitude()));
+                responder.setCurrentLongitude(java.math.BigDecimal.valueOf(request.getCurrentLongitude()));
+            }
+            
             responderRepository.save(responder);
         }
         
         userRepository.save(user);
         
         return new AuthResponse.Success("Profile updated successfully");
-    }
-
-    public Object completeProfile(UUID userId, com.secureherai.secureherai_api.dto.user.CompleteProfileRequest request) {
-        Optional<User> userOpt = userRepository.findById(userId);
-        
-        if (userOpt.isEmpty()) {
-            return new AuthResponse.Error("User not found");
-        }
-        
-        User user = userOpt.get();
-        
-        // Check if profile is already complete
-        if (user.getIsProfileComplete()) {
-            return new AuthResponse.Error("Profile is already complete");
-        }
-        
-        // Update basic user information
-        user.setPhone(request.getPhoneNumber());
-        user.setDateOfBirth(request.getDateOfBirth());
-        
-        // Update role if provided
-        if (request.getRole() != null && !request.getRole().isEmpty()) {
-            try {
-                User.Role role = User.Role.valueOf(request.getRole().toUpperCase());
-                user.setRole(role);
-            } catch (IllegalArgumentException e) {
-                return new AuthResponse.Error("Invalid role: " + request.getRole() + ". Must be USER, RESPONDER, or ADMIN");
-            }
-        }
-        
-        // Save user first to ensure it exists for responder relationship
-        user.setIsProfileComplete(true);
-        // Ensure the user is marked as verified when completing their profile
-        user.setIsVerified(true);
-        user = userRepository.save(user);
-        
-        // Handle responder creation if user role is RESPONDER
-        if (user.getRole() == User.Role.RESPONDER) {
-            // Validate responder fields
-            if (request.getResponderType() == null || request.getResponderType().isEmpty()) {
-                return new AuthResponse.Error("Responder type is required for responder registration");
-            }
-            
-            if (request.getBadgeNumber() == null || request.getBadgeNumber().isEmpty()) {
-                return new AuthResponse.Error("Badge number is required for responder registration");
-            }
-            
-            // Check if badge number already exists
-            if (responderRepository.existsByBadgeNumber(request.getBadgeNumber())) {
-                return new AuthResponse.Error("Badge number already registered");
-            }
-            
-            try {
-                Responder responder = new Responder();
-                responder.setUser(user);
-                responder.setResponderType(Responder.ResponderType.valueOf(request.getResponderType().toUpperCase()));
-                responder.setBadgeNumber(request.getBadgeNumber());
-                responderRepository.save(responder);
-            } catch (IllegalArgumentException e) {
-                return new AuthResponse.Error("Invalid responder type: " + request.getResponderType());
-            } catch (Exception e) {
-                return new AuthResponse.Error("Error creating responder profile: " + e.getMessage());
-            }
-        }
-        
-        // Generate new token with updated profile status and role
-        String newToken = jwtService.generateTokenWithProfileStatus(
-            user.getId(),
-            user.getEmail(),
-            user.getRole().name(),
-            true
-        );
-        
-        // Create response
-        AuthResponse.CompleteProfile response = new AuthResponse.CompleteProfile();
-        response.setSuccess(true);
-        response.setToken(newToken);
-        response.setMessage("Profile completed successfully");
-        
-        return response;
     }
 }
