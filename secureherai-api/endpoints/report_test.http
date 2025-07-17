@@ -1,6 +1,7 @@
 # Incident Report API Testing
 @baseUrl = http://localhost:8080/api
-@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJmODA3YWI5Mi02ZDFmLTRkZWItYWYzOC1mZTkwYTA3NmM1NmIiLCJlbWFpbCI6IjIwMDUwMDlAdWdyYWQuY3NlLmJ1ZXQuYWMuYmQiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc1MTQzMjMzNSwiZXhwIjoxNzUyMjk2MzM1fQ.hsX3pdQET1_pUZxVmPA6gtPu2HX4gI8L4h0HmdaClKE
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI2YTU5NjE0Yi04MDY3LTQxYmMtODhjNi1kODAyNWRlNzk2OGEiLCJlbWFpbCI6InNvbmlha2hhdHVuOTQzNThAZ21haWwuY29tIiwicm9sZSI6IlJFU1BPTkRFUiIsImlhdCI6MTc1MjU4MDYzMywiZXhwIjoxNzUzNDQ0NjMzfQ.JPbfAhDOqCEjw5dm3DzexDp5T6cSMh_DdSpY759Jx1w
+
 ### Test Authentication - Check if token is valid
 GET {{baseUrl}}/user/profile
 Authorization: Bearer {{authToken}}
@@ -398,6 +399,19 @@ Authorization: Bearer {{authToken}}
   ],
   "error": null
 }
+
+
+### 
+GET {{baseUrl}}/report/user-reports/time
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "start": "2025-07-16T05:52:41.999770",
+  "end": "2025-07-16T05:52:41.999772"
+}
+
+
 
 ###
 

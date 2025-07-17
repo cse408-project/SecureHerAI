@@ -550,6 +550,31 @@ class ApiService {
     }
   }
 
+  async getUserReportsByTime(
+    start: string,
+    end: string
+  ): Promise<UserReportsResponse> {
+    try {
+      console.log("API: Fetching user reports");
+      const response = await fetch(`${API_BASE_URL}/report/user-reports/time`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({ start, end }),
+      });
+
+      const data = await response.json();
+      console.log("API: User reports response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Get user reports error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while fetching reports",
+      };
+    }
+  }
+
   async getReportDetails(reportId: string): Promise<ReportDetailsResponse> {
     try {
       console.log("API: Fetching report details for:", reportId);

@@ -1,5 +1,6 @@
 package com.secureherai.secureherai_api.controller;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -94,6 +95,50 @@ public class ReportController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
             }
             
+        } catch (io.jsonwebtoken.JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ReportResponse.UserReportsResponse(false, null, "Invalid authentication token"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ReportResponse.UserReportsResponse(false, null, "An unexpected error occurred"));
+        }
+    }
+
+    /**
+     * Get user's incident reports by time range
+     * GET /api/report/user-reports/time?start=2023-01-01T00:00:00&end=2023-12-31T23:59:59
+     */
+    @GetMapping("/user-reports/time")
+    public ResponseEntity<ReportResponse.UserReportsResponse> getUserReportsByTime(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam String start,
+            @RequestParam String end) {
+        
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            
+            // Validate token
+            if (!jwtService.isTokenValid(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ReportResponse.UserReportsResponse(false, null, "User not authenticated"));
+            }
+            
+            // Parse the date strings to LocalDateTime
+            LocalDateTime startTime = LocalDateTime.parse(start);
+            LocalDateTime endTime = LocalDateTime.parse(end);
+            
+            UUID userId = jwtService.extractUserId(token);
+            ReportResponse.UserReportsResponse response = reportService.getUserReportsByTime(userId, startTime, endTime);
+            
+            if (response.isSuccess()) {
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            }
+            
+        } catch (java.time.format.DateTimeParseException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ReportResponse.UserReportsResponse(false, null, "Invalid date format. Use ISO format like: 2023-01-01T00:00:00"));
         } catch (io.jsonwebtoken.JwtException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ReportResponse.UserReportsResponse(false, null, "Invalid authentication token"));

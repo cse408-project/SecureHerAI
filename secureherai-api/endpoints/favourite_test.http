@@ -1,0 +1,64 @@
+### Favourite Places Module Tests
+
+### Variables for testing
+@baseUrl = http://localhost:8080/api
+@authToken= eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI2YTU5NjE0Yi04MDY3LTQxYmMtODhjNi1kODAyNWRlNzk2OGEiLCJlbWFpbCI6InNvbmlha2hhdHVuOTQzNThAZ21haWwuY29tIiwicm9sZSI6IlJFU1BPTkRFUiIsImlhdCI6MTc1MjU4MDYzMywiZXhwIjoxNzUzNDQ0NjMzfQ.JPbfAhDOqCEjw5dm3DzexDp5T6cSMh_DdSpY759Jx1w
+
+
+### 1. Add Trusted Contact - Friend
+POST {{baseUrl}}/favourite-place/add
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "favouritePlace": {
+    "placeName": "Home",
+    "imageUrl": "https://res.cloudinary.com/secureherai/image/upload/v1234567890/report_evidence/evidence_1234567890.jpg",
+    "location": {
+        "latitude": "12.3456789",
+        "longitude": "12.3456789",
+        "address": "BUET, Dhaka"
+    }
+  }
+}
+
+### 8. Get All Trusted Contacts
+GET {{baseUrl}}/favourite-place
+Authorization: Bearer {{authToken}}
+
+### 8. Get All Trusted Contacts
+GET {{baseUrl}}/favourite-place/id
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "favId": "8a76fe7a-aee0-49a1-b2c5-a6cb386bf9f8"
+}
+
+### 9. Update Trusted Contact (Replace contactId with actual ID from GET request)
+PUT {{baseUrl}}/favourite-place/update
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "favId":  "8a76fe7a-aee0-49a1-b2c5-a6cb386bf9f8",  
+  "favouritePlace": {
+    "placeName": "Home",
+    "imageUrl": "https://res.cloudinary.com/secureherai/image/upload/v1234567890/report_evidence/evidence_1234567890.jpg",
+    "location": {
+        "latitude": "12.3456789",
+        "longitude": "12.3456789",
+        "address": "BUET"
+    }
+  }
+}
+
+
+### 8. Get All Trusted Contacts
+DELETE {{baseUrl}}/favourite-place/delete
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "favId": "8a76fe7a-aee0-49a1-b2c5-a6cb386bf9f8"
+}

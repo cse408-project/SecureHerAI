@@ -1,10 +1,14 @@
 ### SecureHerAI Authentication API Tests
 
 @baseUrl = http://localhost:8080/api
-@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI2YTU5NjE0Yi04MDY3LTQxYmMtODhjNi1kODAyNWRlNzk2OGEiLCJlbWFpbCI6InNvbmlha2hhdHVuOTQzNThAZ21haWwuY29tIiwicm9sZSI6IlJFU1BPTkRFUiIsImlhdCI6MTc1MTU3NDQ0OCwiZXhwIjoxNzUyNDM4NDQ4fQ.olCnREUT_HnHJhvZLbG4hekLA0yIDrxaQNj2Ipys1YE
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI2YTU5NjE0Yi04MDY3LTQxYmMtODhjNi1kODAyNWRlNzk2OGEiLCJlbWFpbCI6InNvbmlha2hhdHVuOTQzNThAZ21haWwuY29tIiwicm9sZSI6IlJFU1BPTkRFUiIsImlhdCI6MTc1MjU4MDYzMywiZXhwIjoxNzUzNDQ0NjMzfQ.JPbfAhDOqCEjw5dm3DzexDp5T6cSMh_DdSpY759Jx1w
 
 ### 1. Health Check
 GET {{baseUrl}}/isOk
+
+### 6. Get User Profile (Fresh token - valid until May 27, 2025)
+GET {{baseUrl}}/user/profile
+Authorization: Bearer {{authToken}}
 
 ### Google OAuth Authentication Endpoints
 ### 1.1 Get Google OAuth URL
@@ -229,7 +233,7 @@ Content-Type: application/json
 
 {
   "email": "soniakhatun94358@gmail.com",
-  "loginCode": "077954"
+  "loginCode": "227121"
 }
 
 

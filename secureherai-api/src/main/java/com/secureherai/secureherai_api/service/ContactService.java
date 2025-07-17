@@ -25,7 +25,9 @@ public class ContactService {
     private TrustedContactRepository trustedContactRepository;
 
     @Autowired
-    private UserRepository userRepository;    public ContactResponse.GenericResponse addTrustedContact(UUID userId, ContactRequest.AddTrustedContact request) {
+    private UserRepository userRepository;    
+    
+    public ContactResponse.GenericResponse addTrustedContact(UUID userId, ContactRequest.AddTrustedContact request) {
         try {
             // Verify user exists
             Optional<User> userOpt = userRepository.findById(userId);
@@ -79,7 +81,9 @@ public class ContactService {
                     contact.getShareLocation(),
                     contact.getCreatedAt()
                 ))
-                .collect(Collectors.toList());            return new ContactResponse.GetContactsResponse(true, contactInfoList);
+                .collect(Collectors.toList());            
+                
+            return new ContactResponse.GetContactsResponse(true, contactInfoList);
 
         } catch (AuthenticationException e) {
             // Re-throw authentication exceptions to be handled by controller

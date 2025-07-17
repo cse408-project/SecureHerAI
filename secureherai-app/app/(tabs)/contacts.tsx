@@ -218,6 +218,7 @@ export default function ContactsScreen() {
       setIsSubmitting(false);
     }
   };
+  
 
   const handleDeleteContacts = async () => {
     if (selected.length === 0) return;
