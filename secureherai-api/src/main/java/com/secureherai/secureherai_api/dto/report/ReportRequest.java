@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 public class ReportRequest {
-    
+
     // Submit incident report request
     public static class SubmitReport {
         @NotBlank(message = "Incident type is required")
@@ -206,6 +206,8 @@ public class ReportRequest {
             this.evidenceUrl = evidenceUrl;
         }
     }
+
+
     
     // Update report request (comprehensive update for all fields)
     public static class UpdateReport {
@@ -352,4 +354,5 @@ public class ReportRequest {
             this.longitude = longitude;
         }
     }
+    
 }

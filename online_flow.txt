@@ -1,0 +1,23 @@
+entity -> repository -> controller -> dto (request, response) -> service -> controller (finish)
+
+erpor http heck korbo 
+http te ontroller dekhe dekhe ami body dibo ,attribute dibo, method er name likhbo
+
+er por frontend er template e ami method gulo call korbo 
+
+frontend:
+
+1.
+class SimpleApiService  ei class er kaj age korbo 
+api call 
+
+
+2. 
+const PlaceForm 
+modal create kore 
+
+3. PlCFORM guloke call korbo 
+SimplePlacesScreen()
+ekhan theke
+
+SimplePlacesScreen e jei handle gulo ache like handleUpdate , delete egulo class Simple service er api guloke call korbe actually

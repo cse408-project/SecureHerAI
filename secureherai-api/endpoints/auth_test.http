@@ -174,7 +174,7 @@ POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "soniakhatun94358@gmail.com",
+  "email": "arimotokika2005025@gmail.com",
   "password": "password123"
 }
 
@@ -228,8 +228,8 @@ POST {{baseUrl}}/auth/verify-login-code
 Content-Type: application/json
 
 {
-  "email": "soniakhatun94358@gmail.com",
-  "loginCode": "077954"
+  "email": "arimotokika2005025@gmail.com",
+  "loginCode": "882319"
 }
 
 
