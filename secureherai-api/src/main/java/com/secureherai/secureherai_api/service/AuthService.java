@@ -21,6 +21,7 @@ import com.secureherai.secureherai_api.repository.IncidentReportRepository;
 import com.secureherai.secureherai_api.repository.NotificationRepository;
 import com.secureherai.secureherai_api.repository.ReportEvidenceRepository;
 import com.secureherai.secureherai_api.repository.ResponderRepository;
+import com.secureherai.secureherai_api.repository.SettingsRepository;
 import com.secureherai.secureherai_api.repository.TrustedContactRepository;
 import com.secureherai.secureherai_api.repository.UserRepository;
 
@@ -46,6 +47,9 @@ public class AuthService {    @Autowired
     
     @Autowired
     private ReportEvidenceRepository reportEvidenceRepository;
+    
+    @Autowired
+    private SettingsRepository settingsRepository;
     
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -500,6 +504,9 @@ public class AuthService {    @Autowired
             if (user.getRole() == User.Role.RESPONDER) {
                 responderRepository.deleteByUserId(user.getId());
             }
+            
+            // 6.5. Delete user settings (they reference user)
+            settingsRepository.deleteByUserId(user.getId());
             
             // 7. Finally delete the user account
             userRepository.delete(user);

@@ -79,56 +79,6 @@ const TimeForm = ({
   </View>
 );
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
-
-class SimpleApiService {
-  private async getHeaders(
-    includeAuth: boolean = false
-  ): Promise<Record<string, string>> {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (includeAuth) {
-      const token = await AsyncStorage.getItem("auth_token");
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
-    }
-
-    return headers;
-  }
-
-  async getUserReportsByTime(
-    start: string,
-    end: string
-  ): Promise<UserReportsResponse> {
-    try {
-      console.log("API: Fetching user reports");
-      const url = new URL(`${API_BASE_URL}/report/user-reports/time`);
-      url.searchParams.append("start", start);
-      url.searchParams.append("end", end);
-
-      const response = await fetch(url.toString(), {
-        method: "GET",
-        headers: await this.getHeaders(true),
-      });
-
-      const data = await response.json();
-      console.log("API: User reports response:", data);
-
-      return data;
-    } catch (error) {
-      console.error("API: Get user reports error:", error);
-      return {
-        success: false,
-        error: "Network error occurred while fetching reports",
-      };
-    }
-  }
-}
-
 export default function ReportsTabScreen() {
   const { user } = useAuth();
   const { showAlert, showConfirmAlert } = useAlert();
@@ -256,24 +206,24 @@ export default function ReportsTabScreen() {
     }
   };
 
-  const sinmpleApiService = new SimpleApiService();
-
   const handleTimeFilter = async () => {
     setIsTimeSubmitting(true);
     try {
       if (
         !timeFilter.start ||
         !timeFilter.end ||
-        new Date(timeFilter.start) >= new Date(timeFilter.end)
+        new Date(timeFilter.start) > new Date(timeFilter.end)
       ) {
         showAlert("Validation Error", "Please enter valid time", "error");
         return;
       }
 
       const start = new Date(timeFilter.start).toISOString();
-      const end = new Date(timeFilter.end).toISOString();
+      const endDate = new Date(timeFilter.end);
+      endDate.setHours(23, 59, 59, 999);
+      const end = endDate.toISOString();
 
-      const response = await sinmpleApiService.getUserReportsByTime(start, end);
+      const response = await apiService.getUserReportsByTime(start, end);
 
       if (response.success && response.reports) {
         setReports(response.reports);

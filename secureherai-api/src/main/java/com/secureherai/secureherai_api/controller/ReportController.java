@@ -1,6 +1,8 @@
 package com.secureherai.secureherai_api.controller;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -124,8 +126,9 @@ public class ReportController {
             }
             
             // Parse the date strings to LocalDateTime
-            LocalDateTime startTime = LocalDateTime.parse(start);
-            LocalDateTime endTime = LocalDateTime.parse(end);
+            // Handle ISO 8601 format like "2025-07-01T00:00:00.000Z"
+            LocalDateTime startTime = parseISODateTime(start);
+            LocalDateTime endTime = parseISODateTime(end);
             
             UUID userId = jwtService.extractUserId(token);
             ReportResponse.UserReportsResponse response = reportService.getUserReportsByTime(userId, startTime, endTime);
@@ -138,7 +141,7 @@ public class ReportController {
             
         } catch (java.time.format.DateTimeParseException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ReportResponse.UserReportsResponse(false, null, "Invalid date format. Use ISO format like: 2023-01-01T00:00:00"));
+                .body(new ReportResponse.UserReportsResponse(false, null, "Invalid date format. Use ISO format like: 2025-07-01T00:00:00.000Z or 2025-07-01T00:00:00"));
         } catch (io.jsonwebtoken.JwtException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ReportResponse.UserReportsResponse(false, null, "Invalid authentication token"));
@@ -525,5 +528,30 @@ public class ReportController {
         return status != null && 
                (status.equals("submitted") || status.equals("under_review") || 
                 status.equals("resolved") || status.equals("closed"));
+    }
+    
+    /**
+     * Parse ISO 8601 date string to LocalDateTime
+     * Handles formats like "2025-07-01T00:00:00.000Z" and "2025-07-01T00:00:00"
+     */
+    private LocalDateTime parseISODateTime(String dateStr) {
+        try {
+            // Try parsing as ISO instant first (with Z timezone)
+            if (dateStr.endsWith("Z") || dateStr.contains("+") || dateStr.contains("-")) {
+                return OffsetDateTime.parse(dateStr).toLocalDateTime();
+            } else {
+                // Parse as local date-time
+                return LocalDateTime.parse(dateStr);
+            }
+        } catch (Exception e) {
+            // Fallback: try to parse with specific formatters
+            try {
+                // Handle format like "2025-07-01T00:00:00.000Z"
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+                return LocalDateTime.parse(dateStr, formatter);
+            } catch (Exception e2) {
+                throw new java.time.format.DateTimeParseException("Unable to parse date: " + dateStr, dateStr, 0);
+            }
+        }
     }
 }

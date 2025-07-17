@@ -259,7 +259,7 @@ public class ReportService {
                 .collect(Collectors.toList());
 
             reportSummaries = reportSummaries.stream()
-                .filter(report -> report.getCreatedAt().isEqualOrAfter(start) && report.getCreatedAt().isEqualOrBefore(end))
+                .filter(report -> report.getCreatedAt().isAfter(start) && report.getCreatedAt().isBefore(end))
                 .collect(Collectors.toList());
             
             return new ReportResponse.UserReportsResponse(true, reportSummaries, null);
