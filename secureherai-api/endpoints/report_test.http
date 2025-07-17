@@ -456,6 +456,12 @@ Authorization: Bearer {{authToken}}
 }
 ###
 
+GET {{{{baseUrl}}}}/report/report_by_time
+Authorization: Bearer {{authToken}}
+
+
+
+  @GetMapping("/report_by_time")
 ### Search Reports - Public Reports Special Query
 GET {{baseUrl}}/report/search?query=public-reports
 Authorization: Bearer {{authToken}}

@@ -1,0 +1,244 @@
+
+@baseUrl = http://localhost:8080/api
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI5YjBmZjlmNC04NzUxLTQyN2ItOWI5NC0yYjJiYzlhZGQxMDciLCJlbWFpbCI6ImFyaW1vdG9raWthMjAwNTAyNUBnbWFpbC5jb20iLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc1MjU4Njc2NiwiZXhwIjoxNzUzNDUwNzY2fQ.9K1f34c1TfHIO2CQCNCimzz-b_cFu5mqXF_brFPeN2c
+
+### Test Authentication - Check if token is valid
+GET {{baseUrl}}/user/profile
+Authorization: Bearer {{authToken}}
+
+### Test Health Check (No auth required)
+GET {{baseUrl}}/isOk
+
+###
+POST {{baseUrl}}/favorite_place/add
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+    "place_info": {
+      "placeName":"Hall",
+      "latitude":"80",
+      "longitude":"80",
+      "address":"BUET",
+      "img_url":"ddei"
+
+    }
+   
+}
+###
+{
+  "success": true,
+  "message": " FavoritePlace added successfully.",
+  "error": null
+}
+
+
+###
+PUT {{baseUrl}}/favorite_place/update
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+
+    "place_id": "bc90d30c-5aa8-49f7-b444-fb397e348552",
+
+    "place_info": {
+      "placeName":"Home",
+      "latitude":"80",
+      "longitude":"80",
+      "address":"BUET POlashi",
+      "img_url":"ddei"
+
+    }
+   
+}
+
+###
+GET {{baseUrl}}/favorite_place
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+
+###
+{
+  "success": true,
+  "favoritePlaces": [
+    {
+      "id": "cf5ecbfc-523d-40fd-8bc4-f99d2694386e",
+      "placeName": "Hall",
+      "longitude": 80.00,
+      "latitude": 80.00,
+      "address": "BUET",
+      "img_url": "ddei",
+      "created_at": "2025-07-15T13:40:23.119396"
+    }
+  ]
+}
+
+
+
+###
+
+DELETE  {{baseUrl}}/favorite_place/delete
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+ "place_id":"6b5c8746-9b74-456e-8d93-c35d862d0db8"
+   
+}
+
+
+
+{
+  "success": true,
+  "message": " FavoritePlace deleted successfully.",
+  "error": null
+}
+
+
+###
+GET  {{baseUrl}}/favorite_place/get_one
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+ "place_id": "bc90d30c-5aa8-49f7-b444-fb397e348552"
+   
+}
+
+
+
+### Submit Report with Alert ID
+POST {{baseUrl}}/report/submit
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "incidentType": "theft",
+  "description": "My phone was snatched while I was walking near the market area.",
+  "location": {
+    "latitude": "23.8103",
+    "longitude": "90.4125"
+  },
+  "address": "New Market, Dhaka",
+  "incidentTime": "2023-10-01T14:15:00",
+  "visibility": "officials_only",
+  "anonymous": true,
+  "alertId": "550e8400-e29b-41d4-a716-446655440000"
+}
+### response 400
+{
+  "success": false,
+  "message": null,
+  "error": "An incident report already exists for this alert",
+  "reportId": null
+}
+###
+
+### Get Report Details
+GET {{baseUrl}}/report/details?reportId=eb8671f7-dab8-4366-8b6b-bdc761beede9
+Authorization: Bearer {{authToken}}
+###response 200 
+
+{
+  "success": true,
+  "report": {
+    "reportId": "eb8671f7-dab8-4366-8b6b-bdc761beede9",
+    "alertId": "550e8400-e29b-41d4-a716-446655440000",
+    "incidentType": "theft",
+    "description": "My phone was snatched while I was walking near the market area.",
+    "location": {
+      "latitude": 23.810300,
+      "longitude": 90.412500,
+      "address": "New Market, Dhaka"
+    },
+    "address": "New Market, Dhaka",
+    "incidentTime": "2023-10-01T14:15:00",
+    "status": "submitted",
+    "visibility": "private",
+    "anonymous": true,
+    "actionTaken": null,
+    "involvedParties": null,
+    "evidence": [],
+    "createdAt": "2025-06-27T13:59:14.66664",
+    "updatedAt": "2025-06-27T14:01:07.16895"
+  },
+  "error": null
+}
+###
+
+### Upload Evidence
+POST {{baseUrl}}/report/upload-evidence
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "reportId": "9bb5bd98-2286-4688-bab2-9ea348105957",
+  "evidence": [
+    "https://res.cloudinary.com/secureherai/image/upload/v1234567890/report_evidence/evidence_1234567890.jpg",
+    "https://res.cloudinary.com/secureherai/video/upload/v1234567891/report_evidence/evidence_1234567891.mp4"
+  ],
+  "description": "Photos and video evidence taken at the incident location"
+}
+
+###response 200 
+{
+  "success": true,
+  "message": "Evidence uploaded successfully",
+  "error": null,
+  "reportId": null
+}
+###
+
+### Update Report (Comprehensive)
+PUT {{baseUrl}}/report/update
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "reportId": "eb8671f7-dab8-4366-8b6b-bdc761beede9",
+  "description": "Updated: My phone was snatched while I was walking near the market area. The suspect ran towards the main road after the incident.",
+  "location": {
+    "latitude": "23.8105",
+    "longitude": "90.4130"
+  },
+  "address": "New Market Area, Dhaka",
+  "incidentTime": "2023-10-01T14:20:00",
+  "visibility": "public",
+  "anonymous": false,
+  "actionTaken": "Police report filed, CCTV footage requested",
+  "involvedParties": "{\"suspect\": {\"description\": \"Male, approximately 25-30 years old, wearing jeans and dark shirt, fled on foot\"}, \"witnesses\": [{\"description\": \"Shop owner who saw the incident\"}]}"
+}
+
+###response 200
+{
+  "success": true,
+  "message": "Report updated successfully",
+  "error": null,
+  "reportId": null
+}
+###
+
+### Update Report Visibility Only
+PUT {{baseUrl}}/report/update
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "reportId": "eb8671f7-dab8-4366-8b6b-bdc761beede9",
+  "visibility": "private"
+}
+
+###response 200
+
+###
+{
+  "success": true,
+  "message": "Report updated successfully",
+  "error": null,
+  "reportId": null
+}
+###
+
+

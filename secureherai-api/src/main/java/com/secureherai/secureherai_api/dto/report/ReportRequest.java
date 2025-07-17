@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 public class ReportRequest {
-    
+
     // Submit incident report request
     public static class SubmitReport {
         @NotBlank(message = "Incident type is required")
@@ -386,4 +386,5 @@ public class ReportRequest {
             this.longitude = longitude;
         }
     }
+    
 }

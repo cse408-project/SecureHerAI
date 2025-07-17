@@ -9,54 +9,49 @@ import {
   Modal,
   TextInput,
   Switch,
+  Image,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAlert } from "../../context/AlertContext";
-
-// // Emergency favourite-place - static data
-// const emergencyFavouritePlaces = [
-//   { name: "Police", phone: "911", icon: "local-police" as const },
-//   { name: "Ambulance", phone: "911", icon: "medical-services" as const },
-//   { name: "Fire Department", phone: "911", icon: "local-fire-department" as const },
-// ];
+import cloudinaryService from "../../services/cloudinary";
 
 // Relationship options
-const relationshipOptions = [
-  { label: "Select relationship...", value: "" },
-  { label: "Family", value: "Family" },
-  { label: "Friend", value: "Friend" },
-  { label: "Colleague", value: "Colleague" },
-  { label: "Neighbor", value: "Neighbor" },
+const places_options = [
+  { label: "Select place...", value: "" },
+  { label: "Home", value: "Home" },
+  { label: "Office", value: "Office" },
+  { label: "Campus", value: "Campus" },
+  { label: "Work", value: "Work" },
 ];
 
-interface Location {
-    latitude: string;
-    longitude: string;
-    address: string;
+interface PlaceInfo {
+  id: string;
+  placeName: string;
+  longitude: string;
+  latitude: string;
+  address: string;
+  img_url: string;
+  created_at?: string;
 }
 
-// Types
-interface FavouritePlace {
-  favId: string;
+interface CreatPlace {
   placeName: string;
-  location: Location;
-  imageUrl: string;
-  createdAt: string;
-}
-
-interface CreateFavouritePlaceRequest {
-  placeName: string;
-  location: Location;
-  imageUrl: string;
+  latitude: string;
+  longitude: string;
+  address: string;
+  img_url: string;
 }
 
 // API Service - simplified and embedded
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
 class SimpleApiService {
-  private async getHeaders(includeAuth: boolean = false): Promise<Record<string, string>> {
+  private async getHeaders(
+    includeAuth: boolean = false
+  ): Promise<Record<string, string>> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
@@ -71,9 +66,9 @@ class SimpleApiService {
     return headers;
   }
 
-  async getFavouritePlaces() {
+  async getPlaceInfos() {
     try {
-      const response = await fetch(`${API_BASE_URL}/favourite-place`, {
+      const response = await fetch(`${API_BASE_URL}/favorite_place`, {
         method: "GET",
         headers: await this.getHeaders(true),
       });
@@ -83,13 +78,13 @@ class SimpleApiService {
       if (!response.ok) {
         return {
           success: false,
-          error: data.error || data.message || "Failed to fetch favourite-place",
+          error: data.error || data.message || "Failed to fetch Places",
         };
       }
 
       return { success: true, data: data };
     } catch (error) {
-      console.error("API: Error fetching favourite-place:", error);
+      console.error("API: Error fetching Places:", error);
       return {
         success: false,
         error: "Network error. Please check your connection and try again.",
@@ -97,26 +92,28 @@ class SimpleApiService {
     }
   }
 
-  async addFavouritePlace(favouritePlace: CreateFavouritePlaceRequest) {
+  async addfavoritePlace(place_info: CreatPlace) {
     try {
-      const response = await fetch(`${API_BASE_URL}/favourite-place/add`, {
+      console.log("Sending place data:", place_info); // Debug log
+      const response = await fetch(`${API_BASE_URL}/favorite_place/add`, {
         method: "POST",
         headers: await this.getHeaders(true),
-        body: JSON.stringify({ favouritePlace }),
+        body: JSON.stringify({ place_info }),
       });
 
       const data = await response.json();
+      console.log("API response:", data); // Debug log
 
       if (!response.ok) {
         return {
           success: false,
-          error: data.error || data.message || "Failed to add favouritePlace",
+          error: data.error || data.message || "Failed to add place",
         };
       }
 
       return { success: true, data: data };
     } catch (error) {
-      console.error("API: Error adding favouritePlace:", error);
+      console.error("API: Error adding Place:", error);
       return {
         success: false,
         error: "Network error. Please check your connection and try again.",
@@ -124,12 +121,12 @@ class SimpleApiService {
     }
   }
 
-  async updateFavouritePlace(favId: string, favouritePlace: CreateFavouritePlaceRequest) {
+  async updatefavoritePlace(place_id: string, place_info: CreatPlace) {
     try {
-      const response = await fetch(`${API_BASE_URL}/favourite-place/update`, {
+      const response = await fetch(`${API_BASE_URL}/favorite_place/update`, {
         method: "PUT",
         headers: await this.getHeaders(true),
-        body: JSON.stringify({ favId, favouritePlace }),
+        body: JSON.stringify({ place_id, place_info }),
       });
 
       const data = await response.json();
@@ -137,13 +134,13 @@ class SimpleApiService {
       if (!response.ok) {
         return {
           success: false,
-          error: data.error || data.message || "Failed to update favouritePlace",
+          error: data.error || data.message || "Failed to update place",
         };
       }
 
       return { success: true, data: data };
     } catch (error) {
-      console.error("API: Error updating favouritePlace:", error);
+      console.error("API: Error updating place:", error);
       return {
         success: false,
         error: "Network error. Please check your connection and try again.",
@@ -151,12 +148,12 @@ class SimpleApiService {
     }
   }
 
-  async deleteFavouritePlace(favId: string) {
+  async deletefavoritePlace(place_id: string) {
     try {
-      const response = await fetch(`${API_BASE_URL}/favourite-place/delete`, {
+      const response = await fetch(`${API_BASE_URL}/favorite_place/delete`, {
         method: "DELETE",
         headers: await this.getHeaders(true),
-        body: JSON.stringify({ favId }),
+        body: JSON.stringify({ place_id }),
       });
 
       const data = await response.json();
@@ -164,13 +161,13 @@ class SimpleApiService {
       if (!response.ok) {
         return {
           success: false,
-          error: data.error || data.message || "Failed to delete favouritePlace",
+          error: data.error || data.message || "Failed to delete place",
         };
       }
 
       return { success: true, data: data };
     } catch (error) {
-      console.error("API: Error deleting favouritePlace:", error);
+      console.error("API: Error deleting place:", error);
       return {
         success: false,
         error: "Network error. Please check your connection and try again.",
@@ -178,13 +175,12 @@ class SimpleApiService {
     }
   }
 
-
-  async getOneFavouritePlace(favId: string) {
+  async getonefavoritePlace(place_id: string) {
     try {
-      const response = await fetch(`${API_BASE_URL}/favourite-place/id`, {
+      const response = await fetch(`${API_BASE_URL}/favorite_place/get_one`, {
         method: "GET",
         headers: await this.getHeaders(true),
-        body: JSON.stringify({ favId }),
+        body: JSON.stringify({ place_id }),
       });
 
       const data = await response.json();
@@ -192,13 +188,13 @@ class SimpleApiService {
       if (!response.ok) {
         return {
           success: false,
-          error: data.error || data.message || "Failed to get favouritePlace",
+          error: data.error || data.message || "Failed to get place",
         };
       }
 
       return { success: true, data: data };
     } catch (error) {
-      console.error("API: Error geting favouritePlace:", error);
+      console.error("API: Error getting place:", error);
       return {
         success: false,
         error: "Network error. Please check your connection and try again.",
@@ -209,129 +205,187 @@ class SimpleApiService {
 
 const apiService = new SimpleApiService();
 
-// Simple FavouritePlace Form Component - moved outside to prevent re-creation
-const FavouritePlaceForm = ({ 
-  isEdit = false, 
-  onSubmit, 
-  newFavouritePlace, 
-  handleFavouritePlaceChange, 
-  handleFormCancel, 
-  isSubmitting 
-}: { 
-  isEdit?: boolean; 
+// The component accepts the following props:
+
+// isEdit: A boolean that determines whether the form is for editing an existing Place (true) or adding a new one (false). Defaults to false.
+//is edit diya 2 ta  kaj kora jai
+// onSubmit: A callback function that will be triggered when the user submits the form (either to add or update the Place).
+//jkono form submission e ei function kaje lage
+// newPlace: An object that holds the current Place's data. It is used to populate the fields.
+//current place / Place data hold kore
+// handlePlaceUpdate: A function to handle updates to the fields (such as name, phone, email, etc.). This function will be called when the user modifies a field's value.
+//value update korle eita call hoi
+// handleFormCancel: A function that will be called if the user cancels the form (e.g., pressing the "Cancel" button).
+
+// isSubmitting: A boolean that indicates if the form is currently in the process of being submitted, preventing multiple submissions.
+// // Simple Place Form Component - moved outside to prevent re-creation
+const PlaceForm = ({
+  isEdit = false,
+  onSubmit,
+  newPlace,
+  handlePlaceUpdate,
+  handleFormCancel,
+  isSubmitting,
+  onImageUpload,
+  isUploadingImage,
+}: {
+  isEdit?: boolean;
   onSubmit: () => void;
-  newFavouritePlace: CreateFavouritePlaceRequest;
-  handleFavouritePlaceChange: (field: keyof CreateFavouritePlaceRequest | string, value: any) => void;
+  newPlace: CreatPlace;
+  handlePlaceUpdate: (field: keyof CreatPlace, value: any) => void;
   handleFormCancel: () => void;
   isSubmitting: boolean;
+  onImageUpload: () => void;
+  isUploadingImage: boolean;
 }) => (
   <View className="bg-white rounded p-4 m-4 w-full max-w-sm">
     <Text className="text-lg font-bold text-[#67082F] mb-4 text-center">
-      {isEdit ? "Edit FavouritePlace" : "Add FavouritePlace"}
+      {isEdit ? "Update Place" : "Add Place"}
     </Text>
+    {/* //eta moadl er jonno */}
 
-    {/* Name Field */}
+    {/* Name Field
     <View className="mb-3">
       <Text className="text-sm text-gray-700 mb-1">Place Name *</Text>
       <View className="flex-row items-center bg-white border border-gray-300 rounded px-3 py-3">
-        <MaterialIcons name="place" size={20} color="#67082F" />
+      
         <TextInput
           className="flex-1 ml-2 text-gray-900"
-          placeholder="PlaceName"
+          placeholder="Enter place name"
           placeholderTextColor="#9CA3AF"
-          value={newFavouritePlace.placeName}
-          onChangeText={(text) => handleFavouritePlaceChange("placeName", text)}
+          value={newPlace.placeName}
+          onChangeText={(text) => handlePlaceUpdate("placeName", text)}
           autoCapitalize="words"
         />
       </View>
-    </View>
+    </View> */}
 
-    {/* Phone Field */}
+    {/* Relationship Field */}
     <View className="mb-3">
-      <Text className="text-sm text-gray-700 mb-1">Image Url *</Text>
-      <View className="flex-row items-center bg-white border border-gray-300 rounded px-3 py-3">
-        <MaterialIcons name="image" size={20} color="#67082F" />
-        <TextInput
-          className="flex-1 ml-2 text-gray-900"
-          placeholder="person"
-          placeholderTextColor="#9CA3AF"
-          value={newFavouritePlace.imageUrl}
-          onChangeText={(text) => handleFavouritePlaceChange("imageUrl", text)}
-          autoCapitalize="words"
-        />
-      </View>
-    </View>
-
-    {/* Email Field */}
-    <View className="mb-3">
-      <Text className="text-sm text-gray-700 mb-1">Latitude</Text>
-      <View className="flex-row items-center bg-white border border-gray-300 rounded px-3 py-3">
-        <MaterialIcons name="place" size={20} color="#67082F" />
-        <TextInput
-          className="flex-1 ml-2 text-gray-900"
-          placeholder="Latitude"
-          placeholderTextColor="#9CA3AF"
-          value={newFavouritePlace.location.latitude}
-          onChangeText={(text) => handleFavouritePlaceChange("location.latitude", text)}
-          keyboardType="phone-pad"
-        />
-      </View>
-    </View>
-
-    {/* Email Field */}
-    <View className="mb-3">
-      <Text className="text-sm text-gray-700 mb-1">Longitude</Text>
-      <View className="flex-row items-center bg-white border border-gray-300 rounded px-3 py-3">
-        <MaterialIcons name="place" size={20} color="#67082F" />
-        <TextInput
-          className="flex-1 ml-2 text-gray-900"
-          placeholder="Longitude"
-          placeholderTextColor="#9CA3AF"
-          value={newFavouritePlace.location.longitude}
-          onChangeText={(text) => handleFavouritePlaceChange("location.longitude", text)}
-          keyboardType="phone-pad"
-        />
-      </View>
-    </View>
-
-    {/* Name Field */}
-    <View className="mb-3">
-      <Text className="text-sm text-gray-700 mb-1">Address *</Text>
-      <View className="flex-row items-center bg-white border border-gray-300 rounded px-3 py-3">
-        <MaterialIcons name="home" size={20} color="#67082F" />
-        <TextInput
-          className="flex-1 ml-2 text-gray-900"
-          placeholder="Address"
-          placeholderTextColor="#9CA3AF"
-          value={newFavouritePlace.location.address}
-          onChangeText={(text) => handleFavouritePlaceChange("location.address", text)}
-          autoCapitalize="words"
-        />
-      </View>
-    </View>
-
-    {/* Relationship Field
-    <View className="mb-3">
-      <Text className="text-sm text-gray-700 mb-1">Relationship *</Text>
+      <Text className="text-sm text-gray-700 mb-1">Place_name* *</Text>
       <View className="bg-white border border-gray-300 rounded">
         <Picker
-          selectedValue={newFavouritePlace.relationship}
-          onValueChange={(value) => handleFavouritePlaceChange("relationship", value)}
-          style={{ 
+          selectedValue={newPlace.placeName}
+          onValueChange={(value) => handlePlaceUpdate("placeName", value)}
+          style={{
             height: 50,
-            color: '#111827'
+            color: "#111827",
           }}
         >
-          {relationshipOptions.map((option) => (
-            <Picker.Item 
-              key={option.value} 
-              label={option.label} 
-              value={option.value} 
+          {places_options.map((option) => (
+            <Picker.Item
+              key={option.value}
+              label={option.label}
+              value={option.value}
             />
           ))}
         </Picker>
       </View>
-    </View> */}
+    </View>
+
+    {/* Lattitude Field */}
+    <View className="mb-3">
+      <Text className="text-sm text-gray-700 mb-1">Latitude *</Text>
+      <View className="flex-row items-center bg-white border border-gray-300 rounded px-3 py-3">
+        {/* <MaterialIcons name="phone" size={20} color="#67082F" /> */}
+        <TextInput
+          className="flex-1 ml-2 text-gray-900"
+          placeholder="Enter Latitude"
+          placeholderTextColor="#9CA3AF"
+          value={newPlace.latitude}
+          onChangeText={(text) => handlePlaceUpdate("latitude", text)}
+          autoCapitalize="words"
+        />
+      </View>
+    </View>
+
+    {/* Longitude Field */}
+    <View className="mb-3">
+      <Text className="text-sm text-gray-700 mb-1">Longitude *</Text>
+      <View className="flex-row items-center bg-white border border-gray-300 rounded px-3 py-3">
+        {/* <MaterialIcons name="phone" size={20} color="#67082F" /> */}
+        <TextInput
+          className="flex-1 ml-2 text-gray-900"
+          placeholder="Enter Longitude"
+          placeholderTextColor="#9CA3AF"
+          value={newPlace.longitude}
+          onChangeText={(text) => handlePlaceUpdate("longitude", text)}
+          autoCapitalize="words"
+        />
+      </View>
+    </View>
+
+    {/* address Field */}
+    <View className="mb-3">
+      <Text className="text-sm text-gray-700 mb-1">Address *</Text>
+      <View className="flex-row items-center bg-white border border-gray-300 rounded px-3 py-3">
+        {/* <MaterialIcons name="email" size={20} color="#67082F" /> */}
+        <TextInput
+          className="flex-1 ml-2 text-gray-900"
+          placeholder="Enter address name"
+          placeholderTextColor="#9CA3AF"
+          value={newPlace.address}
+          onChangeText={(text) => handlePlaceUpdate("address", text)}
+          autoCapitalize="words"
+        />
+      </View>
+    </View>
+
+    {/* Image Upload Section */}
+    <View className="mb-3">
+      <Text className="text-sm text-gray-700 mb-1">Place Image</Text>
+
+      {/* Current Image Preview */}
+      {newPlace.img_url ? (
+        <View className="mb-2 relative">
+          <Image
+            source={{ uri: newPlace.img_url }}
+            className="w-full h-32 rounded border border-gray-300"
+            resizeMode="cover"
+          />
+          <TouchableOpacity
+            className="absolute top-2 right-2 bg-red-500 rounded-full p-1"
+            onPress={() => handlePlaceUpdate("img_url", "")}
+          >
+            <MaterialIcons name="close" size={16} color="white" />
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View className="h-32 bg-gray-100 rounded border border-gray-300 border-dashed items-center justify-center mb-2">
+          <MaterialIcons name="image" size={40} color="#9CA3AF" />
+          <Text className="text-gray-500 text-sm">No image selected</Text>
+        </View>
+      )}
+
+      {/* Upload Button */}
+      <TouchableOpacity
+        className="bg-[#67082F] rounded py-2 px-4 flex-row items-center justify-center"
+        onPress={onImageUpload}
+        disabled={isUploadingImage}
+      >
+        {isUploadingImage ? (
+          <ActivityIndicator color="white" size="small" />
+        ) : (
+          <>
+            <MaterialIcons name="camera-alt" size={20} color="white" />
+            <Text className="text-white font-medium ml-2">Upload Image</Text>
+          </>
+        )}
+      </TouchableOpacity>
+
+      {/* Manual URL Input */}
+      <View className="mt-2">
+        <Text className="text-xs text-gray-600 mb-1">Or enter image URL:</Text>
+        <TextInput
+          className="bg-white border border-gray-300 rounded px-3 py-2 text-gray-900"
+          placeholder="Enter image URL"
+          placeholderTextColor="#9CA3AF"
+          value={newPlace.img_url}
+          onChangeText={(text) => handlePlaceUpdate("img_url", text)}
+          autoCapitalize="none"
+        />
+      </View>
+    </View>
 
     {/* Action Buttons */}
     <View className="flex-row gap-2">
@@ -361,175 +415,166 @@ const FavouritePlaceForm = ({
   </View>
 );
 
-export default function SimpleFavouritePlacesScreen() {
+export default function SimplePlacesScreen() {
   const { showAlert, showConfirmAlert } = useAlert();
-  const [favouritePlaces, setFavouritePlaces] = useState<FavouritePlace[]>([]);
-  const [showAddFavouritePlace, setShowAddFavouritePlace] = useState(false);
-  const [showEditFavouritePlace, setShowEditFavouritePlace] = useState(false);
-  const [editingFavouritePlace, setEditingFavouritePlace] = useState<FavouritePlace | null>(null);
+  const [PlaceInfos, setPlaceInfos] = useState<PlaceInfo[]>([]);
+  const [showAddPlace, setShowAddPlace] = useState(false);
+  const [showEditPlace, setShowEditPlace] = useState(false);
+  const [editingPlace, setEditingPlace] = useState<PlaceInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [selectionMode, setSelectionMode] = useState(false);
 
-  const [newFavouritePlace, setNewFavouritePlace] = useState<CreateFavouritePlaceRequest>({
+  const [newPlace, setnewPlace] = useState<CreatPlace>({
     placeName: "",
-    location: {
-        latitude: "",
-        longitude: "",
-        address: "",
-    },
-    imageUrl: "",
+    latitude: "",
+    longitude: "",
+    address: "unknown location",
+    img_url: "",
   });
 
-  // Load trusted favourite-place on component mount
+  // Image upload states
+  const [showImageUploadModal, setShowImageUploadModal] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  // Load trusted Places on component mount
   useEffect(() => {
-    loadFavouritePlaces();
+    loadPlaceInfos();
   }, []);
 
-  const loadFavouritePlaces = async () => {
+  const loadPlaceInfos = async () => {
     setIsLoading(true);
     try {
-      const response = await apiService.getFavouritePlaces();
+      const response = await apiService.getPlaceInfos();
+      console.log("inside load");
       if (response.success && response.data) {
-        console.log("FavouritePlaces loaded successfully:", response.data);
-        setFavouritePlaces(response.data.contacts || []);
+        setPlaceInfos(response.data.favoritePlaces || []);
+        // favoritePlaces eta actually getPlaceInfo() er body te ki name response  dey
       } else {
-        showAlert("Error", response.error || "Failed to load favourite-place", "error");
-
+        showAlert("Error", response.error || "Failed to load Places", "error");
       }
     } catch {
-      showAlert("Error", "Failed to load favourite-place", "error");
+      showAlert("Error", "Failed to load Places", "error");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const resetNewFavouritePlace = () => {
-    setNewFavouritePlace({
-        placeName: "",
-        location: {
-            latitude: "",
-            longitude: "",
-            address: "",
-        },
-        imageUrl: "",
+  const resetnewPlace = () => {
+    setnewPlace({
+      placeName: "",
+      latitude: "",
+      longitude: "",
+      address: "unknown location",
+      img_url: "",
     });
   };
 
-  const validateFavouritePlace = () => {
-    if (!newFavouritePlace.placeName.trim()) {
-      showAlert("Validation Error", "Please enter a favouritePlace placeName", "error");
+  const validatePlace = () => {
+    if (!newPlace.placeName.trim()) {
+      showAlert("Validation Error", "Please enter a Place name", "error");
       return false;
     }
 
-    if (!newFavouritePlace.imageUrl.trim()) {
-      showAlert("Validation Error", "Please enter a phone number", "error");
-      return false;
-    }
-
-    // if (!newFavouritePlace.relationship.trim()) {
-    //   showAlert("Validation Error", "Please specify the relationship", "error");
+    // if (!newPlace.longitude.trim()) {
+    //   showAlert("Validation Error", "Please enter a longitude", "error");
     //   return false;
     // }
 
-    // // Basic phone validation
-    // const phoneRegex = /^\+?[\d\s\-\(\)]{10,}$/;
-    // if (!phoneRegex.test(newFavouritePlace.imageUrl.trim())) {
-    //   showAlert("Validation Error", "Please enter a valid phone number", "error");
+    // if (!newPlace.latitude.trim()) {
+    //   showAlert("Validation Error", "Please specify the latitude", "error");
     //   return false;
-    // }
-
-    // // Basic email validation if provided
-    // if (newFavouritePlace.location.latitude && newFavouritePlace.location.latitude.trim()) {
-    //   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    //   if (!emailRegex.test(newFavouritePlace.location.latitude.trim())) {
-    //     showAlert("Validation Error", "Please enter a valid email address", "error");
-    //     return false;
-    //   }
     // }
 
     return true;
   };
 
-  const handleAddFavouritePlace = async () => {
-    if (!validateFavouritePlace()) return;
+  const handleAddPlace = async () => {
+    if (!validatePlace()) return;
 
     setIsSubmitting(true);
     try {
-      const response = await apiService.addFavouritePlace(newFavouritePlace);
+      const response = await apiService.addfavoritePlace(newPlace);
       if (response.success) {
-        showAlert("Success", "FavouritePlace added successfully", "success");
-        resetNewFavouritePlace();
-        setShowAddFavouritePlace(false);
-        loadFavouritePlaces();
+        showAlert("Success", "Place added successfully", "success");
+        resetnewPlace();
+        setShowAddPlace(false);
+        loadPlaceInfos();
       } else {
-        showAlert("Error", response.error || "Failed to add favouritePlace", "error");
+        showAlert("Error", response.error || "Failed to add Place", "error");
       }
     } catch {
-      showAlert("Error", "Failed to add favouritePlace", "error");
+      showAlert("Error", "Failed to add Place", "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleEditFavouritePlace = async () => {
-    if (!editingFavouritePlace) {
-      showAlert("Error", "No favouritePlace selected for editing", "error");
+  const handleEditPlace = async () => {
+    if (!editingPlace) {
+      showAlert("Error", "No Place selected for editing", "error");
       return;
     }
 
-    if (!validateFavouritePlace()) return;
+    if (!validatePlace()) return;
 
     setIsSubmitting(true);
     try {
-      const response = await apiService.updateFavouritePlace(editingFavouritePlace.favId, newFavouritePlace);
+      const response = await apiService.updatefavoritePlace(
+        editingPlace.id,
+        newPlace
+      );
       if (response.success) {
-        showAlert("Success", "FavouritePlace updated successfully", "success");
-        resetNewFavouritePlace();
-        setShowEditFavouritePlace(false);
-        setEditingFavouritePlace(null);
-        loadFavouritePlaces();
+        showAlert("Success", "Place updated successfully", "success");
+        resetnewPlace();
+        setShowEditPlace(false);
+        setEditingPlace(null);
+        loadPlaceInfos();
       } else {
-        showAlert("Error", response.error || "Failed to update favouritePlace", "error");
+        showAlert("Error", response.error || "Failed to update Place", "error");
       }
     } catch (error) {
-      console.error("Error updating favouritePlace:", error);
-      showAlert("Error", "Failed to update favouritePlace", "error");
+      console.error("Error updating Place:", error);
+      showAlert("Error", "Failed to update Place", "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDeleteFavouritePlaces = async () => {
+  const handleDeletePlaces = async () => {
     if (selected.length === 0) return;
 
-    const favouritePlaceNames = selected
-      .map((id) => favouritePlaces.find((c) => c.favId === id)?.placeName)
+    const PlaceNames = selected
+      .map((id) => PlaceInfos.find((c) => c.id === id)?.placeName)
       .filter(Boolean)
       .join(", ");
 
     showConfirmAlert(
-      "Delete FavouritePlaces",
-      `Are you sure you want to delete: ${favouritePlaceNames}?`,
+      "Delete Places",
+      `Are you sure you want to delete: ${PlaceNames}?`,
       async () => {
         setIsSubmitting(true);
         try {
-          for (const favId of selected) {
-            const response = await apiService.deleteFavouritePlace(favId);
+          for (const PlaceId of selected) {
+            const response = await apiService.deletefavoritePlace(PlaceId);
             if (!response.success) {
-              showAlert("Error", response.error || "Failed to delete some favourite-place", "error");
+              showAlert(
+                "Error",
+                response.error || "Failed to delete some Places",
+                "error"
+              );
               break;
             }
           }
 
-          showAlert("Success", "FavouritePlaces deleted successfully", "success");
+          showAlert("Success", "Places deleted successfully", "success");
           setSelected([]);
           setSelectionMode(false);
-          loadFavouritePlaces();
+          loadPlaceInfos();
         } catch (error) {
-          console.error("Error deleting favourite-place:", error);
-          showAlert("Error", "Failed to delete favourite-place", "error");
+          console.error("Error deleting Places:", error);
+          showAlert("Error", "Failed to delete Places", "error");
         } finally {
           setIsSubmitting(false);
         }
@@ -537,139 +582,184 @@ export default function SimpleFavouritePlacesScreen() {
     );
   };
 
-  const startEditFavouritePlace = (favouritePlace: FavouritePlace) => {
-    setEditingFavouritePlace(favouritePlace);
-    setNewFavouritePlace({
-      placeName: favouritePlace.placeName,
-      imageUrl: favouritePlace.imageUrl,
-      location: favouritePlace.location
+  const startEditPlace = (Place: PlaceInfo) => {
+    setEditingPlace(Place);
+    setnewPlace({
+      placeName: Place.placeName,
+      longitude: Place.longitude,
+      latitude: Place.latitude,
+      address: Place.address,
+      img_url: Place.img_url,
     });
-    setShowEditFavouritePlace(true);
+    setShowEditPlace(true);
   };
 
-  const handleLongPress = (favId: string) => {
+  const handleLongPress = (PlaceId: string) => {
     if (!selectionMode) {
       setSelectionMode(true);
-      setSelected([favId]);
+      setSelected([PlaceId]);
     }
   };
 
-  const handleSelect = (favId: string) => {
+  const handleSelect = (PlaceId: string) => {
     if (selectionMode) {
       setSelected((prev) =>
-        prev.includes(favId)
-          ? prev.filter((id) => id !== favId)
-          : [...prev, favId]
+        prev.includes(PlaceId)
+          ? prev.filter((id) => id !== PlaceId)
+          : [...prev, PlaceId]
       );
     }
   };
 
-//   const handleCall = (phone: string) => {
-//     Linking.openURL(`tel:${phone}`);
-//   };
-
-  const handleFavouritePlaceChange = (field: keyof CreateFavouritePlaceRequest | string, value: any) => {
-    if (field.startsWith('location.')) {
-      const locationField = field.split('.')[1] as keyof typeof newFavouritePlace.location;
-      setNewFavouritePlace({
-        ...newFavouritePlace,
-        location: {
-          ...newFavouritePlace.location,
-          [locationField]: value
-        }
-      });
-    } else {
-      setNewFavouritePlace({ 
-        ...newFavouritePlace, 
-        [field as keyof CreateFavouritePlaceRequest]: value 
-      });
-    }
+  const handlePlaceUpdate = (field: keyof CreatPlace, value: any) => {
+    setnewPlace({ ...newPlace, [field]: value });
   };
 
   const handleFormCancel = () => {
-    resetNewFavouritePlace();
-    setShowAddFavouritePlace(false);
-    setShowEditFavouritePlace(false);
-    setEditingFavouritePlace(null);
+    resetnewPlace();
+    setShowAddPlace(false);
+    setShowEditPlace(false);
+    setEditingPlace(null);
+  };
+
+  // Image upload functions
+  const uploadImageToCloudinary = async (
+    option: "camera" | "gallery" | "url"
+  ) => {
+    setIsUploadingImage(true);
+
+    try {
+      if (option === "url") {
+        setShowImageUploadModal(false);
+        return;
+      }
+
+      const result = await cloudinaryService.uploadProfilePictureWithPicker(
+        option
+      );
+
+      if (result.success && result.url) {
+        handlePlaceUpdate("img_url", result.url);
+        showAlert("Success", "Image uploaded successfully!");
+      } else {
+        showAlert("Error", result.error || "Failed to upload image");
+      }
+    } catch (error) {
+      console.error("Image upload error:", error);
+      showAlert("Error", "Failed to upload image");
+    } finally {
+      setIsUploadingImage(false);
+      setShowImageUploadModal(false);
+    }
   };
 
   return (
     <View className="flex-1 bg-[#FFE4D6] max-w-3xl mx-auto w-full">
       {/* Simple Header */}
-      {/* <View className="bg-[#67082F] px-4 pt-12 pb-4 flex-row justify-between items-center">
-        <Text className="text-white text-lg font-bold flex-1">Emergency FavouritePlaces</Text>
-        <TouchableOpacity className="w-8 h-8 bg-red-700 rounded items-center justify-center">
-          <MaterialIcons name="notifications" size={20} color="white" />
-        </TouchableOpacity>
-      </View> */}
+      {/* header of this page */}
 
-      {/* Add FavouritePlace Modal */}
+      <View className="bg-[#67082F] px-4 pt-12 pb-4 flex-row justify-between items-center">
+        <Text className="text-white text-lg font-bold flex-1">
+          Favorite Places
+        </Text>
+      </View>
+
+      {/* Add Place Modal */}
       <Modal
-        visible={showAddFavouritePlace}
+        visible={showAddPlace}
         transparent={true}
-        onRequestClose={() => setShowAddFavouritePlace(false)}
+        onRequestClose={() => setShowAddPlace(false)}
       >
         <View className="flex-1 bg-black/50 items-center justify-center p-4">
-          <FavouritePlaceForm 
-            onSubmit={handleAddFavouritePlace}
-            newFavouritePlace={newFavouritePlace}
-            handleFavouritePlaceChange={handleFavouritePlaceChange}
+          <PlaceForm
+            onSubmit={handleAddPlace}
+            newPlace={newPlace}
+            handlePlaceUpdate={handlePlaceUpdate}
             handleFormCancel={handleFormCancel}
             isSubmitting={isSubmitting}
+            onImageUpload={() => setShowImageUploadModal(true)}
+            isUploadingImage={isUploadingImage}
           />
         </View>
       </Modal>
 
-      {/* Edit FavouritePlace Modal */}
+      {/* Edit Place Modal */}
       <Modal
-        visible={showEditFavouritePlace}
+        visible={showEditPlace}
         transparent={true}
-        onRequestClose={() => setShowEditFavouritePlace(false)}
+        onRequestClose={() => setShowEditPlace(false)}
       >
         <View className="flex-1 bg-black/50 items-center justify-center p-4">
-          <FavouritePlaceForm 
-            isEdit={true} 
-            onSubmit={handleEditFavouritePlace}
-            newFavouritePlace={newFavouritePlace}
-            handleFavouritePlaceChange={handleFavouritePlaceChange}
+          <PlaceForm
+            isEdit={true}
+            onSubmit={handleEditPlace}
+            newPlace={newPlace}
+            handlePlaceUpdate={handlePlaceUpdate}
             handleFormCancel={handleFormCancel}
             isSubmitting={isSubmitting}
+            onImageUpload={() => setShowImageUploadModal(true)}
+            isUploadingImage={isUploadingImage}
           />
+        </View>
+      </Modal>
+
+      {/* Image Upload Modal */}
+      <Modal
+        visible={showImageUploadModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowImageUploadModal(false)}
+      >
+        <View className="flex-1 bg-black/50 items-center justify-center p-4">
+          <View className="bg-white rounded-lg p-6 w-full max-w-sm">
+            <Text className="text-lg font-bold text-[#67082F] mb-4 text-center">
+              Upload Place Image
+            </Text>
+
+            <TouchableOpacity
+              className="bg-[#67082F] rounded py-3 px-4 mb-3 flex-row items-center justify-center"
+              onPress={() => uploadImageToCloudinary("camera")}
+              disabled={isUploadingImage}
+            >
+              <MaterialIcons name="camera-alt" size={20} color="white" />
+              <Text className="text-white font-medium ml-2">Take Photo</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className="bg-[#67082F] rounded py-3 px-4 mb-3 flex-row items-center justify-center"
+              onPress={() => uploadImageToCloudinary("gallery")}
+              disabled={isUploadingImage}
+            >
+              <MaterialIcons name="photo-library" size={20} color="white" />
+              <Text className="text-white font-medium ml-2">
+                Choose from Gallery
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className="bg-gray-200 rounded py-3 px-4 flex-row items-center justify-center"
+              onPress={() => setShowImageUploadModal(false)}
+              disabled={isUploadingImage}
+            >
+              <Text className="text-gray-700 font-medium">Cancel</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
 
       {/* Main Content */}
       <ScrollView className="flex-1 p-4">
-        {/* Emergency Services
-        <Text className="text-lg font-bold text-[#67082F] mb-3">Emergency Services</Text>
-        {emergencyFavouritePlaces.map((favouritePlace, index) => (
-          <TouchableOpacity
-            key={index}
-            className="flex-row items-center bg-white p-3 rounded mb-2"
-            onPress={() => handleCall(favouritePlace.imageUrl)}
-          >
-            <View className="w-8 h-8 bg-[#67082F]/10 rounded items-center justify-center mr-3">
-              <MaterialIcons name={favouritePlace.icon} size={20} color="#67082F" />
-            </View>
-            <View className="flex-1">
-              <Text className="font-medium text-gray-800">{favouritePlace.name}</Text>
-              <Text className="text-gray-600">{favouritePlace.imageUrl}</Text>
-            </View>
-            <MaterialIcons name="imageUrl" size={20} color="#67082F" />
-          </TouchableOpacity>
-        ))} */}
-
         {/* Action Buttons Section */}
         <View className="flex-row justify-between items-center mb-4 mt-3">
           <TouchableOpacity
             className="flex-1 mr-2 bg-[#67082F] rounded py-2 px-3 flex-row items-center justify-center"
-            onPress={() => setShowAddFavouritePlace(true)}
+            onPress={() => setShowAddPlace(true)}
           >
             <MaterialIcons name="add" size={18} color="white" />
-            <Text className="text-white font-medium ml-1">Add FavouritePlace</Text>
+            <Text className="text-white font-medium ml-1">Add Place</Text>
           </TouchableOpacity>
 
-          {favouritePlaces.length > 0 && (
+          {PlaceInfos.length > 0 && (
             <TouchableOpacity
               className="flex-1 ml-2 bg-white rounded py-2 px-3 flex-row items-center justify-center border border-gray-200"
               onPress={() => {
@@ -681,7 +771,11 @@ export default function SimpleFavouritePlacesScreen() {
                 }
               }}
             >
-              <MaterialIcons name={selectionMode ? "close" : "checklist"} size={18} color="#67082F" />
+              <MaterialIcons
+                name={selectionMode ? "close" : "checklist"}
+                size={18}
+                color="#67082F"
+              />
               <Text className="text-[#67082F] font-medium ml-1">
                 {selectionMode ? "Cancel" : "Select"}
               </Text>
@@ -690,21 +784,21 @@ export default function SimpleFavouritePlacesScreen() {
         </View>
 
         {/* Select All Button when in selection mode */}
-        {selectionMode && favouritePlaces.length > 0 && (
+        {selectionMode && PlaceInfos.length > 0 && (
           <View className="mb-3">
             <TouchableOpacity
               className="bg-[#67082F]/10 rounded py-2 px-3 flex-row items-center justify-center border border-[#67082F]/20"
               onPress={() => {
-                if (selected.length === favouritePlaces.length) {
+                if (selected.length === PlaceInfos.length) {
                   setSelected([]);
                 } else {
-                  setSelected(favouritePlaces.map((favouritePlace) => favouritePlace.favId));
+                  setSelected(PlaceInfos.map((Place) => Place.id));
                 }
               }}
             >
               <MaterialIcons
                 name={
-                  selected.length === favouritePlaces.length
+                  selected.length === PlaceInfos.length
                     ? "check-circle"
                     : "radio-button-unchecked"
                 }
@@ -712,7 +806,7 @@ export default function SimpleFavouritePlacesScreen() {
                 color="#67082F"
               />
               <Text className="text-[#67082F] font-medium ml-1">
-                {selected.length === favouritePlaces.length
+                {selected.length === PlaceInfos.length
                   ? "Deselect All"
                   : "Select All"}
               </Text>
@@ -720,12 +814,12 @@ export default function SimpleFavouritePlacesScreen() {
           </View>
         )}
 
-        {/* Delete Button when favourite-place are selected */}
+        {/* Delete Button when Places are selected */}
         {selected.length > 0 && (
           <View className="mb-3">
             <TouchableOpacity
               className="bg-red-600 rounded py-2 px-3 flex-row items-center justify-center"
-              onPress={handleDeleteFavouritePlaces}
+              onPress={handleDeletePlaces}
               disabled={isSubmitting}
             >
               {isSubmitting ? (
@@ -742,57 +836,75 @@ export default function SimpleFavouritePlacesScreen() {
           </View>
         )}
 
-        {/*  FavouritePlaces */}
-        <Text className="text-lg font-bold text-[#67082F] mb-3"> FavouritePlaces</Text>
+        {/* Trusted Places */}
+        <Text className="text-lg font-bold text-[#67082F] mb-3">
+          Trusted Places
+        </Text>
 
         {isLoading ? (
           <View className="items-center py-6">
             <ActivityIndicator size="large" color="#67082F" />
             <Text className="text-gray-600 mt-2">Loading...</Text>
           </View>
-        ) : favouritePlaces.length === 0 ? (
+        ) : PlaceInfos.length === 0 ? (
           <View className="bg-white p-4 rounded items-center">
-            <MaterialIcons name="place" size={40} color="#9CA3AF" />
-            <Text className="text-gray-600 mt-2 text-center">No FavouritePlace yet</Text>
+            {/* <MaterialIcons name="Places" size={40} color="#9CA3AF" /> */}
+            <Text className="text-gray-600 mt-2 text-center">
+              No Places yet
+            </Text>
           </View>
         ) : (
-          favouritePlaces.map((favouritePlace) => (
+          PlaceInfos.map((Place) => (
             <TouchableOpacity
-              key={favouritePlace.favId}
+              key={Place.id}
               className={`flex-row items-center bg-white p-3 rounded mb-2 ${
-                selected.includes(favouritePlace.favId)
-                  ? "border border-red-600"
-                  : ""
+                selected.includes(Place.id) ? "border border-red-600" : ""
               }`}
-              onPress={() => handleSelect(favouritePlace.favId)}
-              onLongPress={() => handleLongPress(favouritePlace.favId)}
+              onPress={() => handleSelect(Place.id)}
+              onLongPress={() => handleLongPress(Place.id)}
             >
               <View className="w-8 h-8 bg-[#67082F]/10 rounded items-center justify-center mr-3">
                 <MaterialIcons name="person" size={20} color="#67082F" />
               </View>
               <View className="flex-1">
-                <Text className="font-medium text-gray-800">{favouritePlace.placeName}</Text>
-                <Text className="text-gray-600">{favouritePlace.imageUrl}</Text>
-                <Text className="text-xs text-[#67082F]">{favouritePlace.location.latitude}</Text>
-                <Text className="text-xs text-gray-500">{favouritePlace.location.longitude}</Text>
-                <Text className="text-xs text-gray-500">{favouritePlace.location.address}</Text>
+                <Text className="font-medium text-gray-800">
+                  {Place.placeName}
+                </Text>
+                <Text className="text-gray-600">{Place.longitude}</Text>
+                <Text className="text-xs text-[#67082F]">{Place.latitude}</Text>
+                <Text className="text-xs text-[#67082F]">{Place.img_url}</Text>
+                <Text className="text-xs text-[#67082F]">{Place.address}</Text>
               </View>
 
               <View className="flex-row items-center">
-                {/* <TouchableOpacity onPress={() => handleCall(favouritePlace.imageUrl)} className="p-1 mr-1">
-                  <MaterialIcons name="phone" size={18} color="#67082F" />
-                </TouchableOpacity> */}
+                <TouchableOpacity
+                  onPress={() => handleAddPlace()}
+                  className="p-1 mr-1"
+                >
+                  {/* <MaterialIcons name="phone" size={18} color="#67082F" /> */}
+                </TouchableOpacity>
 
-                <TouchableOpacity onPress={() => startEditFavouritePlace(favouritePlace)} className="p-1 mr-1">
+                <TouchableOpacity
+                  onPress={() => startEditPlace(Place)}
+                  className="p-1 mr-1"
+                >
                   <MaterialIcons name="edit" size={18} color="#67082F" />
                 </TouchableOpacity>
 
                 {selectionMode && (
                   <View>
-                    {selected.includes(favouritePlace.favId) ? (
-                      <MaterialIcons name="check-circle" size={20} color="#dc2626" />
+                    {selected.includes(Place.id) ? (
+                      <MaterialIcons
+                        name="check-circle"
+                        size={20}
+                        color="#dc2626"
+                      />
                     ) : (
-                      <MaterialIcons name="radio-button-unchecked" size={20} color="#67082F" />
+                      <MaterialIcons
+                        name="radio-button-unchecked"
+                        size={20}
+                        color="#67082F"
+                      />
                     )}
                   </View>
                 )}
