@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import com.secureherai.secureherai_api.dto.fav_place.FavoritePlaceResponse.FavoritePlaceInfo;
+
 public class ReportResponse {
     
     // Generic response for operations
@@ -610,4 +612,24 @@ public class ReportResponse {
             this.recentReports = recentReports;
         }
     }
+   
+   //for new response
+    public static class ReportBytimeResponse {
+        private boolean success;
+        private List<ReportSummary> reports;
+        
+        public ReportBytimeResponse(boolean success, List<ReportSummary> reports) {
+            this.success = success;
+            this.reports = reports;
+        }
+        
+        public boolean isSuccess() { return success; }
+        public void setSuccess(boolean success) { this.success = success; }
+        
+        public List<ReportSummary> getReports() { return reports; }
+        public void setReports(List<ReportSummary> reports) { this.reports = reports; }
+    }
+
+
+
 }

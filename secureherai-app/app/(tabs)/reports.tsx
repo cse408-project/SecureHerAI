@@ -9,26 +9,145 @@ import {
   ActivityIndicator,
   Dimensions,
   Modal,
+  TextInput,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useAuth } from "../../context/AuthContext";
 import apiService from "../../services/api";
-import { ReportSummary } from "../../types/report";
+import { ReportSummary, UserReportsResponse } from "../../types/report";
 import Header from "../../components/Header";
+import DatePicker from "../../components/DatePicker";
+import { useAlert } from "../../context/AlertContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
+
+interface Time {
+  start: string;
+  end: string;
+}
+
+// Simple Contact Form Component - moved outside to prevent re-creation
+const TimeForm = ({
+  onSubmit,
+  timeFilter,
+  setTimeFilter,
+  isSubmitting,
+}: {
+  onSubmit: () => void;
+  timeFilter: Time;
+  setTimeFilter: (time: Time) => void;
+  isSubmitting: boolean;
+}) => (
+  <View className="bg-white rounded p-4 m-4 w-full max-w-sm">
+    <Text className="text-lg font-bold text-[#67082F] mb-4 text-center">
+      Time Filter
+    </Text>
+    {/* Start */}
+    <DatePicker
+      label="Start Date"
+      value={timeFilter.start}
+      onDateChange={(date) => setTimeFilter({ ...timeFilter, start: date })}
+      placeholder="Select start date"
+    />
+
+    {/* Start */}
+    <DatePicker
+      label="End Date"
+      value={timeFilter.end}
+      onDateChange={(date) => setTimeFilter({ ...timeFilter, end: date })}
+      placeholder="Select end date"
+    />
+
+    {/* Action Buttons */}
+    <View className="flex-row">
+      <TouchableOpacity
+        className={`flex-1 rounded py-3 px-3 ${
+          isSubmitting ? "bg-[#67082F]/60" : "bg-[#67082F]"
+        }`}
+        onPress={onSubmit}
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? (
+          <ActivityIndicator color="white" size="small" />
+        ) : (
+          <Text className="text-center text-white font-medium">Submit</Text>
+        )}
+      </TouchableOpacity>
+    </View>
+  </View>
+);
+
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
+
+class SimpleApiService {
+  private async getHeaders(
+    includeAuth: boolean = false
+  ): Promise<Record<string, string>> {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    if (includeAuth) {
+      const token = await AsyncStorage.getItem("auth_token");
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+    }
+
+    return headers;
+  }
+
+  async getUserReportsByTime(
+    start: string,
+    end: string
+  ): Promise<UserReportsResponse> {
+    try {
+      console.log("API: Fetching user reports");
+      const url = new URL(`${API_BASE_URL}/report/user-reports/time`);
+      url.searchParams.append("start", start);
+      url.searchParams.append("end", end);
+
+      const response = await fetch(url.toString(), {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+      console.log("API: User reports response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Get user reports error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while fetching reports",
+      };
+    }
+  }
+}
 
 export default function ReportsTabScreen() {
   const { user } = useAuth();
+  const { showAlert, showConfirmAlert } = useAlert();
+
   const [reports, setReports] = useState<ReportSummary[]>([]);
   const [allReports, setAllReports] = useState<ReportSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [timeFilter, setTimeFilter] = useState<Time>({
+    start: "",
+    end: "",
+  });
   const [error, setError] = useState<string | null>(null);
-  
+  const [isTimeSubmitting, setIsTimeSubmitting] = useState(false);
+
   // Filter state
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [showTimeFilterModal, setShowTimeFilterModal] = useState(false);
   const [activeFilters, setActiveFilters] = useState<{
     incidentType?: string;
     visibility?: string;
@@ -50,15 +169,16 @@ export default function ReportsTabScreen() {
         setReports(response.reports);
         setAllReports(response.reports); // Keep original for filtering
       } else {
-        const errorMessage = response.error || 'Failed to load reports';
+        const errorMessage = response.error || "Failed to load reports";
         setError(errorMessage);
-        Alert.alert('Error', errorMessage);
+        Alert.alert("Error", errorMessage);
       }
     } catch (error) {
-      console.error('Load reports error:', error);
-      const errorMessage = 'Network error occurred. Please check your connection.';
+      console.error("Load reports error:", error);
+      const errorMessage =
+        "Network error occurred. Please check your connection.";
       setError(errorMessage);
-      Alert.alert('Error', errorMessage);
+      Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
     }
@@ -91,40 +211,85 @@ export default function ReportsTabScreen() {
         setReports(response.reports);
       } else {
         // Fallback to local filtering with case-insensitive comparison
-        console.log('Using local filtering');
-        console.log('All reports status values:', allReports.map(r => r.status));
-        console.log('Filter status:', filters.status);
-        
+        console.log("Using local filtering");
+        console.log(
+          "All reports status values:",
+          allReports.map((r) => r.status)
+        );
+        console.log("Filter status:", filters.status);
+
         let filteredReports = [...allReports];
-        
+
         if (filters.incidentType) {
-          filteredReports = filteredReports.filter(report => 
-            report.incidentType.toLowerCase() === filters.incidentType!.toLowerCase()
+          filteredReports = filteredReports.filter(
+            (report) =>
+              report.incidentType.toLowerCase() ===
+              filters.incidentType!.toLowerCase()
           );
         }
-        
+
         if (filters.visibility) {
-          filteredReports = filteredReports.filter(report => 
-            report.visibility.toLowerCase() === filters.visibility!.toLowerCase()
+          filteredReports = filteredReports.filter(
+            (report) =>
+              report.visibility.toLowerCase() ===
+              filters.visibility!.toLowerCase()
           );
         }
-        
+
         if (filters.status) {
-          filteredReports = filteredReports.filter(report => 
-            report.status.toLowerCase() === filters.status!.toLowerCase()
+          filteredReports = filteredReports.filter(
+            (report) =>
+              report.status.toLowerCase() === filters.status!.toLowerCase()
           );
-          console.log('Filtered reports count:', filteredReports.length);
+          console.log("Filtered reports count:", filteredReports.length);
         }
-        
+
         setReports(filteredReports);
       }
-      
+
       setActiveFilters(filters);
     } catch (error) {
-      console.error('Filter error:', error);
-      Alert.alert('Error', 'Failed to apply filters');
+      console.error("Filter error:", error);
+      Alert.alert("Error", "Failed to apply filters");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const sinmpleApiService = new SimpleApiService();
+
+  const handleTimeFilter = async () => {
+    setIsTimeSubmitting(true);
+    try {
+      if (
+        !timeFilter.start ||
+        !timeFilter.end ||
+        new Date(timeFilter.start) >= new Date(timeFilter.end)
+      ) {
+        showAlert("Validation Error", "Please enter valid time", "error");
+        return;
+      }
+
+      const start = new Date(timeFilter.start).toISOString();
+      const end = new Date(timeFilter.end).toISOString();
+
+      const response = await sinmpleApiService.getUserReportsByTime(start, end);
+
+      if (response.success && response.reports) {
+        setReports(response.reports);
+      } else {
+        showAlert(
+          "Validation Error",
+          response.error || "Failed to apply time filter",
+          "error"
+        );
+      }
+    } catch (error) {
+      console.error("Time filter error:", error);
+      showAlert("Validation Error", "Failed to apply time filter", "error");
+    } finally {
+      setIsTimeSubmitting(false);
+      setShowTimeFilterModal(false);
     }
   };
 
@@ -135,64 +300,64 @@ export default function ReportsTabScreen() {
 
   const getIncidentTypeIcon = (type: string) => {
     switch (type) {
-      case 'harassment':
-        return 'person-off';
-      case 'theft':
-        return 'money-off';
-      case 'assault':
-        return 'pan-tool';
+      case "harassment":
+        return "person-off";
+      case "theft":
+        return "money-off";
+      case "assault":
+        return "pan-tool";
       default:
-        return 'category';
+        return "category";
     }
   };
 
   const getIncidentTypeColor = (type: string) => {
     switch (type) {
-      case 'harassment':
-        return '#DC2626'; // Red
-      case 'theft':
-        return '#7C2D12'; // Brown
-      case 'assault':
-        return '#B91C1C'; // Dark Red
+      case "harassment":
+        return "#DC2626"; // Red
+      case "theft":
+        return "#7C2D12"; // Brown
+      case "assault":
+        return "#B91C1C"; // Dark Red
       default:
-        return '#6B7280'; // Gray
+        return "#6B7280"; // Gray
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'submitted':
-        return '#3B82F6';
-      case 'under_review':
-        return '#F59E0B';
-      case 'resolved':
-        return '#10B981';
+      case "submitted":
+        return "#3B82F6";
+      case "under_review":
+        return "#F59E0B";
+      case "resolved":
+        return "#10B981";
       default:
-        return '#6B7280';
+        return "#6B7280";
     }
   };
 
   const getVisibilityIcon = (visibility: string) => {
     switch (visibility) {
-      case 'public':
-        return 'public';
-      case 'officials_only':
-        return 'admin-panel-settings';
-      case 'private':
-        return 'lock';
+      case "public":
+        return "public";
+      case "officials_only":
+        return "admin-panel-settings";
+      case "private":
+        return "lock";
       default:
-        return 'visibility';
+        return "visibility";
     }
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -214,9 +379,11 @@ export default function ReportsTabScreen() {
       {/* Header with incident type and status */}
       <View className="flex-row justify-between items-center mb-3">
         <View className="flex-row items-center flex-1">
-          <View 
+          <View
             className="w-12 h-12 rounded-full items-center justify-center mr-3 shadow-sm"
-            style={{ backgroundColor: `${getIncidentTypeColor(report.incidentType)}15` }}
+            style={{
+              backgroundColor: `${getIncidentTypeColor(report.incidentType)}15`,
+            }}
           >
             <MaterialIcons
               name={getIncidentTypeIcon(report.incidentType) as any}
@@ -233,7 +400,7 @@ export default function ReportsTabScreen() {
             </Text>
           </View>
         </View>
-        
+
         <View className="flex-row items-center space-x-2">
           {report.anonymous && (
             <MaterialIcons name="visibility-off" size={16} color="#F59E0B" />
@@ -251,14 +418,17 @@ export default function ReportsTabScreen() {
               className="text-xs font-bold capitalize"
               style={{ color: getStatusColor(report.status) }}
             >
-              {report.status.replace('_', ' ')}
+              {report.status.replace("_", " ")}
             </Text>
           </View>
         </View>
       </View>
 
       {/* Description */}
-      <Text className="text-gray-700 text-sm mb-3 leading-relaxed" numberOfLines={2}>
+      <Text
+        className="text-gray-700 text-sm mb-3 leading-relaxed"
+        numberOfLines={2}
+      >
         {report.description}
       </Text>
 
@@ -267,7 +437,8 @@ export default function ReportsTabScreen() {
         <View className="flex-row items-center flex-1">
           <MaterialIcons name="location-on" size={14} color="#6B7280" />
           <Text className="text-xs text-gray-500 ml-1 flex-1" numberOfLines={1}>
-            {report.location.address || `${report.location.latitude}, ${report.location.longitude}`}
+            {report.location.address ||
+              `${report.location.latitude}, ${report.location.longitude}`}
           </Text>
         </View>
       </View>
@@ -281,7 +452,7 @@ export default function ReportsTabScreen() {
             Submitted: {formatDate(report.createdAt)}
           </Text>
         </View>
-        
+
         {/* Quick action for evidence upload */}
         <TouchableOpacity
           className="flex-row items-center px-3 py-1 bg-[#67082F]/10 rounded-full"
@@ -291,7 +462,9 @@ export default function ReportsTabScreen() {
           }}
         >
           <MaterialIcons name="add-photo-alternate" size={14} color="#67082F" />
-          <Text className="text-[#67082F] text-xs font-medium ml-1">Evidence</Text>
+          <Text className="text-[#67082F] text-xs font-medium ml-1">
+            Evidence
+          </Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -309,8 +482,12 @@ export default function ReportsTabScreen() {
         <View className="flex-1 justify-center items-center py-20">
           <View className="bg-white rounded-lg p-8 shadow-sm items-center">
             <ActivityIndicator size="large" color="#67082F" />
-            <Text className="text-gray-600 mt-4 font-medium">Loading your reports...</Text>
-            <Text className="text-gray-400 text-sm mt-2">Please wait a moment</Text>
+            <Text className="text-gray-600 mt-4 font-medium">
+              Loading your reports...
+            </Text>
+            <Text className="text-gray-400 text-sm mt-2">
+              Please wait a moment
+            </Text>
           </View>
         </View>
       ) : (
@@ -327,7 +504,7 @@ export default function ReportsTabScreen() {
             <Text className="text-lg font-bold text-[#67082F] mb-4">
               Report Management
             </Text>
-            
+
             {/* Primary Action */}
             <TouchableOpacity
               className="flex-row items-center p-4 bg-[#67082F] rounded-lg mb-3 shadow-sm"
@@ -337,7 +514,9 @@ export default function ReportsTabScreen() {
                 <MaterialIcons name="add-circle" size={24} color="white" />
               </View>
               <View className="flex-1">
-                <Text className="text-white font-bold text-base">Submit New Report</Text>
+                <Text className="text-white font-bold text-base">
+                  Submit New Report
+                </Text>
                 <Text className="text-white/90 text-sm mt-1">
                   Report incidents, safety concerns, or suspicious activities
                 </Text>
@@ -347,26 +526,43 @@ export default function ReportsTabScreen() {
 
             {/* Secondary Actions */}
             <View className="flex-row justify-between">
-              <TouchableOpacity 
+              <TouchableOpacity
                 className="flex-1 mr-2 p-3 bg-gray-50 rounded-lg border border-gray-200"
                 onPress={() => setShowFilterModal(true)}
               >
                 <View className="items-center">
                   <MaterialIcons name="filter-list" size={20} color="#67082F" />
-                  <Text className="text-[#67082F] text-xs font-medium mt-1">Filter</Text>
+                  <Text className="text-[#67082F] text-xs font-medium mt-1">
+                    Filter
+                  </Text>
                   {Object.keys(activeFilters).length > 0 && (
                     <View className="w-2 h-2 bg-red-500 rounded-full absolute top-0 right-2" />
                   )}
                 </View>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 className="flex-1 ml-2 p-3 bg-gray-50 rounded-lg border border-gray-200"
                 onPress={handleRefresh}
               >
                 <View className="items-center">
                   <MaterialIcons name="refresh" size={20} color="#67082F" />
-                  <Text className="text-[#67082F] text-xs font-medium mt-1">Refresh</Text>
+                  <Text className="text-[#67082F] text-xs font-medium mt-1">
+                    Refresh
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* start end field*/}
+              <TouchableOpacity
+                className="flex-1 ml-2 p-3 bg-gray-50 rounded-lg border border-gray-200"
+                onPress={() => setShowTimeFilterModal(true)}
+              >
+                <View className="items-center">
+                  <MaterialIcons name="date-range" size={20} color="#67082F" />
+                  <Text className="text-[#67082F] text-xs font-medium mt-1">
+                    Time Filter
+                  </Text>
                 </View>
               </TouchableOpacity>
             </View>
@@ -378,9 +574,15 @@ export default function ReportsTabScreen() {
                 // Filtered empty state
                 <View className="bg-white rounded-lg p-8 shadow-sm items-center">
                   <View className="w-16 h-16 bg-gray-100 rounded-full items-center justify-center mb-4">
-                    <MaterialIcons name="filter-list-off" size={32} color="#6B7280" />
+                    <MaterialIcons
+                      name="filter-list-off"
+                      size={32}
+                      color="#6B7280"
+                    />
                   </View>
-                  <Text className="text-gray-800 text-lg font-bold mb-2">No Reports Found</Text>
+                  <Text className="text-gray-800 text-lg font-bold mb-2">
+                    No Reports Found
+                  </Text>
                   <Text className="text-gray-500 text-center leading-relaxed">
                     No report of this type
                   </Text>
@@ -390,43 +592,76 @@ export default function ReportsTabScreen() {
                       clearFilters();
                     }}
                   >
-                    <Text className="text-gray-700 font-medium">Clear Filters</Text>
+                    <Text className="text-gray-700 font-medium">
+                      Clear Filters
+                    </Text>
                   </TouchableOpacity>
                 </View>
               ) : (
                 // Default empty state when no filters applied
                 <View className="bg-white rounded-lg p-8 shadow-sm items-center">
                   <View className="w-20 h-20 bg-[#67082F]/10 rounded-full items-center justify-center mb-4">
-                    <MaterialIcons name="assignment" size={40} color="#67082F" />
+                    <MaterialIcons
+                      name="assignment"
+                      size={40}
+                      color="#67082F"
+                    />
                   </View>
-                  <Text className="text-gray-800 text-xl font-bold mt-2">No Reports Yet</Text>
-                  <Text className="text-gray-500 text-center mt-3 leading-relaxed">
-                    You haven&apos;t submitted any incident reports. Your safety matters - start by creating your first report.
+                  <Text className="text-gray-800 text-xl font-bold mt-2">
+                    No Reports Yet
                   </Text>
-                  
+                  <Text className="text-gray-500 text-center mt-3 leading-relaxed">
+                    You haven&apos;t submitted any incident reports. Your safety
+                    matters - start by creating your first report.
+                  </Text>
+
                   {/* Feature highlights */}
                   <View className="w-full mt-6 space-y-3">
                     <View className="flex-row items-center">
-                      <MaterialIcons name="security" size={16} color="#67082F" />
-                      <Text className="text-gray-600 text-sm ml-2">Secure and confidential reporting</Text>
+                      <MaterialIcons
+                        name="security"
+                        size={16}
+                        color="#67082F"
+                      />
+                      <Text className="text-gray-600 text-sm ml-2">
+                        Secure and confidential reporting
+                      </Text>
                     </View>
                     <View className="flex-row items-center">
-                      <MaterialIcons name="location-on" size={16} color="#67082F" />
-                      <Text className="text-gray-600 text-sm ml-2">GPS location tracking</Text>
+                      <MaterialIcons
+                        name="location-on"
+                        size={16}
+                        color="#67082F"
+                      />
+                      <Text className="text-gray-600 text-sm ml-2">
+                        GPS location tracking
+                      </Text>
                     </View>
                     <View className="flex-row items-center">
-                      <MaterialIcons name="cloud-upload" size={16} color="#67082F" />
-                      <Text className="text-gray-600 text-sm ml-2">Evidence upload support</Text>
+                      <MaterialIcons
+                        name="cloud-upload"
+                        size={16}
+                        color="#67082F"
+                      />
+                      <Text className="text-gray-600 text-sm ml-2">
+                        Evidence upload support
+                      </Text>
                     </View>
                   </View>
-                  
+
                   <TouchableOpacity
                     className="bg-[#67082F] rounded-lg px-8 py-4 mt-8 w-full shadow-sm"
                     onPress={navigateToSubmit}
                   >
                     <View className="flex-row items-center justify-center">
-                      <MaterialIcons name="add-circle" size={20} color="white" />
-                      <Text className="text-white font-bold text-base ml-2">Submit First Report</Text>
+                      <MaterialIcons
+                        name="add-circle"
+                        size={20}
+                        color="white"
+                      />
+                      <Text className="text-white font-bold text-base ml-2">
+                        Submit First Report
+                      </Text>
                     </View>
                   </TouchableOpacity>
                 </View>
@@ -438,7 +673,7 @@ export default function ReportsTabScreen() {
               <Text className="text-lg font-bold text-[#67082F] mb-4">
                 Your Reports ({reports.length})
               </Text>
-              
+
               {/* Reports List */}
               {reports.map(renderReportCard)}
             </>
@@ -456,7 +691,9 @@ export default function ReportsTabScreen() {
         <View className="flex-1 bg-black/50 justify-center items-center">
           <View className="bg-white rounded-lg p-6 m-4 w-11/12 max-w-md">
             <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-lg font-bold text-[#67082F]">Filter Reports</Text>
+              <Text className="text-lg font-bold text-[#67082F]">
+                Filter Reports
+              </Text>
               <TouchableOpacity
                 onPress={() => setShowFilterModal(false)}
                 className="p-1 rounded-full"
@@ -465,22 +702,28 @@ export default function ReportsTabScreen() {
                 <MaterialIcons name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
-            
+
             {/* Incident Type Filter */}
-            <Text className="text-sm font-semibold text-gray-700 mb-2">Incident Type</Text>
+            <Text className="text-sm font-semibold text-gray-700 mb-2">
+              Incident Type
+            </Text>
             <View className="flex-row flex-wrap mb-4">
-              {['harassment', 'theft', 'assault', 'other'].map((type) => (
+              {["harassment", "theft", "assault", "other"].map((type) => (
                 <TouchableOpacity
                   key={type}
                   className={`flex-row items-center px-3 py-2 rounded-lg mr-2 mb-2 border ${
                     activeFilters.incidentType === type
-                      ? 'border-2'
-                      : 'bg-gray-100 border-gray-200'
+                      ? "border-2"
+                      : "bg-gray-100 border-gray-200"
                   }`}
-                  style={activeFilters.incidentType === type ? {
-                    backgroundColor: `${getIncidentTypeColor(type)}15`,
-                    borderColor: getIncidentTypeColor(type)
-                  } : {}}
+                  style={
+                    activeFilters.incidentType === type
+                      ? {
+                          backgroundColor: `${getIncidentTypeColor(type)}15`,
+                          borderColor: getIncidentTypeColor(type),
+                        }
+                      : {}
+                  }
                   onPress={() => {
                     const newFilters = { ...activeFilters };
                     if (newFilters.incidentType === type) {
@@ -494,13 +737,20 @@ export default function ReportsTabScreen() {
                   <MaterialIcons
                     name={getIncidentTypeIcon(type) as any}
                     size={16}
-                    color={activeFilters.incidentType === type ? getIncidentTypeColor(type) : '#6B7280'}
+                    color={
+                      activeFilters.incidentType === type
+                        ? getIncidentTypeColor(type)
+                        : "#6B7280"
+                    }
                     style={{ marginRight: 6 }}
                   />
-                  <Text 
+                  <Text
                     className={`capitalize text-sm font-medium`}
                     style={{
-                      color: activeFilters.incidentType === type ? getIncidentTypeColor(type) : '#374151'
+                      color:
+                        activeFilters.incidentType === type
+                          ? getIncidentTypeColor(type)
+                          : "#374151",
                     }}
                   >
                     {type}
@@ -510,15 +760,17 @@ export default function ReportsTabScreen() {
             </View>
 
             {/* Visibility Filter */}
-            <Text className="text-sm font-semibold text-gray-700 mb-2">Visibility</Text>
+            <Text className="text-sm font-semibold text-gray-700 mb-2">
+              Visibility
+            </Text>
             <View className="flex-row flex-wrap mb-4">
-              {['public', 'officials_only', 'private'].map((visibility) => (
+              {["public", "officials_only", "private"].map((visibility) => (
                 <TouchableOpacity
                   key={visibility}
                   className={`px-3 py-2 rounded-lg mr-2 mb-2 ${
                     activeFilters.visibility === visibility
-                      ? 'bg-[#67082F]'
-                      : 'bg-gray-200'
+                      ? "bg-[#67082F]"
+                      : "bg-gray-200"
                   }`}
                   onPress={() => {
                     const newFilters = { ...activeFilters };
@@ -530,25 +782,31 @@ export default function ReportsTabScreen() {
                     setActiveFilters(newFilters);
                   }}
                 >
-                  <Text className={`capitalize ${
-                    activeFilters.visibility === visibility ? 'text-white' : 'text-gray-700'
-                  }`}>
-                    {visibility.replace('_', ' ')}
+                  <Text
+                    className={`capitalize ${
+                      activeFilters.visibility === visibility
+                        ? "text-white"
+                        : "text-gray-700"
+                    }`}
+                  >
+                    {visibility.replace("_", " ")}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
             {/* Status Filter */}
-            <Text className="text-sm font-semibold text-gray-700 mb-2">Status</Text>
+            <Text className="text-sm font-semibold text-gray-700 mb-2">
+              Status
+            </Text>
             <View className="flex-row flex-wrap mb-6">
-              {['submitted', 'under_review', 'resolved'].map((status) => (
+              {["submitted", "under_review", "resolved"].map((status) => (
                 <TouchableOpacity
                   key={status}
                   className={`px-3 py-2 rounded-lg mr-2 mb-2 ${
                     activeFilters.status === status
-                      ? 'bg-[#67082F]'
-                      : 'bg-gray-200'
+                      ? "bg-[#67082F]"
+                      : "bg-gray-200"
                   }`}
                   onPress={() => {
                     const newFilters = { ...activeFilters };
@@ -560,15 +818,19 @@ export default function ReportsTabScreen() {
                     setActiveFilters(newFilters);
                   }}
                 >
-                  <Text className={`capitalize ${
-                    activeFilters.status === status ? 'text-white' : 'text-gray-700'
-                  }`}>
-                    {status.replace('_', ' ')}
+                  <Text
+                    className={`capitalize ${
+                      activeFilters.status === status
+                        ? "text-white"
+                        : "text-gray-700"
+                    }`}
+                  >
+                    {status.replace("_", " ")}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
-            
+
             <View className="flex-row justify-end space-x-3">
               <TouchableOpacity
                 className="px-4 py-2 bg-gray-200 rounded-lg mr-3"
@@ -579,7 +841,7 @@ export default function ReportsTabScreen() {
               >
                 <Text className="text-gray-700">Back</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 className="px-4 py-2 bg-[#67082F] rounded-lg"
                 onPress={() => {
@@ -591,6 +853,22 @@ export default function ReportsTabScreen() {
               </TouchableOpacity>
             </View>
           </View>
+        </View>
+      </Modal>
+
+      {/* Add Contact Modal */}
+      <Modal
+        visible={showTimeFilterModal}
+        transparent={true}
+        onRequestClose={() => setShowTimeFilterModal(false)}
+      >
+        <View className="flex-1 bg-black/50 items-center justify-center p-4">
+          <TimeForm
+            onSubmit={handleTimeFilter}
+            timeFilter={timeFilter}
+            setTimeFilter={setTimeFilter}
+            isSubmitting={isTimeSubmitting}
+          />
         </View>
       </Modal>
     </View>

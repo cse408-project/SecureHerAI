@@ -20,6 +20,7 @@ import com.secureherai.secureherai_api.entity.ReportEvidence;
 import com.secureherai.secureherai_api.repository.IncidentReportRepository;
 import com.secureherai.secureherai_api.repository.UserRepository;
 import com.secureherai.secureherai_api.repository.ReportEvidenceRepository;
+import java.time.LocalDateTime;
 
 @Service
 @Transactional
@@ -229,6 +230,36 @@ public class ReportService {
             
             List<ReportResponse.ReportSummary> reportSummaries = reports.stream()
                 .map(this::convertToReportSummary)
+                .collect(Collectors.toList());
+            
+            return new ReportResponse.UserReportsResponse(true, reportSummaries, null);
+            
+        } catch (Exception e) {
+            logger.error("Error retrieving reports for user {}: {}", userId, e.getMessage(), e);
+            return new ReportResponse.UserReportsResponse(false, null, "An error occurred while retrieving reports: " + e.getMessage());
+        }
+    }
+
+    public ReportResponse.UserReportsResponse getUserReportsByTime(UUID userId, LocalDateTime start, LocalDateTime end) {
+        try {
+            logger.debug("Retrieving reports for user: {}", userId);
+            
+            // Verify user exists
+            Optional<User> userOpt = userRepository.findById(userId);
+            if (userOpt.isEmpty()) {
+                logger.warn("User not found when retrieving reports: {}", userId);
+                return new ReportResponse.UserReportsResponse(false, null, "User not found");
+            }
+            
+            List<IncidentReport> reports = reportRepository.findByUserIdOrderByCreatedAtDesc(userId);
+            logger.debug("Found {} reports for user: {}", reports.size(), userId);
+            
+            List<ReportResponse.ReportSummary> reportSummaries = reports.stream()
+                .map(this::convertToReportSummary)
+                .collect(Collectors.toList());
+
+            reportSummaries = reportSummaries.stream()
+                .filter(report -> report.getCreatedAt().isEqualOrAfter(start) && report.getCreatedAt().isEqualOrBefore(end))
                 .collect(Collectors.toList());
             
             return new ReportResponse.UserReportsResponse(true, reportSummaries, null);

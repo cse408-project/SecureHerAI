@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 public class ReportRequest {
-    
+
     // Submit incident report request
     public static class SubmitReport {
         @NotBlank(message = "Incident type is required")
@@ -206,6 +206,40 @@ public class ReportRequest {
             this.evidenceUrl = evidenceUrl;
         }
     }
+
+    public static class UserReportsByTime {
+        @NotNull(message = "Start time is required")
+        private LocalDateTime start;
+
+        @NotNull(message = "End time is required")
+        private LocalDateTime end;
+
+        public UserReportsByTime() {
+        }
+
+
+        public UserReportsByTime(LocalDateTime start, LocalDateTime end) {
+            this.start = start;
+            this.end = end;
+        }
+
+
+        public LocalDateTime getStart() {
+            return this.start;
+        }
+
+        public void setStart(LocalDateTime start) {
+            this.start = start;
+        }
+
+        public LocalDateTime getEnd() {
+            return this.end;
+        }
+
+        public void setEnd(LocalDateTime end) {
+            this.end = end;
+        }
+    }
     
     // Update report request (comprehensive update for all fields)
     public static class UpdateReport {
@@ -352,4 +386,5 @@ public class ReportRequest {
             this.longitude = longitude;
         }
     }
+    
 }

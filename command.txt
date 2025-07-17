@@ -9,6 +9,11 @@ docker-compose -f docker-compose-dev.yml down
 docker-compose -f docker-compose-dev.yml up --build
 
 
+for db :
+docker-compose -f docker-compose-pgadmin4.yml down
+docker-compose -f docker-compose-pgadmin4.yml up -d
+
+
 Git:
 cd SecureHerAI
 git pull origin
@@ -48,3 +53,6 @@ ssh -i ../SecureHerAI-Deploy_key.pem azureuser@98.70.27.208
 
 docker logs --since 2025-07-10T00:00:00 secureherai_api > mycontainer.log
 nano mycontainer.log
+
+
+

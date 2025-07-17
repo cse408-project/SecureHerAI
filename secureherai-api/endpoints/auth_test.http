@@ -6,6 +6,10 @@
 ### 1. Health Check
 GET {{baseUrl}}/isOk
 
+### 6. Get User Profile (Fresh token - valid until May 27, 2025)
+GET {{baseUrl}}/user/profile
+Authorization: Bearer {{authToken}}
+
 ### Google OAuth Authentication Endpoints
 ### 1.1 Get Google OAuth URL
 GET {{baseUrl}}/auth/google/auth-url
@@ -186,7 +190,7 @@ POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "soniakhatun94358@gmail.com",
+  "email": "arimotokika2005025@gmail.com",
   "password": "password123"
 }
 
