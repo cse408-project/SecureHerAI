@@ -166,7 +166,6 @@ export default function Home() {
 
   // Handle successful SOS alert submission
   const handleSOSSuccess = (response: AlertResponse) => {
-    setAlertResponse(response);
     setShowSOSModal(false);
 
     // Refresh notifications since emergency notifications have been sent
@@ -177,8 +176,27 @@ export default function Home() {
       "SOS Alert Sent",
       "Your SOS alert has been sent successfully. Would you like to provide more details by submitting an incident report?",
       () => {
-        // Show report modal if user confirms
-        setShowReportModal(true);
+        // Navigate directly to report submission with pre-populated data
+        const reportParams = new URLSearchParams({
+          autoFill: "true",
+          details: response.alertMessage || "Emergency SOS alert triggered",
+          location: `${response.latitude},${response.longitude}`,
+          address: response.address || "",
+          incidentType: "assault", // Default for SOS alerts, but allow editing
+          triggerMethod: response.triggerMethod || "",
+          alertId: response.alertId || "",
+          triggeredAt: response.triggeredAt || "",
+        });
+
+        // Add audio evidence if available
+        if (response.audioRecording) {
+          reportParams.append("evidence", response.audioRecording);
+          reportParams.append("sosAudio", "true"); // Mark as SOS audio to prevent deletion
+        }
+
+        // Navigate directly to report submission page
+        resetSOSState();
+        router.push(`/reports/submit?${reportParams.toString()}` as any);
       },
       () => {
         // Reset SOS trigger state if user declines
@@ -188,16 +206,9 @@ export default function Home() {
     );
   };
 
-  // Handle closing of the report modal
-  const handleReportClose = () => {
-    setShowReportModal(false);
-    resetSOSState();
-  };
-
   // Reset SOS state after completion or cancellation
   const resetSOSState = () => {
     setSosTriggered(false);
-    setAlertResponse(null);
     if (pulseAnimation) pulseAnimation.start();
   };
 
@@ -377,13 +388,6 @@ export default function Home() {
           resetSOSState();
         }}
         onSuccess={handleSOSSuccess}
-      />
-
-      {/* Report Modal for incident details */}
-      <ReportModal
-        visible={showReportModal}
-        onClose={handleReportClose}
-        alertData={alertResponse}
       />
 
       <NotificationModal

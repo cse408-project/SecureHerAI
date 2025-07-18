@@ -16,6 +16,7 @@ import { useAuth } from "../../context/AuthContext";
 import ApiService from "../../services/api";
 import Header from "../../components/Header";
 import DatePicker from "../../components/DatePicker";
+import ResponderFields from "../../components/ResponderFields";
 import cloudinaryService from "../../services/cloudinary";
 import * as Location from "expo-location";
 
@@ -77,6 +78,16 @@ export default function SettingsScreen() {
     profilePicture: "",
     // Responder fields
     status: "",
+    responderType: "",
+    badgeNumber: "",
+    branchName: "",
+    address: "",
+    currentLatitude: null as number | null,
+    currentLongitude: null as number | null,
+  });
+
+  // Add errors state for ResponderFields
+  const [errors, setErrors] = useState({
     responderType: "",
     badgeNumber: "",
     branchName: "",
@@ -344,10 +355,16 @@ export default function SettingsScreen() {
         badgeNumber: profile.responderInfo?.badgeNumber || "",
         branchName: profile.responderInfo?.branchName || "",
         address: profile.responderInfo?.address || "",
-        currentLatitude:
-          profile.responderInfo?.currentLatitude?.toString() || "",
-        currentLongitude:
-          profile.responderInfo?.currentLongitude?.toString() || "",
+        currentLatitude: profile.responderInfo?.currentLatitude || null,
+        currentLongitude: profile.responderInfo?.currentLongitude || null,
+      });
+      setErrors({
+        responderType: "",
+        badgeNumber: "",
+        branchName: "",
+        address: "",
+        currentLatitude: "",
+        currentLongitude: "",
       });
       setShowFullProfileModal(true);
     }
@@ -367,12 +384,19 @@ export default function SettingsScreen() {
     // Validate responder fields if they exist
     const isResponder = profile?.responderInfo !== null;
     if (isResponder) {
+      const newErrors: any = {};
+
       if (!editProfile.responderType.trim()) {
-        showAlert("Error", "Responder type is required", "error");
-        return;
+        newErrors.responderType = "Responder type is required";
       }
       if (!editProfile.badgeNumber.trim()) {
-        showAlert("Error", "Badge number is required", "error");
+        newErrors.badgeNumber = "Badge number is required";
+      }
+
+      // Check if there are any validation errors
+      if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        showAlert("Error", "Please fix the validation errors", "error");
         return;
       }
     }
@@ -400,13 +424,11 @@ export default function SettingsScreen() {
         if (editProfile.address.trim()) {
           updateData.address = editProfile.address.trim();
         }
-        if (editProfile.currentLatitude.trim()) {
-          updateData.currentLatitude = parseFloat(editProfile.currentLatitude);
+        if (editProfile.currentLatitude !== null) {
+          updateData.currentLatitude = editProfile.currentLatitude;
         }
-        if (editProfile.currentLongitude.trim()) {
-          updateData.currentLongitude = parseFloat(
-            editProfile.currentLongitude
-          );
+        if (editProfile.currentLongitude !== null) {
+          updateData.currentLongitude = editProfile.currentLongitude;
         }
       }
 
@@ -585,8 +607,8 @@ export default function SettingsScreen() {
       // Update form with detected location
       setEditProfile((prev) => ({
         ...prev,
-        currentLatitude: userLocation.coords.latitude.toString(),
-        currentLongitude: userLocation.coords.longitude.toString(),
+        currentLatitude: userLocation.coords.latitude,
+        currentLongitude: userLocation.coords.longitude,
         address: address !== "Unknown location" ? address : prev.address,
       }));
 
@@ -1100,12 +1122,16 @@ export default function SettingsScreen() {
         onRequestClose={() => setShowFullProfileModal(false)}
       >
         <View className="flex-1 bg-black/50 items-center justify-center p-4">
-          <View className="bg-white rounded-lg p-6 w-full max-w-md max-h-4/5">
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text className="text-xl font-bold mb-4 text-center text-[#67082F]">
-                Edit Profile
-              </Text>
+          <View className="bg-white rounded-lg p-6 w-full max-w-md max-h-4/5 flex-1">
+            <Text className="text-xl font-bold mb-4 text-center text-[#67082F]">
+              Edit Profile
+            </Text>
 
+            <ScrollView
+              className="flex-1"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 20 }}
+            >
               {/* Profile Picture Preview */}
               <View className="items-center mb-6">
                 {editProfile.profilePicture ? (
@@ -1281,243 +1307,63 @@ export default function SettingsScreen() {
                       </View>
                     </View>
 
-                    {/* Responder Type */}
-                    <View className="mb-4">
-                      <Text className="text-sm font-medium text-gray-700 mb-2">
-                        Responder Type *
-                      </Text>
-                      <View className="border border-gray-300 rounded-lg bg-white">
-                        <View className="p-3">
-                          <TouchableOpacity
-                            className={`p-3 rounded-lg ${
-                              editProfile.responderType === "POLICE"
-                                ? "bg-blue-100 border-2 border-blue-500"
-                                : "bg-gray-100"
-                            }`}
-                            onPress={() =>
-                              setEditProfile((prev) => ({
-                                ...prev,
-                                responderType: "POLICE",
-                              }))
-                            }
-                          >
-                            <Text
-                              className={`text-center font-semibold ${
-                                editProfile.responderType === "POLICE"
-                                  ? "text-blue-700"
-                                  : "text-gray-600"
-                              }`}
-                            >
-                              🚔 Police
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            className={`p-3 rounded-lg mt-2 ${
-                              editProfile.responderType === "MEDICAL"
-                                ? "bg-red-100 border-2 border-red-500"
-                                : "bg-gray-100"
-                            }`}
-                            onPress={() =>
-                              setEditProfile((prev) => ({
-                                ...prev,
-                                responderType: "MEDICAL",
-                              }))
-                            }
-                          >
-                            <Text
-                              className={`text-center font-semibold ${
-                                editProfile.responderType === "MEDICAL"
-                                  ? "text-red-700"
-                                  : "text-gray-600"
-                              }`}
-                            >
-                              🚑 Medical
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            className={`p-3 rounded-lg mt-2 ${
-                              editProfile.responderType === "FIRE"
-                                ? "bg-orange-100 border-2 border-orange-500"
-                                : "bg-gray-100"
-                            }`}
-                            onPress={() =>
-                              setEditProfile((prev) => ({
-                                ...prev,
-                                responderType: "FIRE",
-                              }))
-                            }
-                          >
-                            <Text
-                              className={`text-center font-semibold ${
-                                editProfile.responderType === "FIRE"
-                                  ? "text-orange-700"
-                                  : "text-gray-600"
-                              }`}
-                            >
-                              🚒 Fire Department
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    </View>
-
-                    {/* Badge Number */}
-                    <View className="mb-4">
-                      <Text className="text-sm font-medium text-gray-700 mb-2">
-                        Badge Number *
-                      </Text>
-                      <TextInput
-                        className="border border-gray-300 rounded-lg p-3 bg-white text-gray-900"
-                        placeholder="Enter your badge number"
-                        value={editProfile.badgeNumber}
-                        onChangeText={(value) =>
-                          setEditProfile((prev) => ({
+                    {/* Responder Information */}
+                    <ResponderFields
+                      formData={editProfile}
+                      onFieldChange={(field, value) => {
+                        setEditProfile((prev) => ({
+                          ...prev,
+                          [field]:
+                            field === "currentLatitude" ||
+                            field === "currentLongitude"
+                              ? value
+                                ? parseFloat(value)
+                                : null
+                              : value,
+                        }));
+                        // Clear error when user starts typing
+                        if (errors[field as keyof typeof errors]) {
+                          setErrors((prev) => ({
                             ...prev,
-                            badgeNumber: value,
-                          }))
+                            [field]: "",
+                          }));
                         }
-                        autoCapitalize="characters"
-                      />
-                    </View>
-
-                    {/* Branch Name */}
-                    <View className="mb-4">
-                      <Text className="text-sm font-medium text-gray-700 mb-2">
-                        Branch Name
-                      </Text>
-                      <TextInput
-                        className="border border-gray-300 rounded-lg p-3 bg-white text-gray-900"
-                        placeholder="Enter your branch/station name"
-                        value={editProfile.branchName}
-                        onChangeText={(value) =>
-                          setEditProfile((prev) => ({
-                            ...prev,
-                            branchName: value,
-                          }))
-                        }
-                      />
-                    </View>
-
-                    {/* Address */}
-                    <View className="mb-4">
-                      <Text className="text-sm font-medium text-gray-700 mb-2">
-                        Address
-                      </Text>
-                      <TextInput
-                        className="border border-gray-300 rounded-lg p-3 bg-white text-gray-900"
-                        placeholder="Enter your station/office address"
-                        value={editProfile.address}
-                        onChangeText={(value) =>
-                          setEditProfile((prev) => ({
-                            ...prev,
-                            address: value,
-                          }))
-                        }
-                        multiline
-                        numberOfLines={2}
-                      />
-                    </View>
-
-                    {/* Location Coordinates */}
-                    <View className="mb-4">
-                      <Text className="text-sm font-medium text-gray-700 mb-2">
-                        Current Location (Optional)
-                      </Text>
-
-                      {/* GPS Detection Button */}
-                      <TouchableOpacity
-                        className="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200 flex-row items-center justify-center"
-                        onPress={detectCurrentLocation}
-                        disabled={isDetectingLocation}
-                      >
-                        {isDetectingLocation ? (
-                          <ActivityIndicator size="small" color="#3B82F6" />
-                        ) : (
-                          <MaterialIcons
-                            name="my-location"
-                            size={20}
-                            color="#3B82F6"
-                          />
-                        )}
-                        <Text className="text-blue-700 font-medium ml-2">
-                          {isDetectingLocation
-                            ? "Detecting Location..."
-                            : "Detect Current Location"}
-                        </Text>
-                      </TouchableOpacity>
-
-                      <View className="flex-row space-x-2">
-                        <View className="flex-1">
-                          <Text className="text-xs text-gray-500 mb-1">
-                            Latitude
-                          </Text>
-                          <TextInput
-                            className="border border-gray-300 rounded-lg p-3 bg-white text-gray-900"
-                            placeholder="23.8103"
-                            value={editProfile.currentLatitude}
-                            onChangeText={(value) =>
-                              setEditProfile((prev) => ({
-                                ...prev,
-                                currentLatitude: value,
-                              }))
-                            }
-                            keyboardType="numeric"
-                          />
-                        </View>
-                        <View className="flex-1">
-                          <Text className="text-xs text-gray-500 mb-1">
-                            Longitude
-                          </Text>
-                          <TextInput
-                            className="border border-gray-300 rounded-lg p-3 bg-white text-gray-900"
-                            placeholder="90.4125"
-                            value={editProfile.currentLongitude}
-                            onChangeText={(value) =>
-                              setEditProfile((prev) => ({
-                                ...prev,
-                                currentLongitude: value,
-                              }))
-                            }
-                            keyboardType="numeric"
-                          />
-                        </View>
-                      </View>
-                      <Text className="text-xs text-gray-400 mt-1">
-                        Use the button above to automatically detect your
-                        location, or enter coordinates manually
-                      </Text>
-                    </View>
+                      }}
+                      errors={errors}
+                      onDetectLocation={detectCurrentLocation}
+                      isDetectingLocation={isDetectingLocation}
+                    />
                   </View>
                 </>
               )}
-
-              {/* Action Buttons */}
-              <View className="flex-row space-x-3">
-                <TouchableOpacity
-                  className="flex-1 bg-gray-200 rounded-lg p-4"
-                  onPress={() => setShowFullProfileModal(false)}
-                  disabled={isUpdatingProfile}
-                >
-                  <Text className="text-center text-gray-700 font-semibold">
-                    Cancel
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  className="flex-1 bg-[#67082F] rounded-lg p-4"
-                  onPress={updateFullProfile}
-                  disabled={isUpdatingProfile}
-                >
-                  {isUpdatingProfile ? (
-                    <ActivityIndicator size="small" color="white" />
-                  ) : (
-                    <Text className="text-center text-white font-semibold">
-                      Save Changes
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
             </ScrollView>
+
+            {/* Action Buttons - Fixed at bottom */}
+            <View className="flex-row space-x-3 mt-4 pt-4 border-t border-gray-200">
+              <TouchableOpacity
+                className="flex-1 bg-gray-200 rounded-lg p-4"
+                onPress={() => setShowFullProfileModal(false)}
+                disabled={isUpdatingProfile}
+              >
+                <Text className="text-center text-gray-700 font-semibold">
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className="flex-1 bg-[#67082F] rounded-lg p-4"
+                onPress={updateFullProfile}
+                disabled={isUpdatingProfile}
+              >
+                {isUpdatingProfile ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Text className="text-center text-white font-semibold">
+                    Save Changes
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>

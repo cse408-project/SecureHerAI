@@ -43,24 +43,34 @@ const ReportModal: React.FC<ReportModalProps> = ({
     try {
       setIsSubmitting(true);
 
-      // This is where we would normally submit the report to the API
-      // For now, let's simulate a successful submission
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Prepare pre-populated data for the report submission page navigate to the actual report submission page
+      const reportParams = new URLSearchParams({
+        autoFill: "true",
+        details: details.trim(),
+        location: `${alertData.latitude},${alertData.longitude}`,
+        address: alertData.address || "",
+        incidentType: "assault", // Default for SOS alerts
+        triggerMethod: alertData.triggerMethod || "",
+        alertId: alertData.alertId || "",
+        triggeredAt: alertData.triggeredAt || "",
+      });
 
+      // Add audio evidence if available
+      if (alertData.audioRecording) {
+        reportParams.append("evidence", alertData.audioRecording);
+      }
+
+      // Navigate to report submission page with pre-populated data
+      onClose();
+      router.push(`/reports/submit?${reportParams.toString()}` as any);
+    } catch (error) {
+      console.error("Error preparing report:", error);
       setIsSubmitting(false);
       showAlert(
-        "Success",
-        "Your incident report has been submitted successfully.",
-        "success"
+        "Error",
+        "Failed to prepare report. Please try again.",
+        "error"
       );
-
-      // Navigate to reports page
-      onClose();
-      router.push("/reports" as any);
-    } catch (error) {
-      console.error("Error submitting report:", error);
-      setIsSubmitting(false);
-      showAlert("Error", "Failed to submit report. Please try again.", "error");
     }
   };
 

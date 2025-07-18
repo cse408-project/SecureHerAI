@@ -661,10 +661,13 @@ class ApiService {
   ): Promise<UserReportsResponse> {
     try {
       console.log("API: Fetching user reports");
-      const response = await fetch(`${API_BASE_URL}/report/user-reports/time`, {
+      const url = new URL(`${API_BASE_URL}/report/user-reports/time`);
+      url.searchParams.append("start", start);
+      url.searchParams.append("end", end);
+
+      const response = await fetch(url.toString(), {
         method: "GET",
         headers: await this.getHeaders(true),
-        body: JSON.stringify({ start, end }),
       });
 
       const data = await response.json();
@@ -679,7 +682,7 @@ class ApiService {
       };
     }
   }
-
+  
   async getReportDetails(reportId: string): Promise<ReportDetailsResponse> {
     try {
       console.log("API: Fetching report details for:", reportId);

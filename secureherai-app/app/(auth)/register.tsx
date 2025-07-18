@@ -12,12 +12,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
+import * as Location from "expo-location";
 // @ts-ignore
 import { router } from "expo-router";
 import { useAuth } from "../../context/AuthContext";
 import { useAlert } from "../../context/AlertContext";
 import { RegisterRequest } from "../../types/auth";
 import DatePicker from "../../components/DatePicker";
+import ResponderFields from "../../components/ResponderFields";
 
 export default function RegisterScreen() {
   const [formData, setFormData] = useState<RegisterRequest>({
@@ -27,10 +29,18 @@ export default function RegisterScreen() {
     phoneNumber: "",
     dateOfBirth: "",
     role: "USER",
+    responderType: undefined,
+    badgeNumber: "",
+    branchName: "",
+    address: "",
+    currentLatitude: undefined,
+    currentLongitude: undefined,
   });
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [errors, setErrors] = useState<any>({});
 
   const { register, initiateGoogleLogin } = useAuth();
   const { showAlert } = useAlert();
@@ -39,19 +49,139 @@ export default function RegisterScreen() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const detectCurrentLocation = async () => {
+    setIsDetectingLocation(true);
+    try {
+      // Request permission to access location
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        showAlert(
+          "Permission Denied",
+          "Location permission is required to detect your current location.",
+          "error"
+        );
+        return;
+      }
+
+      // Get current position
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      // Update coordinates
+      setFormData((prev) => ({
+        ...prev,
+        currentLatitude: location.coords.latitude,
+        currentLongitude: location.coords.longitude,
+      }));
+
+      // Try to get address from coordinates
+      try {
+        const addressResponse = await Location.reverseGeocodeAsync({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+
+        if (addressResponse.length > 0) {
+          const address = addressResponse[0];
+          const fullAddress = [
+            address.name,
+            address.street,
+            address.city,
+            address.region,
+            address.country,
+          ]
+            .filter(Boolean)
+            .join(", ");
+
+          if (fullAddress) {
+            setFormData((prev) => ({
+              ...prev,
+              address: fullAddress,
+            }));
+          }
+        }
+      } catch (reverseGeoError) {
+        console.log("Reverse geocoding failed:", reverseGeoError);
+        // Still update coordinates even if address lookup fails
+      }
+
+      showAlert(
+        "Location Detected",
+        "Your current location has been detected successfully.",
+        "success"
+      );
+    } catch (error) {
+      console.error("Location detection error:", error);
+      showAlert(
+        "Location Error",
+        "Failed to detect your location. Please check your GPS settings and try again.",
+        "error"
+      );
+    } finally {
+      setIsDetectingLocation(false);
+    }
+  };
+
   const validateForm = (): string | null => {
-    if (!formData.fullName.trim()) return "Full name is required";
-    if (!formData.email.trim()) return "Email is required";
-    if (!formData.password) return "Password is required";
-    if (formData.password !== confirmPassword) return "Passwords do not match";
-    if (!formData.phoneNumber.trim()) return "Phone number is required";
-    if (!formData.dateOfBirth.trim()) return "Date of birth is required";
+    const newErrors: any = {};
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) return "Invalid email format";
+    if (!formData.fullName.trim()) {
+      newErrors.fullName = "Full name is required";
+    }
 
-    if (formData.password.length < 6)
-      return "Password must be at least 6 characters";
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        newErrors.email = "Invalid email format";
+      }
+    }
+
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    } else if (formData.password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
+    }
+
+    if (formData.password !== confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+
+    if (!formData.phoneNumber.trim()) {
+      newErrors.phoneNumber = "Phone number is required";
+    } else if (!/^\+?[\d\s-()]+$/.test(formData.phoneNumber.trim())) {
+      newErrors.phoneNumber = "Please enter a valid phone number";
+    }
+
+    if (!formData.dateOfBirth.trim()) {
+      newErrors.dateOfBirth = "Date of birth is required";
+    }
+
+    // Additional validation for responders
+    if (formData.role === "RESPONDER") {
+      if (!formData.responderType) {
+        newErrors.responderType = "Responder type is required for responders";
+      }
+      if (!formData.badgeNumber?.trim()) {
+        newErrors.badgeNumber = "Badge number is required for responders";
+      }
+      if (!formData.branchName?.trim()) {
+        newErrors.branchName = "Branch name is required for responders";
+      }
+      if (!formData.address?.trim()) {
+        newErrors.address = "Address is required for responders";
+      }
+    }
+
+    setErrors(newErrors);
+
+    // If there are errors, show the first one
+    const errorKeys = Object.keys(newErrors);
+    if (errorKeys.length > 0) {
+      return newErrors[errorKeys[0]];
+    }
 
     return null;
   };
@@ -65,7 +195,18 @@ export default function RegisterScreen() {
 
     setIsLoading(true);
     try {
-      const response = await register(formData);
+      // Clean up form data - remove empty optional fields for USER role
+      const cleanFormData = { ...formData };
+      if (formData.role === "USER") {
+        delete cleanFormData.responderType;
+        delete cleanFormData.badgeNumber;
+        delete cleanFormData.branchName;
+        delete cleanFormData.address;
+        delete cleanFormData.currentLatitude;
+        delete cleanFormData.currentLongitude;
+      }
+
+      const response = await register(cleanFormData);
 
       if (response.success) {
         showAlert(
@@ -150,24 +291,33 @@ export default function RegisterScreen() {
               </Text>
               <View className="mb-4">
                 <Text className="text-sm font-medium text-gray-700 mb-2">
-                  Full Name
+                  Full Name <Text className="text-red-500">*</Text>
                 </Text>
                 <TextInput
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900"
+                  className={`w-full px-4 py-3 border rounded-lg bg-white text-gray-900 ${
+                    errors.fullName ? "border-red-500" : "border-gray-300"
+                  }`}
                   placeholder="Enter your full name"
                   placeholderTextColor="#9CA3AF"
                   value={formData.fullName}
                   onChangeText={(value) => updateFormData("fullName", value)}
                   autoCapitalize="words"
                 />
+                {errors.fullName && (
+                  <Text className="text-red-500 text-sm mt-1">
+                    {errors.fullName}
+                  </Text>
+                )}
               </View>
 
               <View className="mb-4">
                 <Text className="text-sm font-medium text-gray-700 mb-2">
-                  Email Address
+                  Email Address <Text className="text-red-500">*</Text>
                 </Text>
                 <TextInput
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900"
+                  className={`w-full px-4 py-3 border rounded-lg bg-white text-gray-900 ${
+                    errors.email ? "border-red-500" : "border-gray-300"
+                  }`}
                   placeholder="Enter your email"
                   placeholderTextColor="#9CA3AF"
                   value={formData.email}
@@ -176,72 +326,147 @@ export default function RegisterScreen() {
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
+                {errors.email && (
+                  <Text className="text-red-500 text-sm mt-1">
+                    {errors.email}
+                  </Text>
+                )}
               </View>
 
               <View className="mb-4">
                 <Text className="text-sm font-medium text-gray-700 mb-2">
-                  Phone Number
+                  Phone Number <Text className="text-red-500">*</Text>
                 </Text>
                 <TextInput
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900"
+                  className={`w-full px-4 py-3 border rounded-lg bg-white text-gray-900 ${
+                    errors.phoneNumber ? "border-red-500" : "border-gray-300"
+                  }`}
                   placeholder="Enter your phone number"
                   placeholderTextColor="#9CA3AF"
                   value={formData.phoneNumber}
                   onChangeText={(value) => updateFormData("phoneNumber", value)}
                   keyboardType="phone-pad"
                 />
+                {errors.phoneNumber && (
+                  <Text className="text-red-500 text-sm mt-1">
+                    {errors.phoneNumber}
+                  </Text>
+                )}
               </View>
 
-              <DatePicker
-                label="Date of Birth"
-                value={formData.dateOfBirth}
-                onDateChange={(date) => updateFormData("dateOfBirth", date)}
-                placeholder="Select your birth date"
-                required
-              />
+              <View className="mb-4">
+                <DatePicker
+                  label="Date of Birth"
+                  value={formData.dateOfBirth}
+                  onDateChange={(date) => updateFormData("dateOfBirth", date)}
+                  placeholder="Select your birth date"
+                  required
+                />
+                {errors.dateOfBirth && (
+                  <Text className="text-red-500 text-sm mt-1">
+                    {errors.dateOfBirth}
+                  </Text>
+                )}
+              </View>
 
               <View className="mb-4">
                 <Text className="text-sm font-medium text-gray-700 mb-2">
-                  Role
+                  Role <Text className="text-red-500">*</Text>
                 </Text>
                 <View className="border border-gray-300 rounded-lg bg-white">
                   <Picker
                     selectedValue={formData.role}
-                    onValueChange={(value) => updateFormData("role", value)}
+                    onValueChange={(value) => {
+                      updateFormData("role", value);
+                      // Reset responder-specific fields when changing role
+                      if (value === "USER") {
+                        setFormData((prev) => ({
+                          ...prev,
+                          role: value,
+                          responderType: undefined,
+                          badgeNumber: "",
+                          branchName: "",
+                          address: "",
+                          currentLatitude: undefined,
+                          currentLongitude: undefined,
+                        }));
+                      }
+                    }}
                     style={{ color: "#000" }}
                   >
                     <Picker.Item label="User" value="USER" />
                     <Picker.Item label="Responder" value="RESPONDER" />
                   </Picker>
                 </View>
+                {formData.role === "RESPONDER" && (
+                  <View className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <Text className="text-blue-800 text-sm font-medium">
+                      Responder Registration
+                    </Text>
+                    <Text className="text-blue-700 text-xs mt-1">
+                      As a responder, you&apos;ll receive incident alerts and
+                      can assist users in your area.
+                    </Text>
+                  </View>
+                )}
               </View>
+
+              {/* Responder-specific fields */}
+              {formData.role === "RESPONDER" && (
+                <ResponderFields
+                  formData={formData}
+                  errors={errors}
+                  onFieldChange={(field: string, value: string) =>
+                    updateFormData(field as keyof RegisterRequest, value)
+                  }
+                  onDetectLocation={detectCurrentLocation}
+                  isDetectingLocation={isDetectingLocation}
+                  showTitle={true}
+                />
+              )}
 
               <View className="mb-4">
                 <Text className="text-sm font-medium text-gray-700 mb-2">
-                  Password
+                  Password <Text className="text-red-500">*</Text>
                 </Text>
                 <TextInput
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900"
+                  className={`w-full px-4 py-3 border rounded-lg bg-white text-gray-900 ${
+                    errors.password ? "border-red-500" : "border-gray-300"
+                  }`}
                   placeholder="Enter your password"
                   placeholderTextColor="#9CA3AF"
                   value={formData.password}
                   onChangeText={(value) => updateFormData("password", value)}
                   secureTextEntry
                 />
+                {errors.password && (
+                  <Text className="text-red-500 text-sm mt-1">
+                    {errors.password}
+                  </Text>
+                )}
               </View>
 
               <View className="mb-6">
                 <Text className="text-sm font-medium text-gray-700 mb-2">
-                  Confirm Password
+                  Confirm Password <Text className="text-red-500">*</Text>
                 </Text>
                 <TextInput
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900"
+                  className={`w-full px-4 py-3 border rounded-lg bg-white text-gray-900 ${
+                    errors.confirmPassword
+                      ? "border-red-500"
+                      : "border-gray-300"
+                  }`}
                   placeholder="Confirm your password"
                   placeholderTextColor="#9CA3AF"
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   secureTextEntry
                 />
+                {errors.confirmPassword && (
+                  <Text className="text-red-500 text-sm mt-1">
+                    {errors.confirmPassword}
+                  </Text>
+                )}
               </View>
 
               {/* Register Button */}

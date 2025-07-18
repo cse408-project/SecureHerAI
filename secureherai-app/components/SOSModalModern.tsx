@@ -16,6 +16,7 @@ import { useAlert } from "../context/AlertContext";
 import { AlertResponse } from "../types/sos";
 import apiService from "../services/api";
 import AudioRecorder from "./AudioRecorder";
+import audioRecordingService from "../services/audioRecordingService";
 
 interface SOSModalProps {
   visible: boolean;
@@ -31,7 +32,7 @@ const SOSModalModern: React.FC<SOSModalProps> = ({
   const [mode, setMode] = useState<"select" | "voice" | "text">("select");
   const [message, setMessage] = useState("");
   const [keyword, setKeyword] = useState("");
-  const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
+  const [recordingUri, setRecordingUri] = useState<string | null>(null);
 
   // Default location for Dhaka, Bangladesh
   const [location, setLocation] = useState<{
@@ -98,6 +99,26 @@ const SOSModalModern: React.FC<SOSModalProps> = ({
     }
   }, [showAlert]);
 
+  const resetState = useCallback(() => {
+    setMode("select");
+    setMessage("");
+    setKeyword("");
+
+    // Clean up any local recording when resetting
+    if (recordingUri) {
+      audioRecordingService
+        .deleteLocalRecording(recordingUri)
+        .catch((error) => {
+          console.error("Failed to delete recording during reset:", error);
+        });
+    }
+
+    setRecordingUri(null);
+    setIsLoading(false);
+    setShowCancelAlert(false);
+    setLastAlertId(null);
+  }, [recordingUri]);
+
   // Initialize when modal opens
   useEffect(() => {
     if (visible) {
@@ -105,27 +126,7 @@ const SOSModalModern: React.FC<SOSModalProps> = ({
     } else {
       resetState();
     }
-  }, [visible, getLocation]);
-
-  const resetState = () => {
-    setMode("select");
-    setMessage("");
-    setKeyword("");
-    setRecordingUrl(null);
-    setIsLoading(false);
-    setShowCancelAlert(false);
-    setLastAlertId(null);
-  };
-
-  const handleRecordingComplete = (audioUrl: string) => {
-    console.log("✅ Recording completed and uploaded:", audioUrl);
-    setRecordingUrl(audioUrl);
-    showAlert(
-      "Success",
-      "Audio recorded successfully! You can now submit your SOS alert.",
-      "success"
-    );
-  };
+  }, [visible, getLocation, resetState]);
 
   const handleRecordingError = (error: string) => {
     console.error("❌ Recording error:", error);
@@ -133,31 +134,68 @@ const SOSModalModern: React.FC<SOSModalProps> = ({
   };
 
   const submitVoiceCommand = async () => {
-    if (!recordingUrl) {
+    if (!recordingUri) {
       showAlert("Error", "Please record your voice message first.", "error");
       return;
     }
 
+    let uploadedUrl: string | null = null;
+
     try {
       setIsLoading(true);
+      console.log("Uploading audio first...");
+
+      // First upload the audio to get the cloud URL
+      const uploadResult = await audioRecordingService.uploadRecording(
+        recordingUri
+      );
+
+      if (!uploadResult.success || !uploadResult.url) {
+        // Upload failed - delete the local recording
+        await audioRecordingService.deleteLocalRecording(recordingUri);
+        console.log("Deleted local recording after upload failure");
+
+        showAlert(
+          "Error",
+          uploadResult.error || "Failed to upload audio. Please try again.",
+          "error"
+        );
+        setIsLoading(false);
+        setRecordingUri(null); // Reset recording state
+        return;
+      }
+
+      uploadedUrl = uploadResult.url;
+      console.log("Audio uploaded successfully:", uploadedUrl);
+
       console.log("Submitting voice command...");
-      console.log("Using audio URL:", recordingUrl);
+      console.log("Using audio URL:", uploadedUrl);
       console.log("Location:", location);
 
-      // Send to backend
+      // Send to backend with the uploaded audio URL
       const response = await apiService.submitSOSVoiceCommand(
-        recordingUrl,
+        uploadedUrl,
         location
       );
 
       setIsLoading(false);
 
       if (!response.success) {
+        // SOS submission failed - delete from both local and cloud
+        await audioRecordingService.deleteRecording(
+          recordingUri || undefined,
+          uploadedUrl || undefined
+        );
+        console.log(
+          "Deleted recording from both local and cloud after SOS submission failure"
+        );
+
         showAlert(
           "Error",
           response.message || "Failed to send SOS alert.",
           "error"
         );
+        setRecordingUri(null);
         return;
       }
 
@@ -172,12 +210,25 @@ const SOSModalModern: React.FC<SOSModalProps> = ({
       onSuccess(response);
     } catch (error) {
       console.error("Error submitting voice command:", error);
+
+      // Clean up recordings on any error
+      if (recordingUri || uploadedUrl) {
+        await audioRecordingService.deleteRecording(
+          recordingUri || undefined,
+          uploadedUrl || undefined
+        );
+        console.log(
+          "Deleted recording from both local and cloud after submission error"
+        );
+      }
+
       showAlert(
         "Error",
         "Failed to send SOS alert. Please try again.",
         "error"
       );
       setIsLoading(false);
+      setRecordingUri(null); // Reset recording state
     }
   };
 
@@ -308,7 +359,17 @@ const SOSModalModern: React.FC<SOSModalProps> = ({
 
       <View style={styles.voiceContainer}>
         <AudioRecorder
-          onRecordingComplete={handleRecordingComplete}
+          autoUpload={false}
+          onLocalRecordingComplete={(audioUri) => {
+            // For SOS, we only store the local URI, don't upload yet
+            console.log("✅ Recording completed locally:", audioUri);
+            setRecordingUri(audioUri);
+            showAlert(
+              "Success",
+              "Audio recorded successfully! You can now submit your SOS alert.",
+              "success"
+            );
+          }}
           onError={handleRecordingError}
           maxDuration={10}
           disabled={isLoading}
@@ -335,10 +396,10 @@ const SOSModalModern: React.FC<SOSModalProps> = ({
       <TouchableOpacity
         style={[
           styles.submitButton,
-          (!recordingUrl || isLoading) && styles.submitButtonDisabled,
+          (!recordingUri || isLoading) && styles.submitButtonDisabled,
         ]}
         onPress={submitVoiceCommand}
-        disabled={!recordingUrl || isLoading}
+        disabled={!recordingUri || isLoading}
       >
         {isLoading ? (
           <ActivityIndicator color="white" size="small" />

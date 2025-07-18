@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,147 +7,290 @@ import {
   RefreshControl,
   Alert,
   ActivityIndicator,
-  Dimensions,
   Modal,
-  TextInput,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
-import { useAuth } from "../../context/AuthContext";
 import apiService from "../../services/api";
-import { ReportSummary, UserReportsResponse } from "../../types/report";
+import { ReportSummary } from "../../types/report";
 import Header from "../../components/Header";
 import DatePicker from "../../components/DatePicker";
 import { useAlert } from "../../context/AlertContext";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const { width } = Dimensions.get("window");
 
 interface Time {
   start: string;
   end: string;
 }
 
-// Simple Contact Form Component - moved outside to prevent re-creation
-const TimeForm = ({
-  onSubmit,
+// Filter Modal Component - moved outside to prevent re-creation
+const FilterModal = ({
+  visible,
+  onClose,
+  activeFilters,
+  setActiveFilters,
+  onApplyFilter,
+  onClearFilters,
   timeFilter,
   setTimeFilter,
-  isSubmitting,
+  onTimeFilter,
+  isTimeSubmitting,
+  getIncidentTypeIcon,
+  getIncidentTypeColor,
 }: {
-  onSubmit: () => void;
+  visible: boolean;
+  onClose: () => void;
+  activeFilters: any;
+  setActiveFilters: (filters: any) => void;
+  onApplyFilter: (filters: any) => void;
+  onClearFilters: () => void;
   timeFilter: Time;
   setTimeFilter: (time: Time) => void;
-  isSubmitting: boolean;
-}) => (
-  <View className="bg-white rounded p-4 m-4 w-full max-w-sm">
-    <Text className="text-lg font-bold text-[#67082F] mb-4 text-center">
-      Time Filter
-    </Text>
-    {/* Start */}
-    <DatePicker
-      label="Start Date"
-      value={timeFilter.start}
-      onDateChange={(date) => setTimeFilter({ ...timeFilter, start: date })}
-      placeholder="Select start date"
-    />
+  onTimeFilter: () => void;
+  isTimeSubmitting: boolean;
+  getIncidentTypeIcon: (type: string) => string;
+  getIncidentTypeColor: (type: string) => string;
+}) => {
+  const [showTimeSection, setShowTimeSection] = useState(false);
 
-    {/* Start */}
-    <DatePicker
-      label="End Date"
-      value={timeFilter.end}
-      onDateChange={(date) => setTimeFilter({ ...timeFilter, end: date })}
-      placeholder="Select end date"
-    />
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={onClose}
+    >
+      <View className="flex-1 bg-black/50 justify-center items-center">
+        <View className="bg-white rounded-lg p-6 m-4 w-11/12 max-w-md max-h-4/5">
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-lg font-bold text-[#67082F]">
+              Filter Reports
+            </Text>
+            <TouchableOpacity
+              onPress={onClose}
+              className="p-1 rounded-full"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <MaterialIcons name="close" size={24} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
 
-    {/* Action Buttons */}
-    <View className="flex-row">
-      <TouchableOpacity
-        className={`flex-1 rounded py-3 px-3 ${
-          isSubmitting ? "bg-[#67082F]/60" : "bg-[#67082F]"
-        }`}
-        onPress={onSubmit}
-        disabled={isSubmitting}
-      >
-        {isSubmitting ? (
-          <ActivityIndicator color="white" size="small" />
-        ) : (
-          <Text className="text-center text-white font-medium">Submit</Text>
-        )}
-      </TouchableOpacity>
-    </View>
-  </View>
-);
+          <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+            {/* Incident Type Filter */}
+            <Text className="text-sm font-semibold text-gray-700 mb-2">
+              Incident Type
+            </Text>
+            <View className="flex-row flex-wrap mb-4">
+              {["harassment", "theft", "assault", "other"].map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  className={`flex-row items-center px-3 py-2 rounded-lg mr-2 mb-2 border ${
+                    activeFilters.incidentType === type
+                      ? "border-2"
+                      : "bg-gray-100 border-gray-200"
+                  }`}
+                  style={
+                    activeFilters.incidentType === type
+                      ? {
+                          backgroundColor: `${getIncidentTypeColor(type)}15`,
+                          borderColor: getIncidentTypeColor(type),
+                        }
+                      : {}
+                  }
+                  onPress={() => {
+                    const newFilters = { ...activeFilters };
+                    if (newFilters.incidentType === type) {
+                      delete newFilters.incidentType;
+                    } else {
+                      newFilters.incidentType = type;
+                    }
+                    setActiveFilters(newFilters);
+                  }}
+                >
+                  <MaterialIcons
+                    name={getIncidentTypeIcon(type) as any}
+                    size={16}
+                    color={
+                      activeFilters.incidentType === type
+                        ? getIncidentTypeColor(type)
+                        : "#6B7280"
+                    }
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text
+                    className={`capitalize text-sm font-medium`}
+                    style={{
+                      color:
+                        activeFilters.incidentType === type
+                          ? getIncidentTypeColor(type)
+                          : "#374151",
+                    }}
+                  >
+                    {type}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
+            {/* Visibility Filter */}
+            <Text className="text-sm font-semibold text-gray-700 mb-2">
+              Visibility
+            </Text>
+            <View className="flex-row flex-wrap mb-4">
+              {["public", "officials_only", "private"].map((visibility) => (
+                <TouchableOpacity
+                  key={visibility}
+                  className={`px-3 py-2 rounded-lg mr-2 mb-2 ${
+                    activeFilters.visibility === visibility
+                      ? "bg-[#67082F]"
+                      : "bg-gray-200"
+                  }`}
+                  onPress={() => {
+                    const newFilters = { ...activeFilters };
+                    if (newFilters.visibility === visibility) {
+                      delete newFilters.visibility;
+                    } else {
+                      newFilters.visibility = visibility;
+                    }
+                    setActiveFilters(newFilters);
+                  }}
+                >
+                  <Text
+                    className={`capitalize ${
+                      activeFilters.visibility === visibility
+                        ? "text-white"
+                        : "text-gray-700"
+                    }`}
+                  >
+                    {visibility.replace("_", " ")}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
 
-class SimpleApiService {
-  private async getHeaders(
-    includeAuth: boolean = false
-  ): Promise<Record<string, string>> {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
+            {/* Status Filter */}
+            <Text className="text-sm font-semibold text-gray-700 mb-2">
+              Status
+            </Text>
+            <View className="flex-row flex-wrap mb-4">
+              {["submitted", "under_review", "resolved"].map((status) => (
+                <TouchableOpacity
+                  key={status}
+                  className={`px-3 py-2 rounded-lg mr-2 mb-2 ${
+                    activeFilters.status === status
+                      ? "bg-[#67082F]"
+                      : "bg-gray-200"
+                  }`}
+                  onPress={() => {
+                    const newFilters = { ...activeFilters };
+                    if (newFilters.status === status) {
+                      delete newFilters.status;
+                    } else {
+                      newFilters.status = status;
+                    }
+                    setActiveFilters(newFilters);
+                  }}
+                >
+                  <Text
+                    className={`capitalize ${
+                      activeFilters.status === status
+                        ? "text-white"
+                        : "text-gray-700"
+                    }`}
+                  >
+                    {status.replace("_", " ")}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
 
-    if (includeAuth) {
-      const token = await AsyncStorage.getItem("auth_token");
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
-    }
+            {/* Time Filter Section */}
+            <TouchableOpacity
+              className="flex-row items-center justify-between p-3 bg-gray-50 rounded-lg mb-4"
+              onPress={() => setShowTimeSection(!showTimeSection)}
+            >
+              <View className="flex-row items-center">
+                <MaterialIcons name="date-range" size={20} color="#67082F" />
+                <Text className="text-sm font-semibold text-gray-700 ml-2">
+                  Time Filter
+                </Text>
+              </View>
+              <MaterialIcons
+                name={showTimeSection ? "expand-less" : "expand-more"}
+                size={20}
+                color="#67082F"
+              />
+            </TouchableOpacity>
 
-    return headers;
-  }
+            {showTimeSection && (
+              <View className="mb-4 p-4 bg-gray-50 rounded-lg">
+                <DatePicker
+                  label="Start Date"
+                  value={timeFilter.start}
+                  onDateChange={(date) =>
+                    setTimeFilter({ ...timeFilter, start: date })
+                  }
+                  placeholder="Select start date"
+                />
 
-  async getUserReportsByTime(
-    start: string,
-    end: string
-  ): Promise<UserReportsResponse> {
-    try {
-      console.log("API: Fetching user reports");
-      const url = new URL(`${API_BASE_URL}/report/user-reports/time`);
-      url.searchParams.append("start", start);
-      url.searchParams.append("end", end);
+                <DatePicker
+                  label="End Date"
+                  value={timeFilter.end}
+                  onDateChange={(date) =>
+                    setTimeFilter({ ...timeFilter, end: date })
+                  }
+                  placeholder="Select end date"
+                />
+              </View>
+            )}
+          </ScrollView>
 
-      const response = await fetch(url.toString(), {
-        method: "GET",
-        headers: await this.getHeaders(true),
-      });
+          <View className="flex-row justify-end space-x-3 mt-4 pt-4 border-t border-gray-200">
+            <TouchableOpacity
+              className="px-4 py-2 bg-gray-200 rounded-lg mr-3"
+              onPress={() => {
+                onClearFilters();
+                onClose();
+              }}
+            >
+              <Text className="text-gray-700">Clear & Close</Text>
+            </TouchableOpacity>
 
-      const data = await response.json();
-      console.log("API: User reports response:", data);
-
-      return data;
-    } catch (error) {
-      console.error("API: Get user reports error:", error);
-      return {
-        success: false,
-        error: "Network error occurred while fetching reports",
-      };
-    }
-  }
-}
+            <TouchableOpacity
+              className="px-4 py-2 bg-[#67082F] rounded-lg"
+              onPress={() => {
+                // Apply both regular filters and time filter if time filter has values
+                if (timeFilter.start && timeFilter.end) {
+                  onTimeFilter(); // Apply time filter
+                } else {
+                  onApplyFilter(activeFilters); // Apply regular filters only
+                }
+                onClose();
+              }}
+            >
+              <Text className="text-white font-semibold">Apply Filters</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
 
 export default function ReportsTabScreen() {
-  const { user } = useAuth();
-  const { showAlert, showConfirmAlert } = useAlert();
+  const { showAlert } = useAlert();
 
   const [reports, setReports] = useState<ReportSummary[]>([]);
   const [allReports, setAllReports] = useState<ReportSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
   const [timeFilter, setTimeFilter] = useState<Time>({
     start: "",
     end: "",
   });
-  const [error, setError] = useState<string | null>(null);
   const [isTimeSubmitting, setIsTimeSubmitting] = useState(false);
 
   // Filter state
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [showTimeFilterModal, setShowTimeFilterModal] = useState(false);
   const [activeFilters, setActiveFilters] = useState<{
     incidentType?: string;
     visibility?: string;
@@ -163,21 +306,18 @@ export default function ReportsTabScreen() {
 
   const loadReports = async () => {
     try {
-      setError(null);
       const response = await apiService.getUserReports();
       if (response.success && response.reports) {
         setReports(response.reports);
         setAllReports(response.reports); // Keep original for filtering
       } else {
         const errorMessage = response.error || "Failed to load reports";
-        setError(errorMessage);
         Alert.alert("Error", errorMessage);
       }
     } catch (error) {
       console.error("Load reports error:", error);
       const errorMessage =
         "Network error occurred. Please check your connection.";
-      setError(errorMessage);
       Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
@@ -256,24 +396,24 @@ export default function ReportsTabScreen() {
     }
   };
 
-  const sinmpleApiService = new SimpleApiService();
-
   const handleTimeFilter = async () => {
     setIsTimeSubmitting(true);
     try {
       if (
         !timeFilter.start ||
         !timeFilter.end ||
-        new Date(timeFilter.start) >= new Date(timeFilter.end)
+        new Date(timeFilter.start) > new Date(timeFilter.end)
       ) {
         showAlert("Validation Error", "Please enter valid time", "error");
         return;
       }
 
       const start = new Date(timeFilter.start).toISOString();
-      const end = new Date(timeFilter.end).toISOString();
+      const endDate = new Date(timeFilter.end);
+      endDate.setHours(23, 59, 59, 999);
+      const end = endDate.toISOString();
 
-      const response = await sinmpleApiService.getUserReportsByTime(start, end);
+      const response = await apiService.getUserReportsByTime(start, end);
 
       if (response.success && response.reports) {
         setReports(response.reports);
@@ -289,7 +429,6 @@ export default function ReportsTabScreen() {
       showAlert("Validation Error", "Failed to apply time filter", "error");
     } finally {
       setIsTimeSubmitting(false);
-      setShowTimeFilterModal(false);
     }
   };
 
@@ -552,19 +691,6 @@ export default function ReportsTabScreen() {
                   </Text>
                 </View>
               </TouchableOpacity>
-
-              {/* start end field*/}
-              <TouchableOpacity
-                className="flex-1 ml-2 p-3 bg-gray-50 rounded-lg border border-gray-200"
-                onPress={() => setShowTimeFilterModal(true)}
-              >
-                <View className="items-center">
-                  <MaterialIcons name="date-range" size={20} color="#67082F" />
-                  <Text className="text-[#67082F] text-xs font-medium mt-1">
-                    Time Filter
-                  </Text>
-                </View>
-              </TouchableOpacity>
             </View>
           </View>
 
@@ -682,195 +808,20 @@ export default function ReportsTabScreen() {
       )}
 
       {/* Filter Modal */}
-      <Modal
+      <FilterModal
         visible={showFilterModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowFilterModal(false)}
-      >
-        <View className="flex-1 bg-black/50 justify-center items-center">
-          <View className="bg-white rounded-lg p-6 m-4 w-11/12 max-w-md">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-lg font-bold text-[#67082F]">
-                Filter Reports
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowFilterModal(false)}
-                className="p-1 rounded-full"
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <MaterialIcons name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Incident Type Filter */}
-            <Text className="text-sm font-semibold text-gray-700 mb-2">
-              Incident Type
-            </Text>
-            <View className="flex-row flex-wrap mb-4">
-              {["harassment", "theft", "assault", "other"].map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  className={`flex-row items-center px-3 py-2 rounded-lg mr-2 mb-2 border ${
-                    activeFilters.incidentType === type
-                      ? "border-2"
-                      : "bg-gray-100 border-gray-200"
-                  }`}
-                  style={
-                    activeFilters.incidentType === type
-                      ? {
-                          backgroundColor: `${getIncidentTypeColor(type)}15`,
-                          borderColor: getIncidentTypeColor(type),
-                        }
-                      : {}
-                  }
-                  onPress={() => {
-                    const newFilters = { ...activeFilters };
-                    if (newFilters.incidentType === type) {
-                      delete newFilters.incidentType;
-                    } else {
-                      newFilters.incidentType = type;
-                    }
-                    setActiveFilters(newFilters);
-                  }}
-                >
-                  <MaterialIcons
-                    name={getIncidentTypeIcon(type) as any}
-                    size={16}
-                    color={
-                      activeFilters.incidentType === type
-                        ? getIncidentTypeColor(type)
-                        : "#6B7280"
-                    }
-                    style={{ marginRight: 6 }}
-                  />
-                  <Text
-                    className={`capitalize text-sm font-medium`}
-                    style={{
-                      color:
-                        activeFilters.incidentType === type
-                          ? getIncidentTypeColor(type)
-                          : "#374151",
-                    }}
-                  >
-                    {type}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Visibility Filter */}
-            <Text className="text-sm font-semibold text-gray-700 mb-2">
-              Visibility
-            </Text>
-            <View className="flex-row flex-wrap mb-4">
-              {["public", "officials_only", "private"].map((visibility) => (
-                <TouchableOpacity
-                  key={visibility}
-                  className={`px-3 py-2 rounded-lg mr-2 mb-2 ${
-                    activeFilters.visibility === visibility
-                      ? "bg-[#67082F]"
-                      : "bg-gray-200"
-                  }`}
-                  onPress={() => {
-                    const newFilters = { ...activeFilters };
-                    if (newFilters.visibility === visibility) {
-                      delete newFilters.visibility;
-                    } else {
-                      newFilters.visibility = visibility;
-                    }
-                    setActiveFilters(newFilters);
-                  }}
-                >
-                  <Text
-                    className={`capitalize ${
-                      activeFilters.visibility === visibility
-                        ? "text-white"
-                        : "text-gray-700"
-                    }`}
-                  >
-                    {visibility.replace("_", " ")}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Status Filter */}
-            <Text className="text-sm font-semibold text-gray-700 mb-2">
-              Status
-            </Text>
-            <View className="flex-row flex-wrap mb-6">
-              {["submitted", "under_review", "resolved"].map((status) => (
-                <TouchableOpacity
-                  key={status}
-                  className={`px-3 py-2 rounded-lg mr-2 mb-2 ${
-                    activeFilters.status === status
-                      ? "bg-[#67082F]"
-                      : "bg-gray-200"
-                  }`}
-                  onPress={() => {
-                    const newFilters = { ...activeFilters };
-                    if (newFilters.status === status) {
-                      delete newFilters.status;
-                    } else {
-                      newFilters.status = status;
-                    }
-                    setActiveFilters(newFilters);
-                  }}
-                >
-                  <Text
-                    className={`capitalize ${
-                      activeFilters.status === status
-                        ? "text-white"
-                        : "text-gray-700"
-                    }`}
-                  >
-                    {status.replace("_", " ")}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <View className="flex-row justify-end space-x-3">
-              <TouchableOpacity
-                className="px-4 py-2 bg-gray-200 rounded-lg mr-3"
-                onPress={() => {
-                  clearFilters();
-                  setShowFilterModal(false);
-                }}
-              >
-                <Text className="text-gray-700">Back</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className="px-4 py-2 bg-[#67082F] rounded-lg"
-                onPress={() => {
-                  handleFilter(activeFilters);
-                  setShowFilterModal(false);
-                }}
-              >
-                <Text className="text-white font-semibold">Apply Filter</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Add Contact Modal */}
-      <Modal
-        visible={showTimeFilterModal}
-        transparent={true}
-        onRequestClose={() => setShowTimeFilterModal(false)}
-      >
-        <View className="flex-1 bg-black/50 items-center justify-center p-4">
-          <TimeForm
-            onSubmit={handleTimeFilter}
-            timeFilter={timeFilter}
-            setTimeFilter={setTimeFilter}
-            isSubmitting={isTimeSubmitting}
-          />
-        </View>
-      </Modal>
+        onClose={() => setShowFilterModal(false)}
+        activeFilters={activeFilters}
+        setActiveFilters={setActiveFilters}
+        onApplyFilter={handleFilter}
+        onClearFilters={clearFilters}
+        timeFilter={timeFilter}
+        setTimeFilter={setTimeFilter}
+        onTimeFilter={handleTimeFilter}
+        isTimeSubmitting={isTimeSubmitting}
+        getIncidentTypeIcon={getIncidentTypeIcon}
+        getIncidentTypeColor={getIncidentTypeColor}
+      />
     </View>
   );
 }
