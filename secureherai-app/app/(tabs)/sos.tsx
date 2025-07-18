@@ -121,27 +121,31 @@ export default function SOSScreen() {
   };
 
   const handleCreateReport = (alert: AlertType) => {
-    // Convert Alert to AlertResponse format for the ReportModal
-    const alertResponse: AlertResponse = {
-      success: true,
-      message: "Alert data",
-      alertId: alert.id,
-      userId: alert.userId,
-      latitude: alert.latitude,
-      longitude: alert.longitude,
-      address: alert.address,
-      triggerMethod: alert.triggerMethod,
-      alertMessage: alert.alertMessage,
-      audioRecording: alert.audioRecording,
-      triggeredAt: alert.triggeredAt,
-      status: alert.status,
-      verificationStatus: alert.verificationStatus,
-      canceledAt: alert.canceledAt,
-      resolvedAt: alert.resolvedAt,
-    };
+    // Navigate directly to report submission with pre-populated data (like SOS)
+    const reportParams = new URLSearchParams({
+      autoFill: "true",
+      details: alert.alertMessage || "Emergency alert triggered",
+      location: `${alert.latitude},${alert.longitude}`,
+      address: alert.address || "",
+      incidentType: "assault", // Default for emergency alerts, but allow editing
+      triggerMethod: alert.triggerMethod || "",
+      alertId: alert.id || "",
+      triggeredAt: alert.triggeredAt || "",
+    });
 
-    setSelectedAlert(alertResponse);
-    setShowReportModal(true);
+    // Add audio evidence if available
+    if (alert.audioRecording) {
+      reportParams.append("evidence", alert.audioRecording);
+      reportParams.append("sosAudio", "true"); // Mark as SOS audio to prevent deletion
+    }
+
+    // Navigate directly to report submission page
+    // Use router from expo-router
+    // Dynamically import router to avoid breaking SSR
+    // @ts-ignore
+    import("expo-router").then(({ router }) => {
+      router.push(`/reports/submit?${reportParams.toString()}`);
+    });
   };
 
   const getStatusColor = (status: string) => {

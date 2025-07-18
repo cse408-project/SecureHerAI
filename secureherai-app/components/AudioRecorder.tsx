@@ -5,18 +5,22 @@ import { useAudioRecording } from "../hooks/useAudioRecording";
 
 interface AudioRecorderProps {
   onRecordingComplete?: (audioUrl: string) => void;
+  onLocalRecordingComplete?: (localUri: string) => void;
   onError?: (error: string) => void;
   maxDuration?: number;
   disabled?: boolean;
   style?: any;
+  autoUpload?: boolean; // New prop to control auto-upload behavior
 }
 
 export default function AudioRecorder({
   onRecordingComplete,
+  onLocalRecordingComplete,
   onError,
   maxDuration = 10,
   disabled = false,
   style,
+  autoUpload = true, // Default to true for backward compatibility
 }: AudioRecorderProps) {
   const {
     isRecording,
@@ -32,14 +36,25 @@ export default function AudioRecorder({
     formatDuration,
   } = useAudioRecording({
     maxDuration,
+    autoUpload,
     onProgress: (duration) => {
       // Progress updates are handled by the hook's internal state
     },
     onComplete: (result) => {
-      if (result.success && result.url) {
-        onRecordingComplete?.(result.url);
+      if (autoUpload) {
+        // Original behavior: auto-upload and return cloud URL
+        if (result.success && result.url) {
+          onRecordingComplete?.(result.url);
+        } else {
+          onError?.(result.error || "Upload failed");
+        }
       } else {
-        onError?.(result.error || "Upload failed");
+        // New behavior: just return local URI
+        if (result.success && result.localUri) {
+          onLocalRecordingComplete?.(result.localUri);
+        } else {
+          onError?.(result.error || "Recording failed");
+        }
       }
     },
     onError: (error) => {
@@ -111,7 +126,7 @@ export default function AudioRecorder({
     return "Tap to record";
   };
 
-  const showUploadButton = recordingUri && !isProcessing;
+  const showUploadButton = autoUpload && recordingUri && !isProcessing;
   const showRetryButton = recordingUri && !isProcessing;
 
   return (

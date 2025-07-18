@@ -1,5 +1,6 @@
 import { AudioModule, RecordingPresets, RecordingOptions } from "expo-audio";
 import { Platform } from "react-native";
+import * as FileSystem from "expo-file-system";
 import cloudinaryService from "./cloudinary";
 
 export interface AudioRecordingResult {
@@ -12,6 +13,7 @@ export interface AudioRecordingResult {
 export interface AudioUploadResult {
   success: boolean;
   url?: string;
+  localUri?: string;
   error?: string;
 }
 
@@ -174,6 +176,80 @@ class AudioRecordingService {
    */
   getMaxDuration(): number {
     return this.maxRecordingDuration / 1000; // Return in seconds
+  }
+
+  /**
+   * Delete a local recording file
+   */
+  async deleteLocalRecording(uri: string): Promise<boolean> {
+    try {
+      console.log("🗑️ Deleting local recording:", uri);
+
+      // Check if file exists first
+      const fileInfo = await FileSystem.getInfoAsync(uri);
+      if (!fileInfo.exists) {
+        console.log("File doesn't exist, nothing to delete");
+        return true;
+      }
+
+      // Delete the file
+      await FileSystem.deleteAsync(uri);
+      console.log("✅ Local recording deleted successfully");
+      return true;
+    } catch (error) {
+      console.error("❌ Error deleting local recording:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Delete a recording from Cloudinary using the cloud URL
+   */
+  async deleteCloudRecording(cloudUrl: string): Promise<boolean> {
+    try {
+      console.log("☁️🗑️ Deleting recording from Cloudinary:", cloudUrl);
+
+      const result = await cloudinaryService.deleteFileByUrl(cloudUrl);
+
+      if (result.success) {
+        console.log("✅ Recording deleted successfully from Cloudinary");
+        return true;
+      } else {
+        console.error("❌ Failed to delete from Cloudinary:", result.error);
+        return false;
+      }
+    } catch (error) {
+      console.error("❌ Error deleting recording from Cloudinary:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Delete recording from both local storage and Cloudinary
+   */
+  async deleteRecording(
+    localUri?: string,
+    cloudUrl?: string
+  ): Promise<{
+    localDeleted: boolean;
+    cloudDeleted: boolean;
+  }> {
+    const results = {
+      localDeleted: true,
+      cloudDeleted: true,
+    };
+
+    // Delete from local storage if URI provided
+    if (localUri) {
+      results.localDeleted = await this.deleteLocalRecording(localUri);
+    }
+
+    // Delete from Cloudinary if URL provided
+    if (cloudUrl) {
+      results.cloudDeleted = await this.deleteCloudRecording(cloudUrl);
+    }
+
+    return results;
   }
 
   /**

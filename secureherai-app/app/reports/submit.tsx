@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import DatePicker from "../../components/DatePicker";
 import {
   View,
   Text,
@@ -6,14 +7,12 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-  Platform,
   Modal,
   ActivityIndicator,
   Image,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import { useAuth } from "../../context/AuthContext";
 import apiService from "../../services/api";
 import cloudinaryService from "../../services/cloudinary";
 import { SubmitReportRequest } from "../../types/report";
@@ -33,7 +32,6 @@ interface EvidenceFile {
 }
 
 export default function SubmitReportScreen() {
-  const { user } = useAuth();
   const searchParams = useLocalSearchParams();
   const [loading, setLoading] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<LocationData | null>(
@@ -112,16 +110,80 @@ export default function SubmitReportScreen() {
     return "image";
   };
 
+  // Function to clean up newly uploaded evidence files (not from SOS)
+  const cleanupNewEvidenceFiles = async () => {
+    try {
+      const newlyUploadedFiles = evidenceFiles.filter((file) => {
+        // Don't delete pre-existing SOS audio or evidence that came with the alert
+        const isSOSEvidence =
+          searchParams.autoFill === "true" &&
+          (file.name.includes("Emergency Audio Recording") ||
+            file.name.includes("SOS Audio Recording") ||
+            file.cloudinaryUrl === searchParams.evidence ||
+            searchParams.sosAudio === "true");
+
+        return !isSOSEvidence && file.cloudinaryUrl;
+      });
+
+      for (const file of newlyUploadedFiles) {
+        if (file.cloudinaryUrl) {
+          try {
+            await cloudinaryService.deleteFileByUrl(file.cloudinaryUrl);
+            console.log(`Cleaned up evidence file: ${file.name}`);
+          } catch (deleteError) {
+            console.error(
+              `Failed to delete evidence file ${file.name}:`,
+              deleteError
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error during evidence cleanup:", error);
+    }
+  };
+
+  // Function to handle cancellation
+  const handleCancel = async () => {
+    try {
+      await cleanupNewEvidenceFiles();
+
+      // Check if we can go back, otherwise navigate to reports screen
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/(tabs)/reports");
+      }
+    } catch (error) {
+      console.error("Error during cancel cleanup:", error);
+
+      // Still navigate back even if cleanup fails
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/(tabs)/reports");
+      }
+    }
+  };
+
   useEffect(() => {
     // Set default date and time to current
     const now = new Date();
     setIncidentDate(now.toISOString().split("T")[0]);
     setIncidentTime(now.toTimeString().slice(0, 5));
 
-    // Handle SOS pre-populated data
+    // Handle SOS/Alert pre-populated data
     if (searchParams.autoFill === "true") {
-      // Set incident type to assault for SOS alerts
-      setIncidentType("assault");
+      // Set incident type based on trigger method or default to assault for SOS
+      const triggerMethod = searchParams.triggerMethod;
+      if (
+        triggerMethod === "VOICE_COMMAND" ||
+        triggerMethod === "TEXT_COMMAND"
+      ) {
+        setIncidentType("assault");
+      } else {
+        setIncidentType("other");
+      }
 
       // Set description if provided
       if (searchParams.details && typeof searchParams.details === "string") {
@@ -136,24 +198,40 @@ export default function SubmitReportScreen() {
             latitude: lat.trim(),
             longitude: lng.trim(),
           });
-          setAddress("Emergency SOS Location");
         }
       }
 
-      // Add evidence file if provided
+      // Set address if provided
+      if (searchParams.address && typeof searchParams.address === "string") {
+        setAddress(searchParams.address);
+      } else if (searchParams.location) {
+        setAddress("Emergency Alert Location");
+      }
+
+      // Set incident date and time from alert if provided
+      if (
+        searchParams.triggeredAt &&
+        typeof searchParams.triggeredAt === "string"
+      ) {
+        const alertDate = new Date(searchParams.triggeredAt);
+        setIncidentDate(alertDate.toISOString().split("T")[0]);
+        setIncidentTime(alertDate.toTimeString().slice(0, 5));
+      }
+
+      // Add evidence file if provided (audio from SOS)
       if (searchParams.evidence && typeof searchParams.evidence === "string") {
         const evidenceFile: EvidenceFile = {
           uri: searchParams.evidence,
           cloudinaryUrl: searchParams.evidence,
           type: "audio",
-          name: "SOS Audio Recording",
+          name: "Emergency Audio Recording",
         };
         setEvidenceFiles([evidenceFile]);
       }
     } else {
       getCurrentLocation();
     }
-  }, [searchParams]);
+  }, []);
 
   const getCurrentLocation = async () => {
     setGettingLocation(true);
@@ -282,12 +360,16 @@ export default function SubmitReportScreen() {
             ]
           );
         } else {
-          // Handle other errors
+          // Handle other errors - clean up newly uploaded files
+          await cleanupNewEvidenceFiles();
           Alert.alert("Error", response.error || "Failed to submit report");
         }
       }
     } catch (error: any) {
       console.error("Submit error:", error);
+
+      // Clean up newly uploaded evidence files on error
+      await cleanupNewEvidenceFiles();
 
       // Check if the error response contains a message about duplicate reports
       if (
@@ -452,7 +534,8 @@ export default function SubmitReportScreen() {
                 error: uploadResult.error,
               };
             }
-          } catch (error) {
+          } catch (uploadError) {
+            console.error("Upload error:", uploadError);
             setEvidenceFiles((prev) =>
               prev.filter((file) => file.uri !== asset.uri)
             );
@@ -494,6 +577,25 @@ export default function SubmitReportScreen() {
   };
 
   const removeEvidenceFile = (index: number) => {
+    const file = evidenceFiles[index];
+
+    // Prevent deletion of SOS audio
+    const isSOSEvidence =
+      searchParams.autoFill === "true" &&
+      (file.name.includes("Emergency Audio Recording") ||
+        file.name.includes("SOS Audio Recording") ||
+        file.cloudinaryUrl === searchParams.evidence ||
+        searchParams.sosAudio === "true");
+
+    if (isSOSEvidence) {
+      showAlert(
+        "Cannot Remove",
+        "This is the original SOS audio recording and cannot be removed. You can add additional evidence files if needed.",
+        "warning"
+      );
+      return;
+    }
+
     showConfirmAlert(
       "Remove Evidence",
       "Are you sure you want to remove this evidence file?",
@@ -569,12 +671,8 @@ export default function SubmitReportScreen() {
         <View className="flex-row items-center justify-between">
           <TouchableOpacity
             onPress={() => {
-              // Check if we can go back, otherwise navigate to reports screen
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace("/(tabs)/reports");
-              }
+              // Use handleCancel to clean up any newly uploaded evidence
+              handleCancel();
             }}
           >
             <MaterialIcons name="arrow-back" size={24} color="#67082F" />
@@ -587,6 +685,23 @@ export default function SubmitReportScreen() {
       </View>
 
       <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false}>
+        {/* SOS Report Banner */}
+        {searchParams.autoFill === "true" && (
+          <View className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg p-4 mb-4">
+            <View className="flex-row items-center mb-2">
+              <MaterialIcons name="emergency" size={20} color="#DC2626" />
+              <Text className="text-red-700 font-bold ml-2">
+                SOS Report Pre-filled
+              </Text>
+            </View>
+            <Text className="text-red-600 text-sm">
+              This form has been pre-filled with information from your emergency
+              alert. You can edit all fields except location and audio
+              recording, which are protected for security purposes.
+            </Text>
+          </View>
+        )}
+
         {/* Incident Type */}
         <View className="bg-white rounded-lg p-4 mb-4 shadow-sm">
           <Text className="text-base font-semibold text-gray-800 mb-3">
@@ -610,6 +725,7 @@ export default function SubmitReportScreen() {
                     : {}
                 }
                 onPress={() => setIncidentType(type.value)}
+                disabled={false}
               >
                 <View
                   className="w-8 h-8 rounded-full items-center justify-center mr-3"
@@ -657,6 +773,7 @@ export default function SubmitReportScreen() {
             onChangeText={setDescription}
             multiline
             textAlignVertical="top"
+            editable={true}
           />
           {errors.description && (
             <Text className="text-red-500 text-sm mt-1">
@@ -670,27 +787,48 @@ export default function SubmitReportScreen() {
 
         {/* Location */}
         <View className="bg-white rounded-lg p-4 mb-4 shadow-sm">
-          <Text className="text-base font-semibold text-gray-800 mb-3">
-            Location
-          </Text>
+          <View className="flex-row items-center mb-3">
+            <Text className="text-base font-semibold text-gray-800">
+              Location
+            </Text>
+            {searchParams.autoFill === "true" && (
+              <View className="ml-2 bg-orange-100 px-2 py-1 rounded">
+                <Text className="text-orange-700 text-xs font-medium">
+                  Pre-filled from SOS
+                </Text>
+              </View>
+            )}
+          </View>
 
           <TouchableOpacity
-            className="flex-row items-center justify-between p-3 bg-gray-100 rounded-lg mb-3"
+            className={`flex-row items-center justify-between p-3 rounded-lg mb-3 ${
+              searchParams.autoFill === "true"
+                ? "bg-gray-200 opacity-60"
+                : "bg-gray-100"
+            }`}
             onPress={getCurrentLocation}
-            disabled={gettingLocation}
+            disabled={gettingLocation || searchParams.autoFill === "true"}
           >
             <View className="flex-row items-center flex-1">
               <MaterialIcons
                 name="my-location"
                 size={20}
-                color={gettingLocation ? "#9CA3AF" : "#67082F"}
+                color={
+                  gettingLocation || searchParams.autoFill === "true"
+                    ? "#9CA3AF"
+                    : "#67082F"
+                }
               />
               <Text
                 className={`ml-2 text-sm ${
-                  gettingLocation ? "text-gray-500" : "text-gray-800"
+                  gettingLocation || searchParams.autoFill === "true"
+                    ? "text-gray-500"
+                    : "text-gray-800"
                 }`}
               >
-                {gettingLocation
+                {searchParams.autoFill === "true"
+                  ? "Location set from emergency alert"
+                  : gettingLocation
                   ? "Getting location..."
                   : "Use current location"}
               </Text>
@@ -715,15 +853,40 @@ export default function SubmitReportScreen() {
 
         {/* Address */}
         <View className="bg-white rounded-lg p-4 mb-4 shadow-sm">
-          <Text className="text-base font-semibold text-gray-800 mb-3">
-            Address (Optional)
-          </Text>
+          <View className="flex-row items-center mb-3">
+            <Text className="text-base font-semibold text-gray-800">
+              Address (Optional)
+            </Text>
+            {searchParams.autoFill === "true" && (
+              <View className="ml-2 bg-orange-100 px-2 py-1 rounded">
+                <Text className="text-orange-700 text-xs font-medium">
+                  Pre-filled from SOS
+                </Text>
+              </View>
+            )}
+          </View>
           <TextInput
-            className="border border-gray-300 rounded-lg p-3 text-gray-800"
-            placeholder="Enter specific address or landmark"
+            className={`border rounded-lg p-3 ${
+              searchParams.autoFill === "true"
+                ? "border-gray-200 bg-gray-100 text-gray-600"
+                : "border-gray-300 text-gray-800"
+            }`}
+            placeholder={
+              searchParams.autoFill === "true"
+                ? "Address set from emergency alert"
+                : "Enter specific address or landmark"
+            }
             value={address}
-            onChangeText={setAddress}
+            onChangeText={
+              searchParams.autoFill === "true" ? undefined : setAddress
+            }
+            editable={searchParams.autoFill !== "true"}
           />
+          {searchParams.autoFill === "true" && (
+            <Text className="text-xs text-gray-500 mt-2">
+              📍 Address cannot be modified for emergency reports
+            </Text>
+          )}
         </View>
 
         {/* Incident Time */}
@@ -734,20 +897,52 @@ export default function SubmitReportScreen() {
 
           <View className="flex-row space-x-3">
             <View className="flex-1">
-              <Text className="text-sm text-gray-600 mb-2">Date</Text>
-              <TextInput
-                className={`border border-gray-300 rounded-lg p-3 text-gray-800 ${
-                  errors.incidentDate ? "border-red-500" : ""
-                }`}
-                placeholder="YYYY-MM-DD"
-                value={incidentDate}
-                onChangeText={setIncidentDate}
-                placeholderTextColor="#9CA3AF"
-              />
-              {errors.incidentDate && (
-                <Text className="text-red-500 text-xs mt-1">
-                  {errors.incidentDate}
-                </Text>
+              {searchParams.autoFill === "true" ? (
+                <View>
+                  <Text className="text-sm font-medium text-gray-700 mb-2">
+                    Date <Text className="text-red-500">*</Text>
+                  </Text>
+                  <View className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-100 flex-row items-center justify-between">
+                    <Text className="flex-1 text-gray-600">
+                      {incidentDate
+                        ? new Date(incidentDate).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })
+                        : "Select date"}
+                    </Text>
+                    <MaterialIcons
+                      name="calendar-today"
+                      size={20}
+                      color="#9CA3AF"
+                    />
+                  </View>
+                  <Text className="text-xs text-gray-500 mt-2">
+                    Date cannot be modified for emergency reports
+                  </Text>
+                  {errors.incidentDate && (
+                    <Text className="text-red-500 text-xs mt-1">
+                      {errors.incidentDate}
+                    </Text>
+                  )}
+                </View>
+              ) : (
+                <>
+                  <DatePicker
+                    label="Date"
+                    value={incidentDate}
+                    onDateChange={setIncidentDate}
+                    required={true}
+                    placeholder="Select date"
+                    allowFutureDates={false}
+                  />
+                  {errors.incidentDate && (
+                    <Text className="text-red-500 text-xs mt-1">
+                      {errors.incidentDate}
+                    </Text>
+                  )}
+                </>
               )}
             </View>
 
@@ -756,12 +951,24 @@ export default function SubmitReportScreen() {
               <TextInput
                 className={`border border-gray-300 rounded-lg p-3 text-gray-800 ${
                   errors.incidentTime ? "border-red-500" : ""
+                } ${
+                  searchParams.autoFill === "true"
+                    ? "bg-gray-100 text-gray-600"
+                    : ""
                 }`}
                 placeholder="HH:MM"
                 value={incidentTime}
-                onChangeText={setIncidentTime}
+                onChangeText={
+                  searchParams.autoFill === "true" ? undefined : setIncidentTime
+                }
                 placeholderTextColor="#9CA3AF"
+                editable={searchParams.autoFill !== "true"}
               />
+              {searchParams.autoFill === "true" && (
+                <Text className="text-xs text-gray-500 mt-2">
+                  Time cannot be modified for emergency reports
+                </Text>
+              )}
               {errors.incidentTime && (
                 <Text className="text-red-500 text-xs mt-1">
                   {errors.incidentTime}
@@ -895,72 +1102,99 @@ export default function SubmitReportScreen() {
               <Text className="text-sm font-medium text-gray-700 mb-2">
                 {evidenceFiles.length} file(s) selected
               </Text>
-              {evidenceFiles.map((file, index) => (
-                <View
-                  key={index}
-                  className="flex-row items-center justify-between p-3 bg-gray-50 rounded-lg mb-2"
-                >
-                  <View className="flex-row items-center flex-1">
-                    {file.type === "image" && file.uri ? (
-                      <Image
-                        source={{ uri: file.uri }}
-                        className="w-10 h-10 rounded"
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <MaterialIcons
-                        name={getFileIcon(file.type) as any}
-                        size={20}
-                        color={getFileIconColor(file.type)}
-                      />
-                    )}
-                    <View className="ml-3 flex-1">
-                      <Text
-                        className="text-gray-700 font-medium"
-                        numberOfLines={1}
+              {evidenceFiles.map((file, index) => {
+                const isSOSEvidence =
+                  searchParams.autoFill === "true" &&
+                  (file.name.includes("Emergency Audio Recording") ||
+                    file.name.includes("SOS Audio Recording") ||
+                    file.cloudinaryUrl === searchParams.evidence ||
+                    searchParams.sosAudio === "true");
+
+                return (
+                  <View
+                    key={index}
+                    className={`flex-row items-center justify-between p-3 rounded-lg mb-2 ${
+                      isSOSEvidence
+                        ? "bg-orange-50 border border-orange-200"
+                        : "bg-gray-50"
+                    }`}
+                  >
+                    <View className="flex-row items-center flex-1">
+                      {file.type === "image" && file.uri ? (
+                        <Image
+                          source={{ uri: file.uri }}
+                          className="w-10 h-10 rounded"
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <MaterialIcons
+                          name={getFileIcon(file.type) as any}
+                          size={20}
+                          color={getFileIconColor(file.type)}
+                        />
+                      )}
+                      <View className="ml-3 flex-1">
+                        <View className="flex-row items-center">
+                          <Text
+                            className="text-gray-700 font-medium flex-1"
+                            numberOfLines={1}
+                          >
+                            {file.name}
+                          </Text>
+                          {isSOSEvidence && (
+                            <View className="bg-orange-100 px-2 py-1 rounded ml-2">
+                              <Text className="text-orange-700 text-xs font-medium">
+                                SOS
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text className="text-gray-500 text-xs capitalize">
+                          {file.type} •{" "}
+                          {file.uploading
+                            ? "Uploading..."
+                            : file.cloudinaryUrl
+                            ? "Uploaded"
+                            : "Ready"}
+                          {isSOSEvidence && " • Protected"}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View className="flex-row items-center">
+                      {file.uploading && (
+                        <ActivityIndicator
+                          size="small"
+                          color="#67082F"
+                          className="mr-2"
+                        />
+                      )}
+                      {file.cloudinaryUrl && !file.uploading && (
+                        <MaterialIcons
+                          name="cloud-done"
+                          size={20}
+                          color="#10B981"
+                          className="mr-2"
+                        />
+                      )}
+                      <TouchableOpacity
+                        onPress={() => removeEvidenceFile(index)}
+                        disabled={file.uploading || isSOSEvidence}
                       >
-                        {file.name}
-                      </Text>
-                      <Text className="text-gray-500 text-xs capitalize">
-                        {file.type} •{" "}
-                        {file.uploading
-                          ? "Uploading..."
-                          : file.cloudinaryUrl
-                          ? "Uploaded"
-                          : "Ready"}
-                      </Text>
+                        <MaterialIcons
+                          name={isSOSEvidence ? "lock" : "close"}
+                          size={20}
+                          color={
+                            file.uploading || isSOSEvidence
+                              ? "#9CA3AF"
+                              : "#EF4444"
+                          }
+                        />
+                      </TouchableOpacity>
                     </View>
                   </View>
-
-                  <View className="flex-row items-center">
-                    {file.uploading && (
-                      <ActivityIndicator
-                        size="small"
-                        color="#67082F"
-                        className="mr-2"
-                      />
-                    )}
-                    {file.cloudinaryUrl && !file.uploading && (
-                      <MaterialIcons
-                        name="cloud-done"
-                        size={20}
-                        color="#10B981"
-                        className="mr-2"
-                      />
-                    )}
-                    <TouchableOpacity
-                      onPress={() => removeEvidenceFile(index)}
-                      disabled={file.uploading}
-                    >
-                      <MaterialIcons
-                        name="close"
-                        size={20}
-                        color={file.uploading ? "#9CA3AF" : "#EF4444"}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           )}
 

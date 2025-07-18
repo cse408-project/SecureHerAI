@@ -9,6 +9,7 @@ export interface UseAudioRecordingOptions {
   onProgress?: (duration: number) => void;
   onComplete?: (result: AudioUploadResult) => void;
   onError?: (error: string) => void;
+  autoUpload?: boolean; // New option to control auto-upload behavior
 }
 
 export interface UseAudioRecordingReturn {
@@ -37,7 +38,13 @@ export interface UseAudioRecordingReturn {
 export function useAudioRecording(
   options: UseAudioRecordingOptions = {}
 ): UseAudioRecordingReturn {
-  const { maxDuration = 10, onProgress, onComplete, onError } = options;
+  const {
+    maxDuration = 10,
+    onProgress,
+    onComplete,
+    onError,
+    autoUpload = true,
+  } = options;
 
   // Initialize the audio recorder with recording options
   const recorder = useAudioRecorder(
@@ -186,6 +193,14 @@ export function useAudioRecording(
 
       console.log("✅ Recording stopped successfully");
       console.log(`📁 Recording saved to: ${result.uri}`);
+
+      // If autoUpload is disabled, call onComplete with local URI
+      if (!autoUpload && result.uri) {
+        onComplete?.({
+          success: true,
+          localUri: result.uri,
+        });
+      }
     } catch (error) {
       console.error("❌ Error stopping recording:", error);
       setIsProcessing(false);
