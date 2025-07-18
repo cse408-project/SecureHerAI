@@ -3,10 +3,11 @@ package com.secureherai.secureherai_api.service;
 import com.secureherai.secureherai_api.dto.notification.NotificationCreateDto;
 import com.secureherai.secureherai_api.dto.notification.NotificationResponseDto;
 import com.secureherai.secureherai_api.entity.Alert;
+import com.secureherai.secureherai_api.entity.AlertResponder;
 import com.secureherai.secureherai_api.entity.Notification;
 import com.secureherai.secureherai_api.entity.Responder;
 import com.secureherai.secureherai_api.entity.TrustedContact;
-import com.secureherai.secureherai_api.entity.User;
+import com.secureherai.secureherai_api.repository.AlertResponderRepository;
 import com.secureherai.secureherai_api.repository.NotificationRepository;
 import com.secureherai.secureherai_api.repository.ResponderRepository;
 import com.secureherai.secureherai_api.repository.TrustedContactRepository;
@@ -38,6 +39,7 @@ public class NotificationService {
     private final ResponderRepository responderRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final AlertResponderRepository alertResponderRepository;
     
     // TTL Configuration
     private static final Duration EMERGENCY_TTL = Duration.ofHours(1); // 1 hour TTL
@@ -522,6 +524,13 @@ public class NotificationService {
      */
     @Transactional
     public void handleResponderAcceptance(UUID alertId, UUID responderId) {
+        // Create AlertResponder record to track the acceptance
+        AlertResponder alertResponder = new AlertResponder();
+        alertResponder.setAlertId(alertId);
+        alertResponder.setResponderId(responderId);
+        alertResponder.setStatus("accepted");
+        alertResponderRepository.save(alertResponder);
+        
         // Mark all pending notifications for this alert as no longer needed
         List<Notification> pendingNotifications = notificationRepository.findByAlertIdAndTypeAndStatus(
             alertId,
@@ -536,7 +545,7 @@ public class NotificationService {
             }
         });
         
-        log.info("Responder {} accepted alert {}, cancelled {} other pending invitations", 
+        log.info("Responder {} accepted alert {}, created AlertResponder record, cancelled {} other pending invitations", 
             responderId, alertId, pendingNotifications.size() - 1);
     }
     

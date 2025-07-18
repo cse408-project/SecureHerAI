@@ -1104,6 +1104,54 @@ class ApiService {
     }
   }
 
+  /**
+   * Get pending alerts for responder (alerts not yet accepted)
+   */
+  async getPendingAlerts() {
+    try {
+      console.log("API: Getting pending alerts (responder)");
+      const response = await fetch(`${API_BASE_URL}/responder/pending-alerts`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      console.log("API: Pending alerts response status:", response.status);
+      const data = await response.json();
+
+      return data;
+    } catch (error) {
+      console.error("API: Get pending alerts error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while getting pending alerts",
+      };
+    }
+  }
+
+  /**
+   * Get accepted alerts for responder (alerts already accepted)
+   */
+  async getAcceptedAlerts() {
+    try {
+      console.log("API: Getting accepted alerts (responder)");
+      const response = await fetch(`${API_BASE_URL}/responder/accepted-alerts`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      console.log("API: Accepted alerts response status:", response.status);
+      const data = await response.json();
+
+      return data;
+    } catch (error) {
+      console.error("API: Get accepted alerts error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while getting accepted alerts",
+      };
+    }
+  }
+
   async cancelAlert(alertId: string) {
     try {
       console.log("API: Canceling alert:", alertId);

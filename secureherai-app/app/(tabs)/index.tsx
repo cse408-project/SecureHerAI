@@ -1,15 +1,19 @@
 import { View, Animated, Easing, Text, TouchableOpacity } from "react-native";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAlert } from "../../context/AlertContext";
 import { useNotifications } from "../../context/NotificationContext";
+import { useAuth } from "../../context/AuthContext";
 import Header from "../../components/Header";
 import QuickAction from "../../components/QuickAction";
 import NotificationModal from "../../components/NotificationModal";
 import SOSModalModern from "../../components/SOSModalModern";
 import ReportModal from "../../components/ReportModal";
+import ResponderHomepage from "../../components/ResponderHomepage";
 import { AlertResponse } from "../../types/sos";
 
 export default function Home() {
@@ -24,6 +28,7 @@ export default function Home() {
   const [showNotifications, setShowNotifications] = useState(false);
   const { showAlert, showConfirmAlert } = useAlert();
   const { refreshNotificationCount } = useNotifications();
+  const { user } = useAuth(); // Get user from auth context
 
   // Added states for SOS flow
   const [showSOSModal, setShowSOSModal] = useState(false);
@@ -32,6 +37,59 @@ export default function Home() {
     null
   );
 
+  // Responder detection
+  const [isResponder, setIsResponder] = useState(false);
+  const [isCheckingRole, setIsCheckingRole] = useState(true);
+
+  // Check if user is a responder
+  const checkUserRole = async () => {
+    try {
+      setIsCheckingRole(true);
+      
+      // First try to get role from auth context user
+      if (user?.role) {
+        const isResponderUser = user.role === "RESPONDER";
+        console.log("Home: User role from context:", user.role, "Is responder:", isResponderUser);
+        setIsResponder(isResponderUser);
+        setIsCheckingRole(false);
+        return;
+      }
+
+      // Fallback to AsyncStorage if auth context doesn't have user data yet
+      const userDataStr = await AsyncStorage.getItem("user_data");
+      if (userDataStr) {
+        const userData = JSON.parse(userDataStr);
+        console.log("Home: User data from storage:", userData);
+        // Check the role property (not roles array)
+        const userRole = userData.role;
+        const isResponderUser = userRole === "RESPONDER";
+        console.log("Home: User role from storage:", userRole, "Is responder:", isResponderUser);
+        setIsResponder(isResponderUser);
+      } else {
+        // No user data found, default to regular user
+        setIsResponder(false);
+      }
+    } catch (error) {
+      console.error("Error checking user role:", error);
+      setIsResponder(false);
+    } finally {
+      setIsCheckingRole(false);
+    }
+  };
+
+  // All useEffect hooks must be called before any conditional returns
+  useEffect(() => {
+    checkUserRole();
+  }, [user]); // Re-run when user changes
+
+  // Re-check user role when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      checkUserRole();
+    }, [user])
+  );
+
+  // Animation useEffect
   useEffect(() => {
     const anim = Animated.loop(
       Animated.sequence([
@@ -55,6 +113,20 @@ export default function Home() {
       anim.stop();
     };
   }, [pulseAnim]);
+
+  // If still checking role, show loading
+  if (isCheckingRole) {
+    return (
+      <View className="flex-1 bg-[#FFE4D6] items-center justify-center">
+        <Text className="text-gray-600">Loading...</Text>
+      </View>
+    );
+  }
+
+  // If user is a responder, show responder homepage
+  if (isResponder) {
+    return <ResponderHomepage />;
+  }
 
   const handlePressIn = () => {
     if (pulseAnimation) pulseAnimation.stop();

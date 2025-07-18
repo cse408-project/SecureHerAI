@@ -7,13 +7,16 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAlert } from "../../context/AlertContext";
+import { useAuth } from "../../context/AuthContext";
 import Header from "../../components/Header";
 import apiService from "../../services/api";
 import { Alert as AlertType, AlertResponse } from "../../types/sos";
 import ReportModal from "../../components/ReportModal";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
 
 export default function SOSScreen() {
   const [refreshing, setRefreshing] = useState(false);
@@ -27,18 +30,36 @@ export default function SOSScreen() {
   const [cancelingAlertId, setCancelingAlertId] = useState<string | null>(null);
 
   const { showAlert, showConfirmAlert } = useAlert();
+  const { user } = useAuth(); // Get user from auth context
 
   // Check if user is a responder
   const checkUserRole = async () => {
     try {
+      // First try to get role from auth context user
+      if (user?.role) {
+        const isResponderUser = user.role === "RESPONDER";
+        console.log("SOSScreen: User role from context:", user.role, "Is responder:", isResponderUser);
+        setIsResponder(isResponderUser);
+        return;
+      }
+
+      // Fallback to AsyncStorage if auth context doesn't have user data yet
       const userDataStr = await AsyncStorage.getItem("user_data");
       if (userDataStr) {
         const userData = JSON.parse(userDataStr);
-        const roles = userData.roles || [];
-        setIsResponder(roles.includes("RESPONDER") || roles.includes("ADMIN"));
+        console.log("SOSScreen: User data from storage:", userData);
+        // Check the role property (not roles array)
+        const userRole = userData.role;
+        const isResponderUser = userRole === "RESPONDER";
+        console.log("SOSScreen: User role from storage:", userRole, "Is responder:", isResponderUser);
+        setIsResponder(isResponderUser);
+      } else {
+        // No user data found, default to regular user
+        setIsResponder(false);
       }
     } catch (error) {
       console.error("Error checking user role:", error);
+      setIsResponder(false);
     }
   };
 
@@ -48,12 +69,18 @@ export default function SOSScreen() {
       setLoading(true);
 
       // Determine which API endpoint to call based on user role
-      const response = isResponder
-        ? await apiService.getActiveAlerts()
-        : await apiService.getUserAlerts();
+      let response;
+      if (isResponder) {
+        // For responders, get pending alerts only (since ResponderHomepage handles both)
+        response = await apiService.getPendingAlerts();
+      } else {
+        // For regular users, get their own alerts
+        response = await apiService.getUserAlerts();
+      }
 
-      if (response.success && response.alerts) {
-        setAlerts(response.alerts);
+      if (response.success && (response.alerts || response.data)) {
+        const alertsData = response.alerts || response.data;
+        setAlerts(alertsData);
       } else {
         console.error(
           "Failed to load alerts:",
@@ -72,7 +99,14 @@ export default function SOSScreen() {
   useEffect(() => {
     // Check user role first, then load alerts
     checkUserRole().then(() => loadAlerts());
-  }, [loadAlerts]);
+  }, [loadAlerts, user]); // Re-run when user changes
+
+  // Re-check user role when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      checkUserRole().then(() => loadAlerts());
+    }, [loadAlerts, user])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
