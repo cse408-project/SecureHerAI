@@ -195,7 +195,7 @@ Authorization: Bearer {{authToken}}
 ###
 
 ### Get Public Reports (Admin/Responder only)
-GET {{baseUrl}}/report/public-reports
+GET {{baseUrl}}/report/all-reports
 Authorization: Bearer {{authToken}}
 
 

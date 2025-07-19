@@ -3,12 +3,13 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
+import { useAlert } from "../../context/AlertContext";
+
 
 // Required for expo-web-browser flow
 WebBrowser.maybeCompleteAuthSession();
@@ -22,6 +23,7 @@ export const GoogleOAuth: React.FC<GoogleOAuthProps> = ({
   onBack,
   onSuccess,
 }) => {
+  const { showAlert } = useAlert();
   const [isLoading, setIsLoading] = useState(false);
   const API_BASE_URL =
     process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
@@ -36,7 +38,7 @@ export const GoogleOAuth: React.FC<GoogleOAuthProps> = ({
         "/api",
         ""
       )}/oauth2/authorize/google`;
-
+      
       console.log("Redirecting to auth URL:", authUrl);
 
       // Use Linking to open the URL
@@ -45,14 +47,11 @@ export const GoogleOAuth: React.FC<GoogleOAuthProps> = ({
       if (supported) {
         await Linking.openURL(authUrl);
       } else {
-        Alert.alert("Error", "Cannot open authentication URL");
+        showAlert("Error", "Cannot open authentication URL", "error");
       }
     } catch (error) {
       console.error("Google Auth Error:", error);
-      Alert.alert(
-        "Authentication Error",
-        "Failed to start Google authentication."
-      );
+      showAlert("Authentication Error", "Failed to start Google authentication.", "error");
     } finally {
       setIsLoading(false);
     }

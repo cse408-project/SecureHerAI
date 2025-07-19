@@ -201,7 +201,7 @@ class ReportServiceTest {
         when(evidenceRepository.findByReportIdOrderByUploadedAt(testReportId)).thenReturn(new ArrayList<>());
 
         // Act
-        ReportResponse.ReportDetailsResponse response = reportService.getReportDetails(testReportId, testUserId);
+        ReportResponse.ReportDetailsResponse response = reportService.getReportDetails(testReportId, testUserId, "USER");
 
         // Assert
         assertTrue(response.isSuccess());
@@ -215,7 +215,7 @@ class ReportServiceTest {
         when(reportRepository.findByIdAndUserId(testReportId, testUserId)).thenReturn(Optional.empty());
 
         // Act
-        ReportResponse.ReportDetailsResponse response = reportService.getReportDetails(testReportId, testUserId);
+        ReportResponse.ReportDetailsResponse response = reportService.getReportDetails(testReportId, testUserId, "USER");
 
         // Assert
         assertFalse(response.isSuccess());
@@ -336,7 +336,7 @@ class ReportServiceTest {
         when(reportRepository.findAll()).thenReturn(reports);
 
         // Act
-        ReportResponse.UserReportsResponse response = reportService.getPublicReports("ADMIN");
+        ReportResponse.UserReportsResponse response = reportService.getAllReports("ADMIN");
 
         // Assert
         assertTrue(response.isSuccess());
@@ -350,7 +350,7 @@ class ReportServiceTest {
         when(reportRepository.findPublicReports()).thenReturn(reports);
 
         // Act
-        ReportResponse.UserReportsResponse response = reportService.getPublicReports("RESPONDER");
+        ReportResponse.UserReportsResponse response = reportService.getAllReports("RESPONDER");
 
         // Assert
         assertTrue(response.isSuccess());
@@ -360,7 +360,7 @@ class ReportServiceTest {
     @Test
     void testGetPublicReports_AccessDenied() {
         // Act
-        ReportResponse.UserReportsResponse response = reportService.getPublicReports("USER");
+        ReportResponse.UserReportsResponse response = reportService.getAllReports("USER");
 
         // Assert
         assertFalse(response.isSuccess());

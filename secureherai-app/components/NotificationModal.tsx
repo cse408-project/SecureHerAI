@@ -6,10 +6,10 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNotifications } from "../context/NotificationContext";
+import { useAlert } from "../context/AlertContext";
 import { Notification, NotificationType } from "../types/notification";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -36,6 +36,7 @@ export default function NotificationModal({
     acceptEmergency,
     clearError,
   } = useNotifications();
+  const { showAlert } = useAlert();
 
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
 
@@ -65,7 +66,7 @@ export default function NotificationModal({
     try {
       const success = await markAllAsRead();
       if (success) {
-        Alert.alert("Success", "All notifications marked as read");
+        showAlert("Success", "All notifications marked as read", "success");
       }
     } catch (err) {
       console.error("Error marking all notifications as read:", err);
@@ -85,17 +86,19 @@ export default function NotificationModal({
       });
 
       if (success) {
-        Alert.alert(
+        showAlert(
           "Emergency Response",
-          "You have successfully accepted the emergency request!"
+          "You have successfully accepted the emergency request!",
+          "success"
         );
         await markAsRead(notification.id);
       }
     } catch (err) {
       console.error("Error accepting emergency:", err);
-      Alert.alert(
+      showAlert(
         "Error",
-        "Failed to accept emergency request. Please try again."
+        "Failed to accept emergency request. Please try again.",
+        "error"
       );
     } finally {
       setProcessingIds((prev) => {

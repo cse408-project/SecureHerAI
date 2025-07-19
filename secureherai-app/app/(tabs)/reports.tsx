@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  Alert,
   ActivityIndicator,
   Modal,
 } from "react-native";
@@ -289,6 +288,11 @@ export default function ReportsTabScreen() {
   });
   const [isTimeSubmitting, setIsTimeSubmitting] = useState(false);
 
+  // Report view state
+  const [viewMode, setViewMode] = useState<"user" | "all">("user");
+  const [userReports, setUserReports] = useState<ReportSummary[]>([]);
+  const [publicReports, setPublicReports] = useState<ReportSummary[]>([]);
+
   // Filter state
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [activeFilters, setActiveFilters] = useState<{
@@ -300,25 +304,154 @@ export default function ReportsTabScreen() {
   // Reload reports when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      loadReports();
-    }, [])
+      const loadReportsForFocus = async () => {
+        try {
+          setLoading(true);
+
+          if (viewMode === "user") {
+            // Load user's own reports
+            const response = await apiService.getUserReports();
+            if (response.success && response.reports) {
+              setUserReports(response.reports);
+              setReports(response.reports);
+              setAllReports(response.reports);
+            } else {
+              const errorMessage =
+                response.error || "Failed to load user reports";
+              showAlert("Error", errorMessage, "error");
+            }
+          } else {
+            // Load all accessible reports (user + public)
+            try {
+              const [userResponse, publicResponse] = await Promise.all([
+                apiService.getUserReports(),
+                apiService.getPublicReports(),
+              ]);
+
+              let combinedReports: ReportSummary[] = [];
+
+              if (userResponse.success && userResponse.reports) {
+                setUserReports(userResponse.reports);
+                combinedReports = [...userResponse.reports];
+              }
+
+              if (publicResponse.success && publicResponse.reports) {
+                setPublicReports(publicResponse.reports);
+                // Filter out duplicates (user's own reports that are also public)
+                const userReportIds = new Set(
+                  userResponse.reports?.map((r) => r.reportId) || []
+                );
+                const uniquePublicReports = publicResponse.reports.filter(
+                  (report) => !userReportIds.has(report.reportId)
+                );
+                combinedReports = [...combinedReports, ...uniquePublicReports];
+              }
+
+              setReports(combinedReports);
+              setAllReports(combinedReports);
+            } catch (error) {
+              console.error("Error loading public reports:", error);
+              // Fallback to user reports if public reports fail
+              const userResponse = await apiService.getUserReports();
+              if (userResponse.success && userResponse.reports) {
+                setUserReports(userResponse.reports);
+                setReports(userResponse.reports);
+                setAllReports(userResponse.reports);
+                showAlert(
+                  "Warning",
+                  "Could not load public reports, showing your reports only",
+                  "warning"
+                );
+              } else {
+                throw new Error(userResponse.error || "Failed to load reports");
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Load reports error:", error);
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : "Network error occurred. Please check your connection.";
+          showAlert("Error", errorMessage, "error");
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      loadReportsForFocus();
+    }, [viewMode, showAlert])
   );
 
-  const loadReports = async () => {
+  const loadReports = async (mode: "user" | "all" = viewMode) => {
     try {
-      const response = await apiService.getUserReports();
-      if (response.success && response.reports) {
-        setReports(response.reports);
-        setAllReports(response.reports); // Keep original for filtering
+      setLoading(true);
+
+      if (mode === "user") {
+        // Load user's own reports
+        const response = await apiService.getUserReports();
+        if (response.success && response.reports) {
+          setUserReports(response.reports);
+          setReports(response.reports);
+          setAllReports(response.reports);
+        } else {
+          const errorMessage = response.error || "Failed to load user reports";
+          showAlert("Error", errorMessage, "error");
+        }
       } else {
-        const errorMessage = response.error || "Failed to load reports";
-        Alert.alert("Error", errorMessage);
+        // Load all accessible reports (user + public)
+        try {
+          const [userResponse, publicResponse] = await Promise.all([
+            apiService.getUserReports(),
+            apiService.getPublicReports(),
+          ]);
+
+          let combinedReports: ReportSummary[] = [];
+
+          if (userResponse.success && userResponse.reports) {
+            setUserReports(userResponse.reports);
+            combinedReports = [...userResponse.reports];
+          }
+
+          if (publicResponse.success && publicResponse.reports) {
+            setPublicReports(publicResponse.reports);
+            // Filter out duplicates (user's own reports that are also public)
+            const userReportIds = new Set(
+              userResponse.reports?.map((r) => r.reportId) || []
+            );
+            const uniquePublicReports = publicResponse.reports.filter(
+              (report) => !userReportIds.has(report.reportId)
+            );
+            combinedReports = [...combinedReports, ...uniquePublicReports];
+          }
+
+          setReports(combinedReports);
+          setAllReports(combinedReports);
+        } catch (error) {
+          console.error("Error loading public reports:", error);
+          // Fallback to user reports if public reports fail
+          const userResponse = await apiService.getUserReports();
+          if (userResponse.success && userResponse.reports) {
+            setUserReports(userResponse.reports);
+            setReports(userResponse.reports);
+            setAllReports(userResponse.reports);
+            showAlert(
+              "Warning",
+              "Could not load public reports, showing your reports only",
+              "warning"
+            );
+          } else {
+            throw new Error(userResponse.error || "Failed to load reports");
+          }
+        }
       }
     } catch (error) {
       console.error("Load reports error:", error);
       const errorMessage =
-        "Network error occurred. Please check your connection.";
-      Alert.alert("Error", errorMessage);
+        error instanceof Error
+          ? error.message
+          : "Network error occurred. Please check your connection.";
+      showAlert("Error", errorMessage, "error");
     } finally {
       setLoading(false);
     }
@@ -326,7 +459,7 @@ export default function ReportsTabScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadReports();
+    await loadReports(viewMode);
     setRefreshing(false);
   };
 
@@ -390,7 +523,7 @@ export default function ReportsTabScreen() {
       setActiveFilters(filters);
     } catch (error) {
       console.error("Filter error:", error);
-      Alert.alert("Error", "Failed to apply filters");
+      showAlert("Error", "Failed to apply filters", "error");
     } finally {
       setLoading(false);
     }
@@ -612,7 +745,7 @@ export default function ReportsTabScreen() {
   return (
     <View className="flex-1 bg-[#FFE4D6] max-w-screen-md mx-auto w-full">
       <Header
-        title="My Reports"
+        title={viewMode === "user" ? "My Reports" : "All Reports"}
         onNotificationPress={() => {}}
         showNotificationDot={false}
       />
@@ -622,7 +755,7 @@ export default function ReportsTabScreen() {
           <View className="bg-white rounded-lg p-8 shadow-sm items-center">
             <ActivityIndicator size="large" color="#67082F" />
             <Text className="text-gray-600 mt-4 font-medium">
-              Loading your reports...
+              Loading {viewMode === "user" ? "your" : "all"} reports...
             </Text>
             <Text className="text-gray-400 text-sm mt-2">
               Please wait a moment
@@ -662,6 +795,49 @@ export default function ReportsTabScreen() {
               </View>
               <MaterialIcons name="arrow-forward" size={20} color="white" />
             </TouchableOpacity>
+
+            {/* View Mode Toggle */}
+            <View className="flex-row bg-gray-100 rounded-lg p-1 mb-3">
+              <TouchableOpacity
+                className={`flex-1 py-2 px-4 rounded-md ${
+                  viewMode === "user"
+                    ? "bg-[#67082F] shadow-sm"
+                    : "bg-transparent"
+                }`}
+                onPress={() => {
+                  setViewMode("user");
+                  loadReports("user");
+                }}
+              >
+                <Text
+                  className={`text-center font-medium ${
+                    viewMode === "user" ? "text-white" : "text-gray-600"
+                  }`}
+                >
+                  My Reports
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className={`flex-1 py-2 px-4 rounded-md ${
+                  viewMode === "all"
+                    ? "bg-[#67082F] shadow-sm"
+                    : "bg-transparent"
+                }`}
+                onPress={() => {
+                  setViewMode("all");
+                  loadReports("all");
+                }}
+              >
+                <Text
+                  className={`text-center font-medium ${
+                    viewMode === "all" ? "text-white" : "text-gray-600"
+                  }`}
+                >
+                  All Reports
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             {/* Secondary Actions */}
             <View className="flex-row justify-between">

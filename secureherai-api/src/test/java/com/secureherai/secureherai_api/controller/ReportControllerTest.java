@@ -166,7 +166,7 @@ class ReportControllerTest {
         ReportResponse.ReportDetailsResponse successResponse = new ReportResponse.ReportDetailsResponse(
             true, details, null);
         
-        when(reportService.getReportDetails(testReportId, testUserId)).thenReturn(successResponse);
+        when(reportService.getReportDetails(testReportId, testUserId, "USER")).thenReturn(successResponse);
 
         // Act & Assert
         mockMvc.perform(get("/api/report/details")
@@ -176,7 +176,7 @@ class ReportControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.report.reportId").value(testReportId.toString()));
 
-        verify(reportService).getReportDetails(testReportId, testUserId);
+        verify(reportService).getReportDetails(testReportId, testUserId, "USER");
     }
 
     @Test
@@ -240,7 +240,7 @@ class ReportControllerTest {
         ReportResponse.UserReportsResponse successResponse = new ReportResponse.UserReportsResponse(
             true, reportList, null);
         
-        when(reportService.getPublicReports("ADMIN")).thenReturn(successResponse);
+        when(reportService.getAllReports("ADMIN")).thenReturn(successResponse);
 
         // Act & Assert
         mockMvc.perform(get("/api/report/public-reports")
@@ -249,7 +249,7 @@ class ReportControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.reports").isArray());
 
-        verify(reportService).getPublicReports("ADMIN");
+        verify(reportService).getAllReports("ADMIN");
     }
 
     @Test
@@ -261,7 +261,7 @@ class ReportControllerTest {
         ReportResponse.UserReportsResponse successResponse = new ReportResponse.UserReportsResponse(
             true, reportList, null);
         
-        when(reportService.getPublicReports("RESPONDER")).thenReturn(successResponse);
+        when(reportService.getAllReports("RESPONDER")).thenReturn(successResponse);
 
         // Act & Assert
         mockMvc.perform(get("/api/report/public-reports")
@@ -269,7 +269,7 @@ class ReportControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(reportService).getPublicReports("RESPONDER");
+        verify(reportService).getAllReports("RESPONDER");
     }
 
     @Test
@@ -283,7 +283,7 @@ class ReportControllerTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false));
 
-        verify(reportService, never()).getPublicReports(any());
+        verify(reportService, never()).getAllReports(any());
     }
 
     @Test

@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   Modal,
   ActivityIndicator,
   Image,
@@ -251,7 +250,7 @@ export default function SubmitReportScreen() {
       // );
     } catch (error) {
       console.error("Error getting location:", error);
-      Alert.alert("Error", "Could not get current location");
+      showAlert("Error", "Could not get current location", "error");
     } finally {
       setGettingLocation(false);
     }
@@ -286,7 +285,7 @@ export default function SubmitReportScreen() {
     }
 
     if (!currentLocation) {
-      Alert.alert("Error", "Location is required to submit a report");
+      showAlert("Error", "Location is required to submit a report", "error");
       return;
     }
 
@@ -347,22 +346,15 @@ export default function SubmitReportScreen() {
           response.error &&
           response.error.includes("similar report already exists")
         ) {
-          Alert.alert(
+            showAlert(
             "Similar Report Detected",
             "Our system detected a very similar report that was recently submitted. To proceed:\n\n• Wait 15 minutes before submitting again, or\n• Add more specific details to differentiate this incident",
-            [
-              { text: "Edit Report", style: "default" },
-              {
-                text: "Cancel",
-                style: "cancel",
-                onPress: () => console.log("User canceled report submission"),
-              },
-            ]
-          );
+            "warning"
+            );
         } else {
           // Handle other errors - clean up newly uploaded files
           await cleanupNewEvidenceFiles();
-          Alert.alert("Error", response.error || "Failed to submit report");
+          showAlert("Error", response.error || "Failed to submit report", "error");
         }
       }
     } catch (error: any) {
@@ -377,26 +369,10 @@ export default function SubmitReportScreen() {
         typeof error.response.data.error === "string" &&
         error.response.data.error.includes("similar report already exists")
       ) {
-        Alert.alert(
+        showAlert(
           "Duplicate Report Detected",
           `${error.response.data.error}\n\nYou can:\n• Add more specific details to your description\n• Wait 15 minutes before submitting again\n• Change the incident type or location if this is a different incident`,
-          [
-            {
-              text: "Edit Report",
-              onPress: () => {
-                // Provide more specific guidance for the user
-                showAlert(
-                  "Tip",
-                  "Try adding unique details such as specific time, exact location, or unique identifiers about the incident",
-                  "info"
-                );
-              },
-            },
-            {
-              text: "Cancel",
-              style: "cancel",
-            },
-          ]
+          "warning"
         );
       } else {
         // Show more specific error message if available
@@ -406,10 +382,10 @@ export default function SubmitReportScreen() {
           "An unexpected error occurred";
 
         // Show a more user-friendly message with possible solutions
-        Alert.alert(
+        showAlert(
           "Error Submitting Report",
           `${errorMessage}\n\nPossible solutions:\n• Check your internet connection\n• Try again in a few moments\n• Verify all required fields are filled`,
-          [{ text: "OK" }]
+          "error"
         );
       }
     } finally {

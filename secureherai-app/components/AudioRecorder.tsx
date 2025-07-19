@@ -1,7 +1,9 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAudioRecording } from "../hooks/useAudioRecording";
+import { useAlert } from "../context/AlertContext";
+
 
 interface AudioRecorderProps {
   onRecordingComplete?: (audioUrl: string) => void;
@@ -22,6 +24,8 @@ export default function AudioRecorder({
   style,
   autoUpload = true, // Default to true for backward compatibility
 }: AudioRecorderProps) {
+  const {showAlert} = useAlert();
+
   const {
     isRecording,
     isProcessing,
@@ -68,10 +72,10 @@ export default function AudioRecorder({
     if (!hasPermission) {
       const granted = await requestPermissions();
       if (!granted) {
-        Alert.alert(
+        showAlert(
           "Permission Required",
           "Microphone permission is required to record audio. Please enable it in your device settings.",
-          [{ text: "OK" }]
+          "error"
         );
         return;
       }
@@ -93,10 +97,10 @@ export default function AudioRecorder({
 
     const result = await uploadRecording();
     if (!result?.success) {
-      Alert.alert(
+      showAlert(
         "Upload Failed",
         result?.error || "Failed to upload recording. Please try again.",
-        [{ text: "OK" }]
+        "error"
       );
     }
   };

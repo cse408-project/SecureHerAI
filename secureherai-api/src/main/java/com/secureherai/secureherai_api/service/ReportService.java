@@ -271,23 +271,43 @@ public class ReportService {
     }
     
     /**
-     * Get detailed information for a specific report
+     * Get detailed information for a specific report with access control
+     * - Regular users: Can view their own reports or public reports
+     * - Admin/Responder: Can view all reports regardless of visibility
      */
-    public ReportResponse.ReportDetailsResponse getReportDetails(UUID reportId, UUID userId) {
+    public ReportResponse.ReportDetailsResponse getReportDetails(UUID reportId, UUID userId, String userRole) {
         try {
-            logger.debug("Retrieving report details for report: {} by user: {}", reportId, userId);
+            logger.debug("Retrieving report details for report: {} by user: {} with role: {}", reportId, userId, userRole);
             
-            // Find report and verify ownership
-            Optional<IncidentReport> reportOpt = reportRepository.findByIdAndUserId(reportId, userId);
+            // Find the report first
+            Optional<IncidentReport> reportOpt = reportRepository.findById(reportId);
             if (reportOpt.isEmpty()) {
-                logger.warn("Report not found or access denied - Report: {}, User: {}", reportId, userId);
-                return new ReportResponse.ReportDetailsResponse(false, null, "Report not found or access denied");
+                logger.warn("Report not found - Report: {}", reportId);
+                return new ReportResponse.ReportDetailsResponse(false, null, "Report not found");
             }
             
             IncidentReport report = reportOpt.get();
+            
+            // Check access permissions
+            boolean isOwner = report.getUserId().equals(userId);
+            boolean isAdminOrResponder = "ADMIN".equals(userRole) || "RESPONDER".equals(userRole);
+            boolean isPublicReport = "public".equals(report.getVisibility());
+            
+            // Access control logic:
+            // 1. Admin/Responder can view any report
+            // 2. Regular users can view their own reports
+            // 3. Regular users can view public reports from others
+            if (!isAdminOrResponder && !isOwner && !isPublicReport) {
+                logger.warn("Access denied for report details - Report: {}, User: {}, Role: {}, Visibility: {}", 
+                           reportId, userId, userRole, report.getVisibility());
+                return new ReportResponse.ReportDetailsResponse(false, null, 
+                    "Access denied. You can only view your own reports or public reports.");
+            }
+            
             ReportResponse.ReportDetails reportDetails = convertToReportDetails(report);
             
-            logger.debug("Successfully retrieved report details for: {}", reportId);
+            logger.debug("Successfully retrieved report details for: {} by user: {} (role: {})", 
+                        reportId, userId, userRole);
             return new ReportResponse.ReportDetailsResponse(true, reportDetails, null);
             
         } catch (Exception e) {
@@ -489,33 +509,33 @@ public class ReportService {
     /**
      * Get reports for admin/officials (with appropriate visibility filtering)
      */
-    public ReportResponse.UserReportsResponse getPublicReports(String userRole) {
+    public ReportResponse.UserReportsResponse getAllReports(String userRole) {
         try {
             logger.debug("Retrieving public reports for user role: {}", userRole);
-            List<IncidentReport> reports;
+            List<IncidentReport> reports = reportRepository.findAll();
             
-            reports = switch (userRole) {
-                case "ADMIN" -> {
-                    // Admins can see all reports
-                    List<IncidentReport> adminReports = reportRepository.findAll();
-                    logger.debug("Admin access: Retrieved {} total reports", adminReports.size());
-                    yield adminReports;
-                }
-                case "RESPONDER" -> {
-                    // Responders can see public and officials_only reports
-                    List<IncidentReport> responderReports = reportRepository.findPublicReports();
-                    logger.debug("Responder access: Retrieved {} public/officials_only reports", responderReports.size());
-                    yield responderReports;
-                }
-                default -> {
-                    // Regular users should not access this endpoint
-                    logger.warn("Access denied for user role: {}", userRole);
-                    yield null;
-                }
-            };
+            // reports = switch (userRole) {
+            //     case "ADMIN" -> {
+            //         // Admins can see all reports
+                    // List<IncidentReport> adminReports = reportRepository.findAll();
+            //         logger.debug("Admin access: Retrieved {} total reports", adminReports.size());
+            //         yield adminReports;
+            //     }
+            //     case "RESPONDER" -> {
+            //         // Responders can see public and officials_only reports
+            //         List<IncidentReport> responderReports = reportRepository.findPublicReports();
+            //         logger.debug("Responder access: Retrieved {} public/officials_only reports", responderReports.size());
+            //         yield responderReports;
+            //     }
+            //     default -> {
+            //         // Regular users should not access this endpoint
+            //         logger.warn("Access denied for user role: {}", userRole);
+            //         yield null;
+            //     }
+            // };
             
             if (reports == null) {
-                return new ReportResponse.UserReportsResponse(false, null, "Access denied");
+                return new ReportResponse.UserReportsResponse(false, null, "No report found");
             }
             
             List<ReportResponse.ReportSummary> reportSummaries = reports.stream()
