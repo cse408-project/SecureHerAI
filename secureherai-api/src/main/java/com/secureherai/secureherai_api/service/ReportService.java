@@ -1,5 +1,6 @@
 package com.secureherai.secureherai_api.service;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -53,13 +54,16 @@ public class ReportService {
             }
             
             // Create new incident report with emergency type
+            // Use alert's triggered time, or current time if null (to prevent database constraint violation)
+            Timestamp incidentTime = alert.getTriggeredAt() != null ? alert.getTriggeredAt() : new Timestamp(System.currentTimeMillis());
+            
             IncidentReport report = new IncidentReport(
                 alert.getUserId(),
                 "emergency", // Set type as emergency for SOS alerts
                 alert.getAlertMessage() != null ? alert.getAlertMessage() : "Emergency SOS alert triggered",
                 alert.getLatitude(),
                 alert.getLongitude(),
-                alert.getTriggeredAt(),
+                incidentTime,
                 "officials_only", // Default visibility for SOS-generated reports
                 false // Not anonymous since it's from SOS
             );

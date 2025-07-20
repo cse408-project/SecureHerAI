@@ -27,6 +27,7 @@ import NotificationModal from "../../components/NotificationModal";
 
 // Extended interface for map markers with report data
 interface ExtendedMapMarker extends MapMarker {
+  isOwnReport?: boolean;
   reportData?: ReportSummary;
   safePlace?: SafePlace;
 }
@@ -443,6 +444,7 @@ export default function MapScreen() {
               report.location.longitude
           )
           .map((report) => {
+            // console.log("Processing report:", report.reportId);
             const reportDate = new Date(report.incidentTime);
             const timeAgo = getTimeAgo(reportDate);
             const isRecent =
@@ -451,6 +453,7 @@ export default function MapScreen() {
 
             return {
               id: report.reportId,
+              isOwnReport: isOwnReport,
               coordinate: {
                 latitude: report.location.latitude,
                 longitude: report.location.longitude,
@@ -470,11 +473,13 @@ export default function MapScreen() {
                 isOwnReport ? " • 🌟 YOUR REPORT" : ""
               } • ⏰ ${timeAgo}${isRecent ? " • 🔴 RECENT" : ""}`,
               reportData: report,
-              type: isOwnReport ? "own-report" : (report.incidentType as any),
+              type: (report.incidentType as any),
               color: getIncidentTypeColor(report.incidentType),
               onCalloutPress: () => handleReportDetails(report),
             };
           });
+
+        console.log("Total report markers: ", reportMarkers.length);
         allMarkers.push(...reportMarkers);
       }
 
@@ -784,6 +789,10 @@ export default function MapScreen() {
                               Assault
                             </Text>
                           </View>
+                          <View className="flex-row items-center mb-1">
+                            <Text className="text-sm mr-2">🆘</Text>
+                            <Text className="text-xs text-gray-600">Emergency</Text>
+                          </View>
                         </>
                       )}
 
@@ -808,9 +817,9 @@ export default function MapScreen() {
 
                     {/* Statistics Column */}
                     <View className="flex-1 pl-3 border-l border-gray-200">
-                      <Text className="text-xs font-semibold text-gray-700 mb-2">
+                      {/* <Text className="text-xs font-semibold text-gray-700 mb-2">
                         Statistics
-                      </Text>
+                      </Text> */}
 
                       {showReports && reports.length > 0 && (
                         <>
@@ -854,6 +863,18 @@ export default function MapScreen() {
                               {
                                 reports.filter(
                                   (r) => r.incidentType === "assault"
+                                ).length
+                              }
+                            </Text>
+                          </View>
+                          <View className="flex-row justify-between mb-2">
+                            <Text className="text-xs text-gray-600">
+                              Emergency:
+                            </Text>
+                            <Text className="text-xs font-medium">
+                              {
+                                reports.filter(
+                                  (r) => r.incidentType === "emergency"
                                 ).length
                               }
                             </Text>

@@ -5,7 +5,8 @@ import { StyleSheet, ViewStyle, View, Text } from "react-native";
 const getAdvancedCustomMarkerStyle = (
   type: string,
   size: number = 32,
-  imageUrl?: string
+  imageUrl?: string,
+  isOwnReport?: boolean
 ) => {
   const pinHeight = size * 1.2;
   const shadowOffset = 4;
@@ -36,6 +37,11 @@ const getAdvancedCustomMarkerStyle = (
       color: "#EF4444",
       emoji: "🆘",
       description: "Emergency Alert",
+    },
+    report: {
+      color: "#DC2626",
+      emoji: "🚨",
+      description: "Incident Report",
     },
     "own-report": {
       color: "#8B5CF6",
@@ -92,6 +98,12 @@ const getAdvancedCustomMarkerStyle = (
   // Get marker configuration
   const config = markerConfigs[type] || markerConfigs.general;
 
+  let strokeColor = "#FFFFFF"
+  // Override color for own reports while keeping the same emoji
+  if (isOwnReport) {
+    strokeColor = "#FF00"; // Purple color for own reports
+  }
+
   // Special handling for safe zone - just use the shield icon
   if (type === "safe_zone") {
     // Always use the shield pattern for safe zones
@@ -117,7 +129,7 @@ const getAdvancedCustomMarkerStyle = (
         <!-- Main circular pin body with white border -->
         <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 3}" 
                 fill="${config.color}" 
-                stroke="#FFFFFF" 
+                stroke="${strokeColor}"
                 stroke-width="3" 
                 filter="url(#safeZoneShadow)"/>
         
@@ -166,7 +178,7 @@ const getAdvancedCustomMarkerStyle = (
       <!-- Main circular pin body with shadow and white border -->
       <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 3}" 
               fill="${config.color}" 
-              stroke="#FFFFFF" 
+              stroke="${strokeColor}"
               stroke-width="3" 
               filter="url(#circleShadow${type})"/>
       
@@ -187,6 +199,95 @@ const getAdvancedCustomMarkerStyle = (
     ...baseStyle,
     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svgContent)}`,
   };
+};
+
+// Create a simple fallback marker
+const createFallbackMarker = (
+  type: string,
+  size: number = 32,
+  isOwnReport?: boolean
+) => {
+  const config = {
+    harassment: { color: "#DC2626", emoji: "⚠️" },
+    theft: { color: "#7C2D12", emoji: "💰" },
+    assault: { color: "#B91C1C", emoji: "🚨" },
+    emergency: { color: "#EF4444", emoji: "🆘" },
+    safe_zone: { color: "#10B981", emoji: "🛡️" },
+    general: { color: "#6B7280", emoji: "📍" },
+  }[type] || { color: "#6B7280", emoji: "📍" };
+
+  // Override color for own reports
+  if (isOwnReport) {
+    config.color = "#8B5CF6"; // Purple color for own reports
+  }
+
+  return {
+    path: window.google?.maps?.SymbolPath?.CIRCLE || 0,
+    fillColor: config.color,
+    fillOpacity: 1,
+    strokeColor: "#FFFFFF",
+    strokeWeight: 2,
+    scale: size / 2,
+  };
+};
+
+// Function to offset overlapping markers
+const offsetOverlappingMarkers = (markers: MapMarker[]): MapMarker[] => {
+  const offsetDistance = 0.0001; // Small offset in degrees (about 10 meters)
+  const processedMarkers = [...markers];
+  const coordinateGroups = new Map<string, any[]>();
+
+  // Group markers by coordinate
+  markers.forEach((marker, index) => {
+    const coordKey = `${marker.coordinate.latitude.toFixed(
+      6
+    )},${marker.coordinate.longitude.toFixed(6)}`;
+    if (!coordinateGroups.has(coordKey)) {
+      coordinateGroups.set(coordKey, []);
+    }
+    coordinateGroups.get(coordKey)!.push({ ...marker, originalIndex: index });
+  });
+
+  // Process overlapping markers
+  coordinateGroups.forEach((group, coordKey) => {
+    if (group.length > 1) {
+      console.log(
+        `Found ${group.length} overlapping markers at ${coordKey}:`,
+        group.map((m) => ({ id: m.id, title: m.title }))
+      );
+
+      // Apply circular offset pattern
+      group.forEach((marker, index) => {
+        if (index === 0) {
+          // Keep first marker at original position
+          processedMarkers[marker.originalIndex] = marker;
+        } else {
+          // Calculate offset in a circular pattern
+          const angle = (2 * Math.PI * index) / group.length;
+          const radiusMultiplier = Math.ceil(index / 8); // Increase radius for more markers
+          const offsetLat = offsetDistance * radiusMultiplier * Math.cos(angle);
+          const offsetLng = offsetDistance * radiusMultiplier * Math.sin(angle);
+
+          processedMarkers[marker.originalIndex] = {
+            ...marker,
+            coordinate: {
+              latitude: marker.coordinate.latitude + offsetLat,
+              longitude: marker.coordinate.longitude + offsetLng,
+            },
+            title: `${marker.title} (${index + 1}/${group.length})`, // Show which marker in group
+          };
+
+          console.log(
+            `Offset marker ${marker.id}: ${offsetLat.toFixed(
+              6
+            )}, ${offsetLng.toFixed(6)}`
+          );
+        }
+      });
+    }
+  });
+
+  return processedMarkers;
 };
 
 // Extend the Window interface for TypeScript
@@ -245,6 +346,7 @@ export interface MapMarker {
   // Extended properties from map.tsx
   safePlace?: any;
   reportData?: any;
+  isOwnReport?: boolean;
 }
 
 interface MapPressEvent {
@@ -314,6 +416,16 @@ export default function MapComponent({
   const markersRef = useRef<any[]>([]);
   const heatmapRef = useRef<any>(null);
 
+  console.log("Total markers: ", markers.length);
+  console.log(
+    "Markers data: ",
+    markers.map((m) => ({
+      id: m.id,
+      type: m.type,
+      coordinate: m.coordinate,
+      title: m.title,
+    }))
+  );
   // Get web API key from environment variables
   const webApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY;
 
@@ -431,12 +543,48 @@ export default function MapComponent({
     const updateMarkers = () => {
       if (!mapInstance.current) return;
 
+      console.log("updateMarkers called with", markers.length, "markers");
+
       // Clear existing markers
       markersRef.current.forEach((marker) => marker.setMap(null));
       markersRef.current = [];
 
+      // Apply offset to overlapping markers
+      const offsetMarkers = offsetOverlappingMarkers(markers);
+      console.log(
+        `Processing ${offsetMarkers.length} markers (with offsets applied)`
+      );
+
       // Add new markers
-      markers.forEach((marker) => {
+      offsetMarkers.forEach((marker, index) => {
+        console.log(`Processing marker ${index}:`, {
+          id: marker.id,
+          type: marker.type,
+          coordinate: marker.coordinate,
+          title: marker.title,
+          hasReportData: !!marker.reportData,
+          reportId: marker.reportData?.reportId,
+        });
+
+        // Validate coordinates
+        const lat = marker.coordinate.latitude;
+        const lng = marker.coordinate.longitude;
+        if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+          console.error(`Invalid coordinates for marker ${index}:`, {
+            lat,
+            lng,
+          });
+          return; // Skip this marker
+        }
+
+        // Check if coordinates are reasonable (rough Bangladesh bounds)
+        if (lat < 20 || lat > 27 || lng < 88 || lng > 93) {
+          console.warn(`Marker ${index} coordinates seem outside Bangladesh:`, {
+            lat,
+            lng,
+          });
+        }
+
         const markerOptions: any = {
           position: {
             lat: marker.coordinate.latitude,
@@ -450,149 +598,215 @@ export default function MapComponent({
         const customIconConfig = getAdvancedCustomMarkerStyle(
           marker.type || "general",
           32,
-          marker.img_url
+          marker.img_url,
+          marker.isOwnReport
         );
+        console.log(
+          `Custom icon config for marker ${index}:`,
+          customIconConfig
+        );
+
         if (customIconConfig) {
-          markerOptions.icon = {
-            url: customIconConfig.url,
-            anchor: new window.google.maps.Point(
-              customIconConfig.anchor.x,
-              customIconConfig.anchor.y
-            ),
-            scaledSize: new window.google.maps.Size(
-              customIconConfig.scaledSize.width,
-              customIconConfig.scaledSize.height
-            ),
-          };
-        }
-
-        const googleMarker = new window.google.maps.Marker(markerOptions);
-
-        if (marker.title || marker.description) {
-          // Format content based on marker type
-          let htmlContent = "";
-
-          if (marker.safePlace) {
-            // Safe place HTML formatting
-            htmlContent = `
-              <div style="font-family: Arial, sans-serif; margin: 0; padding: 8px; background: white; border-radius: 4px; min-width: 200px;">
-                <div style="padding: 4px; background: #d1fae5; margin: 0 0 8px 0; border-radius: 4px;">
-                  <span style="font-size: 16px;">🛡️</span>
-                  <span style="color: #065f46; font-weight: bold; font-size: 14px; margin-left: 8px;">SAFE ZONE</span>
-                  <span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 8px; font-size: 10px; margin-left: 8px;">VERIFIED</span>
-                </div>
-                <div style="margin-bottom: 8px;">
-                  <div style="color: #374151; font-size: 12px; line-height: 1.4; margin-bottom: 4px;">
-                    ${
-                      marker.description
-                        ? marker.description.split("\n")[0]
-                        : "Verified safe location"
-                    }
-                  </div>
-                </div>
-                <div style="padding: 6px; background: #ecfdf5; border-radius: 4px; border-left: 3px solid #10b981;">
-                  <div style="color: #065f46; font-size: 10px; line-height: 1.3;">
-                    🛡️ Designated safe space for emergency shelter and quick access assistance.
-                  </div>
-                </div>
-                <div style="margin-top: 8px; text-align: center;">
-                  <a href="javascript:window.handleCalloutPress('${
-                    marker.id
-                  }')" 
-                     style="display: inline-block; background: #10b981; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 11px;">
-                    View Details
-                  </a>
-                </div>
-              </div>
-            `;
-          } else if (marker.reportData) {
-            // Report HTML formatting
-            const incidentEmoji =
-              marker.type === "harassment"
-                ? "🚨"
-                : marker.type === "theft"
-                ? "💰"
-                : "⚠️";
-            htmlContent = `
-              <div style="font-family: Arial, sans-serif; margin: 0; padding: 8px; background: white; border-radius: 4px; min-width: 200px;">
-                <div style="padding: 4px; background: #fee2e2; margin: 0 0 8px 0; border-radius: 4px;">
-                  <span style="font-size: 16px;">${incidentEmoji}</span>
-                  <span style="color: #991b1b; font-weight: bold; font-size: 14px; margin-left: 8px;">${
-                    marker.type !== undefined ? marker.type.toUpperCase() : ""
-                  }</span>
-                  <span style="background: #dc2626; color: white; padding: 2px 6px; border-radius: 8px; font-size: 10px; margin-left: 8px;">INCIDENT</span>
-                </div>
-                <div style="margin-bottom: 8px;">
-                  <div style="color: #374151; font-size: 12px; line-height: 1.4;">
-                    ${
-                      marker.description
-                        ? marker.description.split("\n\n")[0]
-                        : "Safety incident reported"
-                    }
-                  </div>
-                </div>
-                <div style="padding: 6px; background: #fef2f2; border-radius: 4px; border-left: 3px solid #dc2626;">
-                  <div style="color: #991b1b; font-size: 10px; line-height: 1.3;">
-                    🚨 Exercise caution in this area. Consider alternative routes if possible.
-                  </div>
-                </div>
-                <div style="margin-top: 8px; text-align: center;">
-                  <a href="javascript:window.handleCalloutPress('${
-                    marker.id
-                  }')" 
-                     style="display: inline-block; background: #dc2626; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 11px;">
-                    View Details
-                  </a>
-                </div>
-              </div>
-            `;
-          } else {
-            // Default formatting for other markers
-            htmlContent = `
-              <div style="font-family: Arial, sans-serif; margin: 0; padding: 8px; background: white; border-radius: 4px;">
-                ${
-                  marker.description
-                    ? `<p style="margin: 0 0 8px 0; color: #374151; font-size: 12px;">${marker.description}</p>`
-                    : ""
-                }
-                <div style="text-align: center;">
-                  <a href="javascript:window.handleCalloutPress('${
-                    marker.id
-                  }')" 
-                     style="display: inline-block; background: #4285F4; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 11px;">
-                    View Details
-                  </a>
-                </div>
-              </div>
-            `;
-          }
-
-          const infoWindow = new window.google.maps.InfoWindow({
-            content: htmlContent,
-          });
-
-          googleMarker.addListener("click", () => {
-            infoWindow.open(mapInstance.current, googleMarker);
-            if (onMarkerPress) {
-              onMarkerPress(marker);
-            }
-          });
-
-          // Set up global callback for callout press
-          if (!window.handleCalloutPress) {
-            window.handleCalloutPress = (markerId: string) => {
-              const clickedMarker = markers.find((m) => m.id === markerId);
-              if (clickedMarker && onCalloutPress) {
-                onCalloutPress(clickedMarker);
-              } else if (clickedMarker?.onCalloutPress) {
-                clickedMarker.onCalloutPress();
-              }
+          try {
+            markerOptions.icon = {
+              url: customIconConfig.url,
+              anchor: new window.google.maps.Point(
+                customIconConfig.anchor.x,
+                customIconConfig.anchor.y
+              ),
+              scaledSize: new window.google.maps.Size(
+                customIconConfig.scaledSize.width,
+                customIconConfig.scaledSize.height
+              ),
             };
+          } catch (error) {
+            console.error(
+              `Error setting custom icon for marker ${index}:`,
+              error
+            );
+            // Use fallback marker
+            markerOptions.icon = createFallbackMarker(
+              marker.type || "general",
+              32,
+              marker.isOwnReport
+            );
           }
+        } else {
+          // Use fallback marker if no custom config
+          markerOptions.icon = createFallbackMarker(
+            marker.type || "general",
+            32,
+            marker.isOwnReport
+          );
         }
 
-        markersRef.current.push(googleMarker);
+        try {
+          const googleMarker = new window.google.maps.Marker(markerOptions);
+          console.log(`Created Google marker ${index}:`, googleMarker);
+
+          if (marker.title || marker.description) {
+            // Format content based on marker type
+            let htmlContent = "";
+
+            if (marker.safePlace) {
+              // Safe place HTML formatting
+              htmlContent = `
+                <div style="font-family: Arial, sans-serif; margin: 0; padding: 8px; background: white; border-radius: 4px; min-width: 200px;">
+                  <div style="padding: 4px; background: #d1fae5; margin: 0 0 8px 0; border-radius: 4px;">
+                    <span style="font-size: 16px;">🛡️</span>
+                    <span style="color: #065f46; font-weight: bold; font-size: 14px; margin-left: 8px;">SAFE ZONE</span>
+                    <span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 8px; font-size: 10px; margin-left: 8px;">VERIFIED</span>
+                  </div>
+                  <div style="margin-bottom: 8px;">
+                    <div style="color: #374151; font-size: 12px; line-height: 1.4; margin-bottom: 4px;">
+                      ${
+                        marker.description
+                          ? marker.description.split("\n")[0]
+                          : "Verified safe location"
+                      }
+                    </div>
+                  </div>
+                  <div style="padding: 6px; background: #ecfdf5; border-radius: 4px; border-left: 3px solid #10b981;">
+                    <div style="color: #065f46; font-size: 10px; line-height: 1.3;">
+                      🛡️ Designated safe space for emergency shelter and quick access assistance.
+                    </div>
+                  </div>
+                  <div style="margin-top: 8px; text-align: center;">
+                    <a href="javascript:window.handleCalloutPress('${
+                      marker.id
+                    }')" 
+                       style="display: inline-block; background: #10b981; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 11px;">
+                      View Details
+                    </a>
+                  </div>
+                </div>
+              `;
+            } else if (marker.reportData) {
+              // Report HTML formatting
+              const incidentEmoji =
+                marker.type === "harassment"
+                  ? "🚨"
+                  : marker.type === "theft"
+                  ? "💰"
+                  : "⚠️";
+              htmlContent = `
+                <div style="font-family: Arial, sans-serif; margin: 0; padding: 8px; background: white; border-radius: 4px; min-width: 200px;">
+                  <div style="padding: 4px; background: #fee2e2; margin: 0 0 8px 0; border-radius: 4px;">
+                    <span style="font-size: 16px;">${incidentEmoji}</span>
+                    <span style="color: #991b1b; font-weight: bold; font-size: 14px; margin-left: 8px;">${
+                      marker.type !== undefined ? marker.type.toUpperCase() : ""
+                    }</span>
+                    <span style="background: #dc2626; color: white; padding: 2px 6px; border-radius: 8px; font-size: 10px; margin-left: 8px;">INCIDENT</span>
+                  </div>
+                  <div style="margin-bottom: 8px;">
+                    <div style="color: #374151; font-size: 12px; line-height: 1.4;">
+                      ${
+                        marker.description
+                          ? marker.description.split("\n\n")[0]
+                          : "Safety incident reported"
+                      }
+                    </div>
+                  </div>
+                  <div style="padding: 6px; background: #fef2f2; border-radius: 4px; border-left: 3px solid #dc2626;">
+                    <div style="color: #991b1b; font-size: 10px; line-height: 1.3;">
+                      🚨 Exercise caution in this area. Consider alternative routes if possible.
+                    </div>
+                  </div>
+                  <div style="margin-top: 8px; text-align: center;">
+                    <a href="javascript:window.handleCalloutPress('${
+                      marker.id
+                    }')" 
+                       style="display: inline-block; background: #dc2626; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 11px;">
+                      View Details
+                    </a>
+                  </div>
+                </div>
+              `;
+            } else {
+              // Default formatting for other markers
+              htmlContent = `
+                <div style="font-family: Arial, sans-serif; margin: 0; padding: 8px; background: white; border-radius: 4px;">
+                  ${
+                    marker.description
+                      ? `<p style="margin: 0 0 8px 0; color: #374151; font-size: 12px;">${marker.description}</p>`
+                      : ""
+                  }
+                  <div style="text-align: center;">
+                    <a href="javascript:window.handleCalloutPress('${
+                      marker.id
+                    }')" 
+                       style="display: inline-block; background: #4285F4; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 11px;">
+                      View Details
+                    </a>
+                  </div>
+                </div>
+              `;
+            }
+
+            const infoWindow = new window.google.maps.InfoWindow({
+              content: htmlContent,
+            });
+
+            googleMarker.addListener("click", () => {
+              infoWindow.open(mapInstance.current, googleMarker);
+              if (onMarkerPress) {
+                onMarkerPress(marker);
+              }
+            });
+
+            // Set up global callback for callout press
+            if (!window.handleCalloutPress) {
+              window.handleCalloutPress = (markerId: string) => {
+                const clickedMarker = offsetMarkers.find(
+                  (m) => m.id === markerId
+                );
+                if (clickedMarker && onCalloutPress) {
+                  onCalloutPress(clickedMarker);
+                } else if (clickedMarker?.onCalloutPress) {
+                  clickedMarker.onCalloutPress();
+                }
+              };
+            }
+          }
+
+          markersRef.current.push(googleMarker);
+          console.log(
+            `Added marker ${index} to markersRef, total markers now: ${markersRef.current.length}`
+          );
+        } catch (error) {
+          console.error(`Failed to create marker ${index}:`, error, marker);
+        }
       });
+
+      console.log(
+        "Finished processing all markers. Total created:",
+        markersRef.current.length
+      );
+
+      // Auto-fit map to show all markers if we have more than just user location
+      if (markersRef.current.length > 1) {
+        try {
+          const bounds = new window.google.maps.LatLngBounds();
+          markersRef.current.forEach((marker) => {
+            bounds.extend(marker.getPosition());
+          });
+          mapInstance.current.fitBounds(bounds);
+
+          // Set a maximum zoom level to avoid zooming too close
+          const listener = window.google.maps.event.addListener(
+            mapInstance.current,
+            "bounds_changed",
+            () => {
+              if (mapInstance.current.getZoom() > 15) {
+                mapInstance.current.setZoom(15);
+              }
+              window.google.maps.event.removeListener(listener);
+            }
+          );
+        } catch (error) {
+          console.error("Error fitting bounds:", error);
+        }
+      }
     };
 
     loadGoogleMaps();
