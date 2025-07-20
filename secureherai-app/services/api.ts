@@ -226,6 +226,34 @@ class ApiService {
     return response.json();
   }
 
+  async getAlertUserDetails(alertId: string) {
+    try {
+      console.log("API: Getting alert details for alertId:", alertId);
+      const response = await fetch(`${API_BASE_URL}/responder/alert-details/${alertId}`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+      console.log("API: Alert details response:", data);
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to fetch alert details",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error fetching alert details:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
   async updateProfile(data: any) {
     const response = await fetch(`${API_BASE_URL}/user/profile`, {
       method: "PUT",
@@ -390,6 +418,33 @@ class ApiService {
       return { success: true, data: data };
     } catch (error) {
       console.error("API: Error deleting contact:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  // Responder-specific contact methods
+  async getAllUsersAndContacts() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/responder/all-users-contacts`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to fetch all users and contacts",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error fetching all users and contacts:", error);
       return {
         success: false,
         error: "Network error. Please check your connection and try again.",
@@ -805,6 +860,30 @@ class ApiService {
       return {
         success: false,
         error: "Network error occurred while fetching public reports",
+      };
+    }
+  }
+
+  /**
+   * Get all active alerts for responders (all users' active alerts)
+   */
+  async getAllActiveAlerts() {
+    try {
+      console.log("API: Getting all active alerts (responder)");
+      const response = await fetch(`${API_BASE_URL}/sos/active-alerts`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      console.log("API: All active alerts response status:", response.status);
+      const data = await response.json();
+
+      return data;
+    } catch (error) {
+      console.error("API: Get all active alerts error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while getting all active alerts",
       };
     }
   }
@@ -1453,6 +1532,116 @@ class ApiService {
       return {
         success: false,
         error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  /**
+   * Accept an alert (for responders)
+   */
+  async acceptAlert(alertId: string) {
+    try {
+      console.log("API: Accepting alert:", alertId);
+      const response = await fetch(`${API_BASE_URL}/responder/accept-alert`, {
+        method: "PUT",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({
+          alertId,
+        }),
+      });
+
+      console.log("API: Accept alert response status:", response.status);
+      const data = await response.json();
+
+      return data;
+    } catch (error) {
+      console.error("API: Accept alert error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while accepting alert",
+      };
+    }
+  }
+
+  /**
+   * Reject an alert (for responders)
+   */
+  async rejectAlert(alertId: string) {
+    try {
+      console.log("API: Rejecting alert:", alertId);
+      const response = await fetch(`${API_BASE_URL}/responder/reject-alert`, {
+        method: "PUT",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({
+          alertId,
+        }),
+      });
+
+      console.log("API: Reject alert response status:", response.status);
+      const data = await response.json();
+
+      return data;
+    } catch (error) {
+      console.error("API: Reject alert error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while rejecting alert",
+      };
+    }
+  }
+
+  /**
+   * Forward an alert to another responder (for responders)
+   */
+  async forwardAlert(alertId: string, badgeNumber: string) {
+    try {
+      console.log("API: Forwarding alert:", alertId, "to badge:", badgeNumber);
+      const response = await fetch(`${API_BASE_URL}/responder/forward-alert`, {
+        method: "PUT",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({
+          alertId,
+          badgeNumber,
+        }),
+      });
+
+      console.log("API: Forward alert response status:", response.status);
+      const data = await response.json();
+
+      return data;
+    } catch (error) {
+      console.error("API: Forward alert error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while forwarding alert",
+      };
+    }
+  }
+
+  /**
+   * Update alert status (for responders)
+   */
+  async updateAlertStatus(alertId: string, status: string) {
+    try {
+      console.log("API: Updating alert status:", alertId, "to status:", status);
+      const response = await fetch(`${API_BASE_URL}/responder/update-alert-status`, {
+        method: "PUT",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({
+          alertId,
+          status,
+        }),
+      });
+
+      console.log("API: Update alert status response status:", response.status);
+      const data = await response.json();
+
+      return data;
+    } catch (error) {
+      console.error("API: Update alert status error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while updating alert status",
       };
     }
   }

@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, ScrollView, RefreshControl } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, RefreshControl, Modal, TextInput, Alert } from "react-native";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { StatusBar } from "expo-status-bar";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -9,13 +9,32 @@ import Header from "./Header";
 import NotificationModal from "./NotificationModal";
 import { Alert as AlertType } from "../types/sos";
 import apiService from "../services/api";
+import { AlertResponder } from "../types/alertResponder";
+
+// Interface for accepted alert response from backend
+interface AcceptedAlertResponder {
+  alertId: string;
+  responderId: string;
+  status: 'accepted' | 'en_route' | 'arrived' | 'resolved';
+  acceptedAt: string;
+  eta?: string;
+}
 
 export default function ResponderHomepage() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [pendingAlerts, setPendingAlerts] = useState<AlertType[]>([]);
-  const [acceptedAlerts, setAcceptedAlerts] = useState<any[]>([]);
+  const [acceptedAlerts, setAcceptedAlerts] = useState<AcceptedAlertResponder[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [selectedAlertId, setSelectedAlertId] = useState<string>("");
+  const [selectedAcceptedAlert, setSelectedAcceptedAlert] = useState<AcceptedAlertResponder | null>(null);
+  const [badgeNumber, setBadgeNumber] = useState<string>("");
+  const [showAlertDetailsModal, setShowAlertDetailsModal] = useState(false);
+  const [selectedAlertForDetails, setSelectedAlertForDetails] = useState<string | null>(null);
+  const [alertDetailsData, setAlertDetailsData] = useState<any>(null);
+  const [loadingUserDetails, setLoadingUserDetails] = useState(false);
   const { showAlert, showConfirmAlert } = useAlert();
   const { refreshNotificationCount } = useNotifications();
 
@@ -75,22 +94,11 @@ export default function ResponderHomepage() {
       "Are you sure you want to accept this emergency alert? You will be assigned as the responding officer.",
       async () => {
         try {
-          // Get the alert details to extract the user ID
-          const alertDetails = pendingAlerts.find(alert => alert.id === alertId);
-          if (!alertDetails) {
-            showAlert("Error", "Alert not found. Please refresh and try again.", "error");
-            return;
-          }
-
-          // Accept the emergency alert
-          const response = await apiService.acceptEmergencyResponse({
-            alertId: alertId,
-            alertUserId: alertDetails.userId,
-            responderName: "Emergency Responder" // You might want to get this from user profile
-          });
+          // Accept the emergency alert using the new accept-alert endpoint
+          const response = await apiService.acceptAlert(alertId);
 
           if (response.success) {
-            showAlert("Success", "Emergency alert accepted. Coordinates sent to your device.", "success");
+            showAlert("Success", "Emergency alert accepted. You are now the assigned responder.", "success");
             loadAlerts(); // Refresh the list to move alert from pending to accepted
           } else {
             showAlert("Error", response.error || "Failed to accept alert. Please try again.", "error");
@@ -103,6 +111,113 @@ export default function ResponderHomepage() {
       undefined,
       "info"
     );
+  };
+
+  const handleRejectAlert = (alertId: string) => {
+    showConfirmAlert(
+      "Reject Emergency Alert",
+      "Are you sure you want to reject this emergency alert? This will remove it from your pending alerts.",
+      async () => {
+        try {
+          const response = await apiService.rejectAlert(alertId);
+
+          if (response.success) {
+            showAlert("Success", "Emergency alert rejected successfully.", "success");
+            loadAlerts(); // Refresh the list to remove rejected alert
+          } else {
+            showAlert("Error", response.error || "Failed to reject alert. Please try again.", "error");
+          }
+        } catch (error) {
+          console.error("Error rejecting alert:", error);
+          showAlert("Error", "Failed to reject alert. Please try again.", "error");
+        }
+      },
+      undefined,
+      "warning"
+    );
+  };
+
+  const handleForwardAlert = (alertId: string) => {
+    setSelectedAlertId(alertId);
+    setShowForwardModal(true);
+  };
+
+  const submitForwardAlert = async () => {
+    if (!selectedAlertId || !badgeNumber.trim()) {
+      showAlert("Error", "Please enter a valid badge number", "error");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await apiService.forwardAlert(selectedAlertId, badgeNumber.trim());
+      
+      if (response.success) {
+        showAlert("Success", "Alert forwarded successfully", "success");
+        setShowForwardModal(false);
+        setBadgeNumber("");
+        setSelectedAlertId("");
+        loadAlerts(); // Refresh the list
+      } else {
+        showAlert("Error", response.error || "Failed to forward alert. Please try again.", "error");
+      }
+    } catch (error) {
+      console.error("Error forwarding alert:", error);
+      showAlert("Error", "Failed to forward alert. Please try again.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = (alertResponder: AcceptedAlertResponder) => {
+    setSelectedAcceptedAlert(alertResponder);
+    setShowStatusModal(true);
+  };
+
+  const updateAlertStatus = async (status: string) => {
+    if (!selectedAcceptedAlert) return;
+
+    try {
+      setLoading(true);
+      const response = await apiService.updateAlertStatus(selectedAcceptedAlert.alertId, status);
+      
+      if (response.success) {
+        showAlert("Success", `Alert status updated to ${status}`, "success");
+        setShowStatusModal(false);
+        setSelectedAcceptedAlert(null);
+        loadAlerts(); // Refresh the list
+      } else {
+        showAlert("Error", response.error || "Failed to update alert status. Please try again.", "error");
+      }
+    } catch (error) {
+      console.error("Error updating alert status:", error);
+      showAlert("Error", "Failed to update alert status. Please try again.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewAlertDetails = async (alertId: string) => {
+    setSelectedAlertForDetails(alertId);
+    setShowAlertDetailsModal(true);
+    setLoadingUserDetails(true);
+    
+    try {
+      // Get full alert details including user information using the composite key approach
+      const detailsResponse = await apiService.getAlertUserDetails(alertId);
+      if (detailsResponse.success) {
+        setAlertDetailsData(detailsResponse.data);
+      } else {
+        setAlertDetailsData(null);
+        showAlert("Warning", "Could not load alert details", "warning");
+      }
+    } catch (error) {
+      console.error("Error loading alert details:", error);
+      setAlertDetailsData(null);
+      showAlert("Error", "Failed to load alert details", "error");
+    } finally {
+      setLoadingUserDetails(false);
+    }
   };
 
   const getTimeAgo = (dateString: string) => {
@@ -247,7 +362,7 @@ export default function ResponderHomepage() {
             </View>
           ) : (
             <View className="space-y-3">
-              {pendingAlerts.map((alert: AlertType) => {
+                {pendingAlerts.map((alert: AlertType) => {
                 const priority = getPriorityLevel(alert);
                 const alertTypeColor = getAlertTypeColor(alert.triggerMethod);
                 
@@ -271,11 +386,18 @@ export default function ResponderHomepage() {
                         </View>
                         <View>
                           <Text className="font-bold text-gray-800 text-base">
-                            Emergency Alert #{alert.id.slice(-8).toUpperCase()}
+                                {`Emergency Alert #${alert.id.slice(-8).toUpperCase()}`}
                           </Text>
-                          <Text className="text-gray-500 text-sm">
-                            {getTimeAgo(alert.triggeredAt)}
-                          </Text>
+                          <View className="flex-row items-center">
+                            <Text className="text-gray-500 text-sm">
+                              {getTimeAgo(alert.triggeredAt)}
+                            </Text>
+                            {alert.forwarded && (
+                              <View className="ml-2 px-2 py-0.5 bg-blue-100 rounded-full border border-blue-300">
+                                <Text className="text-xs text-blue-700 font-semibold">Forwarded</Text>
+                              </View>
+                            )}
+                          </View>
                         </View>
                       </View>
                       
@@ -290,9 +412,7 @@ export default function ResponderHomepage() {
                           {priority.level}
                         </Text>
                       </View>
-                    </View>
-
-                    {/* Alert Details */}
+                    </View>                    {/* Alert Details */}
                     <View className="mb-3">
                       <View className="flex-row items-center mb-2">
                         <MaterialIcons name="location-on" size={16} color="#6B7280" />
@@ -306,6 +426,15 @@ export default function ResponderHomepage() {
                           <MaterialIcons name="message" size={16} color="#6B7280" />
                           <Text className="text-gray-600 ml-1 flex-1">
                             "{alert.alertMessage}"
+                          </Text>
+                        </View>
+                      )}
+                      
+                      {alert.notes && (
+                        <View className="flex-row items-start mb-2">
+                          <MaterialIcons name="info" size={16} color="#3B82F6" />
+                          <Text className="text-blue-600 ml-1 flex-1">
+                            Note: {alert.notes}
                           </Text>
                         </View>
                       )}
@@ -328,11 +457,22 @@ export default function ResponderHomepage() {
                       </TouchableOpacity>
                       
                       <TouchableOpacity
+                        className="bg-gray-500 rounded-lg px-3 py-2"
+                        onPress={() => handleRejectAlert(alert.id)}
+                      >
+                        <Text className="text-white font-semibold text-center">Reject</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        className="bg-blue-600 rounded-lg px-3 py-2"
+                        onPress={() => handleForwardAlert(alert.id)}
+                      >
+                        <Text className="text-white font-semibold text-center">Forward</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity
                         className="bg-gray-100 rounded-lg px-4 py-2"
-                        onPress={() => {
-                          // TODO: Navigate to alert details
-                          showAlert("Info", "Alert details feature coming soon", "info");
-                        }}
+                        onPress={() => handleViewAlertDetails(alert.id)}
                       >
                         <MaterialIcons name="info" size={20} color="#374151" />
                       </TouchableOpacity>
@@ -360,7 +500,7 @@ export default function ResponderHomepage() {
             </View>
           ) : (
             <View className="space-y-3">
-              {acceptedAlerts.map((alertResponder: any) => (
+              {acceptedAlerts.map((alertResponder: AcceptedAlertResponder) => (
                 <View
                   key={`${alertResponder.alertId}-${alertResponder.responderId}`}
                   className="bg-green-50 rounded-xl p-4 shadow-sm border border-green-200"
@@ -373,8 +513,9 @@ export default function ResponderHomepage() {
                       </View>
                       <View>
                         <Text className="font-bold text-gray-800 text-base">
-                          Alert #{alertResponder.alertId.slice(-8).toUpperCase()}
+                            {`Alert #${alertResponder.alertId.slice(-8).toUpperCase()}`}
                         </Text>
+
                         <Text className="text-green-600 text-sm">
                           Accepted on {new Date(alertResponder.acceptedAt).toLocaleDateString()}
                         </Text>
@@ -404,18 +545,14 @@ export default function ResponderHomepage() {
                   <View className="flex-row space-x-2">
                     <TouchableOpacity
                       className="bg-blue-600 rounded-lg px-4 py-2 flex-1"
-                      onPress={() => {
-                        showAlert("Info", "Update status feature coming soon", "info");
-                      }}
+                      onPress={() => handleUpdateStatus(alertResponder)}
                     >
                       <Text className="text-white font-semibold text-center">Update Status</Text>
                     </TouchableOpacity>
                     
                     <TouchableOpacity
                       className="bg-gray-100 rounded-lg px-4 py-2"
-                      onPress={() => {
-                        showAlert("Info", "View details feature coming soon", "info");
-                      }}
+                      onPress={() => handleViewAlertDetails(alertResponder.alertId)}
                     >
                       <MaterialIcons name="info" size={20} color="#374151" />
                     </TouchableOpacity>
@@ -464,6 +601,235 @@ export default function ResponderHomepage() {
         visible={showNotifications}
         onClose={() => setShowNotifications(false)}
       />
+
+      {/* Forward Alert Modal */}
+      <Modal
+        visible={showForwardModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowForwardModal(false)}
+      >
+        <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
+          <View className="bg-white rounded-xl p-6 mx-4 w-80">
+            <Text className="text-lg font-bold text-gray-800 mb-4">Forward Alert</Text>
+            
+            <Text className="text-gray-600 mb-2">
+              Enter the badge number of the responder you want to forward this alert to:
+            </Text>
+            
+            <TextInput
+              className="border border-gray-300 rounded-lg px-3 py-2 mb-4"
+              placeholder="Badge Number (e.g., P12345)"
+              value={badgeNumber}
+              onChangeText={setBadgeNumber}
+              autoCapitalize="characters"
+            />
+            
+            <View className="flex-row space-x-3">
+              <TouchableOpacity
+                className="bg-gray-200 rounded-lg px-4 py-2 flex-1"
+                onPress={() => {
+                  setShowForwardModal(false);
+                  setBadgeNumber("");
+                  setSelectedAlertId("");
+                }}
+              >
+                <Text className="text-gray-700 font-semibold text-center">Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                className="bg-blue-600 rounded-lg px-4 py-2 flex-1"
+                onPress={submitForwardAlert}
+              >
+                <Text className="text-white font-semibold text-center">Forward</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Status Update Modal */}
+      <Modal
+        visible={showStatusModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowStatusModal(false)}
+      >
+        <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
+          <View className="bg-white rounded-xl p-6 mx-4 w-80">
+            <Text className="text-lg font-bold text-gray-800 mb-4">Update Alert Status</Text>
+            
+            <Text className="text-gray-600 mb-4">
+              Select the new status for this alert:
+            </Text>
+            
+            <View className="space-y-3">
+              <TouchableOpacity
+                className="bg-yellow-500 rounded-lg px-4 py-3"
+                onPress={() => updateAlertStatus("en_route")}
+              >
+                <Text className="text-white font-semibold text-center">En Route</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                className="bg-blue-500 rounded-lg px-4 py-3"
+                onPress={() => updateAlertStatus("arrived")}
+              >
+                <Text className="text-white font-semibold text-center">Arrived on Scene</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                className="bg-green-600 rounded-lg px-4 py-3"
+                onPress={() => updateAlertStatus("resolved")}
+              >
+                <Text className="text-white font-semibold text-center">Mark as Resolved</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <TouchableOpacity
+              className="bg-gray-200 rounded-lg px-4 py-3 mt-4"
+              onPress={() => {
+                setShowStatusModal(false);
+                setSelectedAcceptedAlert(null);
+              }}
+            >
+              <Text className="text-gray-700 font-semibold text-center">Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Alert Details Modal */}
+      <Modal
+        visible={showAlertDetailsModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowAlertDetailsModal(false)}
+      >
+        <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
+          <View className="bg-white rounded-xl p-6 mx-4 w-80 max-h-[80%]">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-lg font-bold text-gray-800">Alert Details</Text>
+              <TouchableOpacity onPress={() => setShowAlertDetailsModal(false)}>
+                <MaterialIcons name="close" size={24} color="#374151" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {selectedAlertForDetails && (
+                <View className="space-y-4">
+                  {/* Alert Info */}
+                  <View className="border-b border-gray-200 pb-4">
+                    <Text className="font-semibold text-gray-700 mb-2">Alert Information</Text>
+                    {alertDetailsData?.alert ? (
+                      <>
+                        <Text className="text-gray-600 mb-1">
+                          ID: {alertDetailsData.alert.id?.slice(-8).toUpperCase() || "Unknown"}
+                        </Text>
+                        <Text className="text-gray-600 mb-1">
+                          Time: {alertDetailsData.alert.triggeredAt ? new Date(alertDetailsData.alert.triggeredAt).toLocaleString() : "Unknown"}
+                        </Text>
+                        <Text className="text-gray-600 mb-1">
+                          Type: {alertDetailsData.alert.triggerMethod?.charAt(0).toUpperCase() + alertDetailsData.alert.triggerMethod?.slice(1) || "Unknown"}
+                        </Text>
+                        {alertDetailsData.alert.alertMessage && (
+                          <Text className="text-gray-600 mb-1">
+                            Message: "{alertDetailsData.alert.alertMessage}"
+                          </Text>
+                        )}
+                      </>
+                    ) : (
+                      <Text className="text-gray-500">Loading alert information...</Text>
+                    )}
+                  </View>
+
+                  {/* Location Info */}
+                  <View className="border-b border-gray-200 pb-4">
+                    <Text className="font-semibold text-gray-700 mb-2">Location</Text>
+                    {alertDetailsData?.alert ? (
+                      <>
+                        <Text className="text-gray-600 mb-1">
+                          Address: {alertDetailsData.alert.address || "Unknown"}
+                        </Text>
+                        <Text className="text-gray-600 mb-1">
+                          Coordinates: {alertDetailsData.alert.latitude}, {alertDetailsData.alert.longitude}
+                        </Text>
+                      </>
+                    ) : (
+                      <Text className="text-gray-500">Loading location information...</Text>
+                    )}
+                  </View>
+
+                  {/* User Details */}
+                  <View className="border-b border-gray-200 pb-4">
+                    <Text className="font-semibold text-gray-700 mb-2">User Information</Text>
+                    {loadingUserDetails ? (
+                      <Text className="text-gray-500">Loading user details...</Text>
+                    ) : alertDetailsData?.user ? (
+                      <View>
+                        <Text className="text-gray-600 mb-1">
+                          Name: {alertDetailsData.user.fullName || "Unknown"}
+                        </Text>
+                        <Text className="text-gray-600 mb-1">
+                          Email: {alertDetailsData.user.email || "Unknown"}
+                        </Text>
+                        <Text className="text-gray-600 mb-1">
+                          Phone: {alertDetailsData.user.phoneNumber || "Unknown"}
+                        </Text>
+                        <Text className="text-gray-600 mb-1">
+                          User ID: {alertDetailsData.user.userId}
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text className="text-red-600">Could not load user details</Text>
+                    )}
+                  </View>
+
+                  {/* Response Details */}
+                  {alertDetailsData?.responder && (
+                    <View className="border-b border-gray-200 pb-4">
+                      <Text className="font-semibold text-gray-700 mb-2">Response Information</Text>
+                      <Text className="text-gray-600 mb-1">
+                        Status: {alertDetailsData.responder.status?.toUpperCase() || "Unknown"}
+                      </Text>
+                      {alertDetailsData.responder.acceptedAt && (
+                        <Text className="text-gray-600 mb-1">
+                          Accepted: {new Date(alertDetailsData.responder.acceptedAt).toLocaleString()}
+                        </Text>
+                      )}
+                      {alertDetailsData.responder.eta && (
+                        <Text className="text-gray-600 mb-1">
+                          ETA: {alertDetailsData.responder.eta}
+                        </Text>
+                      )}
+                      {alertDetailsData.responder.arrivalTime && (
+                        <Text className="text-gray-600 mb-1">
+                          Arrived: {new Date(alertDetailsData.responder.arrivalTime).toLocaleString()}
+                        </Text>
+                      )}
+                    </View>
+                  )}
+
+                  {/* Additional Info */}
+                  {alertDetailsData?.alert?.notes && (
+                    <View className="pb-4">
+                      <Text className="font-semibold text-gray-700 mb-2">Notes</Text>
+                      <Text className="text-gray-600">{alertDetailsData.alert.notes}</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </ScrollView>
+            
+            <TouchableOpacity
+              className="bg-[#67082F] rounded-lg px-4 py-3 mt-4"
+              onPress={() => setShowAlertDetailsModal(false)}
+            >
+              <Text className="text-white font-semibold text-center">Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

@@ -9,14 +9,20 @@ import {
   Modal,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Header from "../../components/Header";
 import ContactForm from "../../components/ContactForm";
 import { useAlert } from "../../context/AlertContext";
+import { useAuth } from "../../context/AuthContext";
 import ApiService from "../../services/api";
 import type {
   TrustedContact,
   CreateContactRequest,
 } from "../../types/contacts";
+import type {
+  UserContactData,
+  GetAllUsersContactsResponse,
+} from "../../types/usersAndContacts";
 
 // Emergency contacts - these remain static
 const emergencyContacts = [
@@ -40,6 +46,8 @@ export default function ContactsScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [selectionMode, setSelectionMode] = useState(false);
+  const [isResponder, setIsResponder] = useState(false);
+  const [allUsersAndContacts, setAllUsersAndContacts] = useState<UserContactData[]>([]);
 
   const [newContact, setNewContact] = useState<CreateContactRequest>({
     name: "",
@@ -50,27 +58,94 @@ export default function ContactsScreen() {
   });
 
   const { showAlert, showConfirmAlert } = useAlert();
+  const { user } = useAuth(); // Get user from auth context
+
+  // Check if user is a responder
+  const checkUserRole = async () => {
+    try {
+      // First try to get role from auth context user
+      if (user?.role) {
+        const isResponderUser = user.role === "RESPONDER";
+        console.log("ContactsScreen: User role from context:", user.role, "Is responder:", isResponderUser);
+        setIsResponder(isResponderUser);
+        return;
+      }
+
+      // Fallback to AsyncStorage if auth context doesn't have user data yet
+      const userDataStr = await AsyncStorage.getItem("user_data");
+      if (userDataStr) {
+        const userData = JSON.parse(userDataStr);
+        console.log("ContactsScreen: User data from storage:", userData);
+        // Check the role property (not roles array)
+        const userRole = userData.role;
+        const isResponderUser = userRole === "RESPONDER";
+        console.log("ContactsScreen: User role from storage:", userRole, "Is responder:", isResponderUser);
+        setIsResponder(isResponderUser);
+      } else {
+        // No user data found, default to regular user
+        setIsResponder(false);
+      }
+    } catch (error) {
+      console.error("Error checking user role:", error);
+      setIsResponder(false);
+    }
+  };
 
   // Load trusted contacts on component mount
   useEffect(() => {
-    loadTrustedContacts();
+    checkUserRole();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Load contacts when role is determined
+  useEffect(() => {
+    if (isResponder !== null) {
+      loadTrustedContacts();
+    }
+  }, [isResponder]);
 
   const loadTrustedContacts = async () => {
     setIsLoading(true);
     try {
-      const response = await ApiService.getTrustedContacts();
-      if (response.success && response.data) {
-        setTrustedContacts(response.data.contacts || []);
+      let response;
+      
+      if (isResponder) {
+        // Responder: Load all users and their contacts
+        console.log("ContactsScreen: Loading all users and contacts for responder");
+        response = await ApiService.getAllUsersAndContacts();
+        console.log("ContactsScreen: Response data for responder:", response);
+        if (response.success && response.data) {
+          // The response.data contains a nested data property with the actual array
+          console.log("ContactsScreen: Users data received:", response.data);
+          const usersData = Array.isArray(response.data.data) ? response.data.data : [];
+          console.log("ContactsScreen: Users data to set:", usersData);
+          setAllUsersAndContacts(usersData);
+          console.log("ContactsScreen: All users and contacts loaded:", allUsersAndContacts);
+          setTrustedContacts([]); // Clear regular contacts for responder view
+        } else {
+          showAlert(
+            "Error",
+            response.error || "Failed to load user contacts",
+            "error"
+          );
+        }
       } else {
-        showAlert(
-          "Error",
-          response.error || "Failed to load contacts",
-          "error"
-        );
+        // Regular user: Load only their own trusted contacts
+        console.log("ContactsScreen: Loading trusted contacts for regular user");
+        response = await ApiService.getTrustedContacts();
+        if (response.success && response.data) {
+          setTrustedContacts(response.data.contacts || []);
+          setAllUsersAndContacts([]); // Clear responder data for user view
+        } else {
+          showAlert(
+            "Error",
+            response.error || "Failed to load contacts",
+            "error"
+          );
+        }
       }
-    } catch {
+    } catch (error) {
+      console.error("Error loading contacts:", error);
       showAlert("Error", "Failed to load contacts", "error");
     } finally {
       setIsLoading(false);
@@ -389,50 +464,52 @@ export default function ContactsScreen() {
           </TouchableOpacity>
         ))}
 
-        {/* Action Buttons Section */}
-        <View className="flex-row justify-between items-center mb-6 mt-4">
-          {/* Add Contact Button */}
-          <TouchableOpacity
-            className="flex-1 mr-2 bg-[#67082F] rounded-lg py-3 px-4 flex-row items-center justify-center shadow-sm"
-            onPress={() => setShowAddContact(true)}
-          >
-            <MaterialIcons
-              name="add"
-              size={20}
-              color="white"
-              style={{ marginRight: 8 }}
-            />
-            <Text className="text-white font-semibold">Add Contact</Text>
-          </TouchableOpacity>
-
-          {/* Selection Mode Toggle */}
-          {trustedContacts.length > 0 && (
+        {/* Action Buttons Section - Hidden for Responders */}
+        {!isResponder && (
+          <View className="flex-row justify-between items-center mb-6 mt-4">
+            {/* Add Contact Button */}
             <TouchableOpacity
-              className="flex-1 ml-2 bg-white rounded-lg py-3 px-4 flex-row items-center justify-center shadow-sm border border-gray-200"
-              onPress={() => {
-                if (selectionMode) {
-                  setSelectionMode(false);
-                  setSelected([]);
-                } else {
-                  setSelectionMode(true);
-                }
-              }}
+              className="flex-1 mr-2 bg-[#67082F] rounded-lg py-3 px-4 flex-row items-center justify-center shadow-sm"
+              onPress={() => setShowAddContact(true)}
             >
               <MaterialIcons
-                name={selectionMode ? "close" : "checklist"}
+                name="add"
                 size={20}
-                color="#67082F"
+                color="white"
                 style={{ marginRight: 8 }}
               />
-              <Text className="text-[#67082F] font-semibold">
-                {selectionMode ? "Cancel" : "Select"}
-              </Text>
+              <Text className="text-white font-semibold">Add Contact</Text>
             </TouchableOpacity>
-          )}
-        </View>
 
-        {/* Select All Button when in selection mode */}
-        {selectionMode && trustedContacts.length > 0 && (
+            {/* Selection Mode Toggle */}
+            {trustedContacts.length > 0 && (
+              <TouchableOpacity
+                className="flex-1 ml-2 bg-white rounded-lg py-3 px-4 flex-row items-center justify-center shadow-sm border border-gray-200"
+                onPress={() => {
+                  if (selectionMode) {
+                    setSelectionMode(false);
+                    setSelected([]);
+                  } else {
+                    setSelectionMode(true);
+                  }
+                }}
+              >
+                <MaterialIcons
+                  name={selectionMode ? "close" : "checklist"}
+                  size={20}
+                  color="#67082F"
+                  style={{ marginRight: 8 }}
+                />
+                <Text className="text-[#67082F] font-semibold">
+                  {selectionMode ? "Cancel" : "Select"}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {/* Select All Button when in selection mode - Hidden for Responders */}
+        {!isResponder && selectionMode && trustedContacts.length > 0 && (
           <View className="mb-4">
             <TouchableOpacity
               className="bg-[#67082F]/10 rounded-lg py-2 px-4 flex-row items-center justify-center border border-[#67082F]/20"
@@ -465,8 +542,8 @@ export default function ContactsScreen() {
           </View>
         )}
 
-        {/* Delete Button when contacts are selected */}
-        {selected.length > 0 && (
+        {/* Delete Button when contacts are selected - Hidden for Responders */}
+        {!isResponder && selected.length > 0 && (
           <View className="mb-4">
             <TouchableOpacity
               className="bg-red-600 rounded-lg py-3 px-4 flex-row items-center justify-center shadow-sm"
@@ -494,7 +571,7 @@ export default function ContactsScreen() {
 
         {/* Trusted Contacts */}
         <Text className="text-lg font-bold text-[#67082F] mb-4">
-          Trusted Contacts
+          {isResponder ? "All Users & Emergency Contacts" : "Trusted Contacts"}
         </Text>
 
         {isLoading ? (
@@ -502,77 +579,180 @@ export default function ContactsScreen() {
             <ActivityIndicator size="large" color="#67082F" />
             <Text className="text-gray-600 mt-2">Loading contacts...</Text>
           </View>
-        ) : trustedContacts.length === 0 ? (
-          <View className="bg-white p-6 rounded-lg shadow-sm items-center">
-            <MaterialIcons name="contacts" size={48} color="#9CA3AF" />
-            <Text className="text-gray-600 mt-2 text-center">
-              No trusted contacts yet. Add your first contact!
-            </Text>
-          </View>
-        ) : (
-          trustedContacts.map((contact) => (
-            <TouchableOpacity
-              key={contact.contactId}
-              className={`flex-row items-center bg-white p-4 rounded-lg mb-3 shadow-sm ${
-                selected.includes(contact.contactId)
-                  ? "border-2 border-red-600"
-                  : ""
-              }`}
-              onPress={() => handleSelect(contact.contactId)}
-              onLongPress={() => handleLongPress(contact.contactId)}
-              activeOpacity={0.7}
-            >
-              <View className="w-10 h-10 bg-[#67082F]/10 rounded-full items-center justify-center mr-4">
-                <MaterialIcons name="person" size={24} color="#67082F" />
-              </View>
-              <View className="flex-1">
-                <Text className="font-semibold text-gray-800">
-                  {contact.name}
-                </Text>
-                <Text className="text-gray-600">{contact.phone}</Text>
-                <Text className="text-xs text-[#67082F]">
-                  {contact.relationship}
-                </Text>
-                {contact.email && (
-                  <Text className="text-xs text-gray-500">{contact.email}</Text>
-                )}
-              </View>
-
-              <View className="flex-row items-center space-x-2">
-                <TouchableOpacity
-                  onPress={() => handleCall(contact.phone)}
-                  className="p-2"
-                >
-                  <MaterialIcons name="phone" size={20} color="#67082F" />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => startEditContact(contact)}
-                  className="p-2"
-                >
-                  <MaterialIcons name="edit" size={20} color="#67082F" />
-                </TouchableOpacity>
-
-                {selectionMode && (
-                  <View>
-                    {selected.includes(contact.contactId) ? (
-                      <MaterialIcons
-                        name="check-circle"
-                        size={24}
-                        color="#dc2626"
+        ) : isResponder ? (
+          // Responder View: Display all users and their contacts
+          allUsersAndContacts.length === 0 ? (
+            <View className="bg-white p-6 rounded-lg shadow-sm items-center">
+              <MaterialIcons name="contacts" size={48} color="#9CA3AF" />
+              <Text className="text-gray-600 mt-2 text-center">
+                No user contact information available.
+              </Text>
+            </View>
+          ) : (
+            allUsersAndContacts.map((userInfo, index) => {
+              console.log(`ContactsScreen: Rendering user ${index}:`, userInfo);
+              return (
+                <View key={index} className="bg-white rounded-lg mb-4 shadow-sm">
+                {/* User Header */}
+                <View className="bg-[#67082F]/5 p-4 rounded-t-lg border-l-4 border-[#67082F]">
+                  <View className="flex-row items-center">
+                    <View className="w-12 h-12 bg-[#67082F]/10 rounded-full items-center justify-center mr-3">
+                      <MaterialIcons 
+                        name={userInfo.role === "RESPONDER" ? "security" : "person"} 
+                        size={24} 
+                        color="#67082F" 
                       />
-                    ) : (
-                      <MaterialIcons
-                        name="radio-button-unchecked"
-                        size={24}
-                        color="#67082F"
+                    </View>
+                    <View className="flex-1">
+                      <Text className="font-bold text-gray-800 text-lg">
+                        {userInfo.fullName || "Unknown User"}
+                      </Text>
+                      <Text className="text-[#67082F] font-medium">
+                        {userInfo.role === "RESPONDER" ? "👮‍♀️ Responder" : "👤 User"}
+                      </Text>
+                      <Text className="text-gray-600 text-sm">
+                        📧 {userInfo.email || "No email"}
+                      </Text>
+                      <Text className="text-gray-600 text-sm">
+                        📞 {userInfo.phone || "No phone"}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => userInfo.phone && handleCall(userInfo.phone)}
+                      className="p-2"
+                      disabled={!userInfo.phone}
+                    >
+                      <MaterialIcons 
+                        name="phone" 
+                        size={24} 
+                        color={userInfo.phone ? "#67082F" : "#9CA3AF"} 
                       />
-                    )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Emergency Contacts */}
+                {userInfo.trustedContacts && userInfo.trustedContacts.length > 0 ? (
+                  <View className="p-4">
+                    <Text className="font-semibold text-gray-700 mb-3">
+                      Emergency Contacts ({userInfo.trustedContacts.length})
+                    </Text>
+                    {userInfo.trustedContacts.map((contact, contactIndex: number) => (
+                      <View 
+                        key={contactIndex}
+                        className="flex-row items-center bg-gray-50 p-3 rounded-lg mb-2"
+                      >
+                        <View className="w-8 h-8 bg-[#67082F]/10 rounded-full items-center justify-center mr-3">
+                          <MaterialIcons name="contact-phone" size={16} color="#67082F" />
+                        </View>
+                        <View className="flex-1">
+                          <Text className="font-medium text-gray-800">
+                            {contact.name}
+                          </Text>
+                          <Text className="text-gray-600 text-sm">
+                            {contact.phone}
+                          </Text>
+                          <Text className="text-xs text-[#67082F]">
+                            {contact.relationship}
+                          </Text>
+                          {contact.email && (
+                            <Text className="text-xs text-gray-500">{contact.email}</Text>
+                          )}
+                        </View>
+                        <TouchableOpacity
+                          onPress={() => handleCall(contact.phone)}
+                          className="p-2"
+                        >
+                          <MaterialIcons name="phone" size={18} color="#67082F" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <View className="p-4">
+                    <Text className="text-gray-500 text-center italic">
+                      No emergency contacts configured
+                    </Text>
                   </View>
                 )}
               </View>
-            </TouchableOpacity>
-          ))
+              );
+            })
+          )
+        ) : (
+          // User View: Display their own trusted contacts
+          trustedContacts.length === 0 ? (
+            <View className="bg-white p-6 rounded-lg shadow-sm items-center">
+              <MaterialIcons name="contacts" size={48} color="#9CA3AF" />
+              <Text className="text-gray-600 mt-2 text-center">
+                No trusted contacts yet. Add your first contact!
+              </Text>
+            </View>
+          ) : (
+            trustedContacts.map((contact) => (
+              <TouchableOpacity
+                key={contact.contactId}
+                className={`flex-row items-center bg-white p-4 rounded-lg mb-3 shadow-sm ${
+                  selected.includes(contact.contactId)
+                    ? "border-2 border-red-600"
+                    : ""
+                }`}
+                onPress={() => handleSelect(contact.contactId)}
+                onLongPress={() => handleLongPress(contact.contactId)}
+                activeOpacity={0.7}
+              >
+                <View className="w-10 h-10 bg-[#67082F]/10 rounded-full items-center justify-center mr-4">
+                  <MaterialIcons name="person" size={24} color="#67082F" />
+                </View>
+                <View className="flex-1">
+                  <Text className="font-semibold text-gray-800">
+                    {contact.name}
+                  </Text>
+                  <Text className="text-gray-600">{contact.phone}</Text>
+                  <Text className="text-xs text-[#67082F]">
+                    {contact.relationship}
+                  </Text>
+                  {contact.email && (
+                    <Text className="text-xs text-gray-500">{contact.email}</Text>
+                  )}
+                </View>
+
+                <View className="flex-row items-center space-x-2">
+                  <TouchableOpacity
+                    onPress={() => handleCall(contact.phone)}
+                    className="p-2"
+                  >
+                    <MaterialIcons name="phone" size={20} color="#67082F" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => startEditContact(contact)}
+                    className="p-2"
+                  >
+                    <MaterialIcons name="edit" size={20} color="#67082F" />
+                  </TouchableOpacity>
+
+                  {selectionMode && (
+                    <View>
+                      {selected.includes(contact.contactId) ? (
+                        <MaterialIcons
+                          name="check-circle"
+                          size={24}
+                          color="#dc2626"
+                        />
+                      ) : (
+                        <MaterialIcons
+                          name="radio-button-unchecked"
+                          size={24}
+                          color="#67082F"
+                        />
+                      )}
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))
+          )
         )}
       </ScrollView>
     </View>

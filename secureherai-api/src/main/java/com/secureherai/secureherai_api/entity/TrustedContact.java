@@ -31,7 +31,7 @@ public class TrustedContact {
     @Column(nullable = false)
     private String phone;
     
-    @Column
+    @Column(nullable = false)
     private String email;
     
     @Column(name = "share_location", nullable = false)

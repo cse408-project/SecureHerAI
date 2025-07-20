@@ -12,6 +12,8 @@ export interface Alert {
   verificationStatus: string;
   canceledAt: string | null;
   resolvedAt: string | null;
+  forwarded?: boolean;
+  notes?: string;
 }
 
 export interface AlertResponse {

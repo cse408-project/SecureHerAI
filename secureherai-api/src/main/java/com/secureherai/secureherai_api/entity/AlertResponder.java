@@ -28,13 +28,13 @@ public class AlertResponder {
     private Responder responder;
     
     @Column(nullable = false)
-    private String status = "accepted"; // accepted, rejected, en_route, arrived
+    private String status; // accepted, rejected, pending, forwarded, en_route, arrived, resolved
     
     private String eta;
     
     @CreationTimestamp
     @Column(name = "accepted_at", nullable = false)
-    private LocalDateTime acceptedAt;
+    private LocalDateTime acceptedAt; // Note: Gets set for ALL records (pending, accepted, etc) - better named as "createdAt"
     
     @Column(name = "arrival_time")
     private LocalDateTime arrivalTime;
@@ -47,7 +47,7 @@ public class AlertResponder {
     public AlertResponder(UUID alertId, UUID responderId) {
         this.alertId = alertId;
         this.responderId = responderId;
-        this.status = "accepted";
+        this.status = "accepted"; // Default to accepted for backward compatibility
     }
     
     public AlertResponder(UUID alertId, UUID responderId, String status) {

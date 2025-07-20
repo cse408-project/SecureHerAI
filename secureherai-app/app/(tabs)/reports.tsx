@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Modal,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import apiService from "../../services/api";
@@ -16,6 +17,7 @@ import { ReportSummary } from "../../types/report";
 import Header from "../../components/Header";
 import DatePicker from "../../components/DatePicker";
 import { useAlert } from "../../context/AlertContext";
+import { useAuth } from "../../context/AuthContext";
 
 interface Time {
   start: string;
@@ -278,6 +280,7 @@ const FilterModal = ({
 
 export default function ReportsTabScreen() {
   const { showAlert } = useAlert();
+  const { user } = useAuth();
 
   const [reports, setReports] = useState<ReportSummary[]>([]);
   const [allReports, setAllReports] = useState<ReportSummary[]>([]);
@@ -288,6 +291,7 @@ export default function ReportsTabScreen() {
     end: "",
   });
   const [isTimeSubmitting, setIsTimeSubmitting] = useState(false);
+  const [isResponder, setIsResponder] = useState(false);
 
   // Filter state
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -300,13 +304,46 @@ export default function ReportsTabScreen() {
   // Reload reports when screen comes into focus
   useFocusEffect(
     useCallback(() => {
+      checkUserRole();
       loadReports();
     }, [])
   );
 
+  const checkUserRole = async () => {
+    try {
+      // Check if user is a responder
+      if (user?.role) {
+        const isResponderUser = user.role === "RESPONDER";
+        setIsResponder(isResponderUser);
+        return;
+      }
+
+      // Fallback to AsyncStorage
+      const userDataStr = await AsyncStorage.getItem("user_data");
+      if (userDataStr) {
+        const userData = JSON.parse(userDataStr);
+        const userRole = userData.role;
+        setIsResponder(userRole === "RESPONDER");
+      }
+    } catch (error) {
+      console.error("Error checking user role:", error);
+      setIsResponder(false);
+    }
+  };
+
   const loadReports = async () => {
     try {
-      const response = await apiService.getUserReports();
+      // Check user role first
+      await checkUserRole();
+      
+      let response;
+      
+      // If user is a responder, get all public reports; otherwise get user's own reports
+      if (isResponder) {
+        response = await apiService.getPublicReports();
+      } else {
+        response = await apiService.getUserReports();
+      }
       if (response.success && response.reports) {
         setReports(response.reports);
         setAllReports(response.reports); // Keep original for filtering
@@ -612,7 +649,7 @@ export default function ReportsTabScreen() {
   return (
     <View className="flex-1 bg-[#FFE4D6] max-w-screen-md mx-auto w-full">
       <Header
-        title="My Reports"
+        title={isResponder ? "All Reports" : "My Reports"}
         onNotificationPress={() => {}}
         showNotificationDot={false}
       />
@@ -622,7 +659,7 @@ export default function ReportsTabScreen() {
           <View className="bg-white rounded-lg p-8 shadow-sm items-center">
             <ActivityIndicator size="large" color="#67082F" />
             <Text className="text-gray-600 mt-4 font-medium">
-              Loading your reports...
+              {isResponder ? "Loading system reports..." : "Loading your reports..."}
             </Text>
             <Text className="text-gray-400 text-sm mt-2">
               Please wait a moment
@@ -641,27 +678,29 @@ export default function ReportsTabScreen() {
           {/* Quick Actions */}
           <View className="bg-white rounded-lg p-4 mb-4 shadow-sm">
             <Text className="text-lg font-bold text-[#67082F] mb-4">
-              Report Management
+              {isResponder ? "System Overview" : "Report Management"}
             </Text>
 
             {/* Primary Action */}
-            <TouchableOpacity
-              className="flex-row items-center p-4 bg-[#67082F] rounded-lg mb-3 shadow-sm"
-              onPress={navigateToSubmit}
-            >
-              <View className="w-12 h-12 bg-white/20 rounded-full items-center justify-center mr-4">
-                <MaterialIcons name="add-circle" size={24} color="white" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-white font-bold text-base">
-                  Submit New Report
-                </Text>
-                <Text className="text-white/90 text-sm mt-1">
-                  Report incidents, safety concerns, or suspicious activities
-                </Text>
-              </View>
-              <MaterialIcons name="arrow-forward" size={20} color="white" />
-            </TouchableOpacity>
+            {!isResponder && (
+              <TouchableOpacity
+                className="flex-row items-center p-4 bg-[#67082F] rounded-lg mb-3 shadow-sm"
+                onPress={navigateToSubmit}
+              >
+                <View className="w-12 h-12 bg-white/20 rounded-full items-center justify-center mr-4">
+                  <MaterialIcons name="add-circle" size={24} color="white" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-white font-bold text-base">
+                    Submit New Report
+                  </Text>
+                  <Text className="text-white/90 text-sm mt-1">
+                    Report incidents, safety concerns, or suspicious activities
+                  </Text>
+                </View>
+                <MaterialIcons name="arrow-forward" size={20} color="white" />
+              </TouchableOpacity>
+            )}
 
             {/* Secondary Actions */}
             <View className="flex-row justify-between">
@@ -734,62 +773,68 @@ export default function ReportsTabScreen() {
                     />
                   </View>
                   <Text className="text-gray-800 text-xl font-bold mt-2">
-                    No Reports Yet
+                    {isResponder ? "No Reports Available" : "No Reports Yet"}
                   </Text>
                   <Text className="text-gray-500 text-center mt-3 leading-relaxed">
-                    You haven&apos;t submitted any incident reports. Your safety
-                    matters - start by creating your first report.
+                    {isResponder 
+                      ? "No reports have been submitted to the system yet. Public and officials-only reports will appear here."
+                      : "You haven't submitted any incident reports. Your safety matters - start by creating your first report."
+                    }
                   </Text>
 
                   {/* Feature highlights */}
-                  <View className="w-full mt-6 space-y-3">
-                    <View className="flex-row items-center">
-                      <MaterialIcons
-                        name="security"
-                        size={16}
-                        color="#67082F"
-                      />
-                      <Text className="text-gray-600 text-sm ml-2">
-                        Secure and confidential reporting
-                      </Text>
+                  {!isResponder && (
+                    <View className="w-full mt-6 space-y-3">
+                      <View className="flex-row items-center">
+                        <MaterialIcons
+                          name="security"
+                          size={16}
+                          color="#67082F"
+                        />
+                        <Text className="text-gray-600 text-sm ml-2">
+                          Secure and confidential reporting
+                        </Text>
+                      </View>
+                      <View className="flex-row items-center">
+                        <MaterialIcons
+                          name="location-on"
+                          size={16}
+                          color="#67082F"
+                        />
+                        <Text className="text-gray-600 text-sm ml-2">
+                          GPS location tracking
+                        </Text>
+                      </View>
+                      <View className="flex-row items-center">
+                        <MaterialIcons
+                          name="cloud-upload"
+                          size={16}
+                          color="#67082F"
+                        />
+                        <Text className="text-gray-600 text-sm ml-2">
+                          Evidence upload support
+                        </Text>
+                      </View>
                     </View>
-                    <View className="flex-row items-center">
-                      <MaterialIcons
-                        name="location-on"
-                        size={16}
-                        color="#67082F"
-                      />
-                      <Text className="text-gray-600 text-sm ml-2">
-                        GPS location tracking
-                      </Text>
-                    </View>
-                    <View className="flex-row items-center">
-                      <MaterialIcons
-                        name="cloud-upload"
-                        size={16}
-                        color="#67082F"
-                      />
-                      <Text className="text-gray-600 text-sm ml-2">
-                        Evidence upload support
-                      </Text>
-                    </View>
-                  </View>
+                  )}
 
-                  <TouchableOpacity
-                    className="bg-[#67082F] rounded-lg px-8 py-4 mt-8 w-full shadow-sm"
-                    onPress={navigateToSubmit}
-                  >
-                    <View className="flex-row items-center justify-center">
-                      <MaterialIcons
-                        name="add-circle"
-                        size={20}
-                        color="white"
-                      />
-                      <Text className="text-white font-bold text-base ml-2">
-                        Submit First Report
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
+                  {!isResponder && (
+                    <TouchableOpacity
+                      className="bg-[#67082F] rounded-lg px-8 py-4 mt-8 w-full shadow-sm"
+                      onPress={navigateToSubmit}
+                    >
+                      <View className="flex-row items-center justify-center">
+                        <MaterialIcons
+                          name="add-circle"
+                          size={20}
+                          color="white"
+                        />
+                        <Text className="text-white font-bold text-base ml-2">
+                          Submit First Report
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
             </>
@@ -797,7 +842,7 @@ export default function ReportsTabScreen() {
             <>
               {/* Reports List Header */}
               <Text className="text-lg font-bold text-[#67082F] mb-4">
-                Your Reports ({reports.length})
+                {isResponder ? `All System Reports (${reports.length})` : `Your Reports (${reports.length})`}
               </Text>
 
               {/* Reports List */}

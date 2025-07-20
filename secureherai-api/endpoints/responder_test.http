@@ -1,7 +1,205 @@
 ### SecureHerAI Responder API Tests
 
 @baseUrl = http://localhost:8080/api
-@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZjA2YjljOS1mY2IzLTRhYWItYTBlYy1iNDk4ZDM5MDlmZjQiLCJlbWFpbCI6ImFyaW1vdG9raWthMjAwNTAyNUBnbWFpbC5jb20iLCJyb2xlIjoiUkVTUE9OREVSIiwiaWF0IjoxNzUwMDA0MDc1LCJleHAiOjE3NTAwOTA0NzV9.IL2fG82qkmYKV5cZibyx9v4RP4vLmPlr6cAmC-NOcu0
+@authToken = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJlNjU4Nzg2Yi02M2E1LTQ2OGYtYmJmNS00NzE0NDQzY2JhMjAiLCJlbWFpbCI6ImEubi5zd2FwbmlsMjAwM0BnbWFpbC5jb20iLCJyb2xlIjoiUkVTUE9OREVSIiwiaWF0IjoxNzUyOTIzMjE5LCJleHAiOjE3NTM3ODcyMTl9.KGycbpMrQGGOIm4MSDWBmNcU8g_wEqQoGjjcmUe14Lc
 
-### 17. Get Available Responders (public endpoint - still available from ResponderController)
+###############################################
+## AUTHENTICATION ENDPOINTS
+###############################################
+
+### 1. Login as Responder
+# Login with responder credentials
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "a.n.swapnil2003@gmail.com",
+  "password": "password123"
+}
+
+###
+POST {{baseUrl}}/auth/verify-login-code
+Content-Type: application/json
+
+{
+  "email": "a.n.swapnil2003@gmail.com",
+  "loginCode": "214203"
+}
+
+### 2. Register as Responder
+# Register a new responder account
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "new.responder@example.com",
+  "password": "Password123!",
+  "fullName": "New Responder",
+  "phone": "+1234567890",
+  "role": "RESPONDER"
+}
+
+### 3. Get User Profile
+# Retrieve the authenticated user's profile
+GET {{baseUrl}}/user/profile
+Authorization: Bearer {{authToken}}
+
+###############################################
+## RESPONDER CORE API ENDPOINTS
+###############################################
+
+### 4. Get Responder Profile
+# Retrieves the authenticated responder's profile information
+GET {{baseUrl}}/responder/profile
+Authorization: Bearer {{authToken}}
+
+### 5. Get Available Responders (public endpoint)
+# Returns a list of all responders that are currently available
 GET {{baseUrl}}/responder/available
+
+### 6. Update Responder Status
+# Updates the responder's status in the system
+PUT {{baseUrl}}/responder/status
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "status": "AVAILABLE"
+}
+
+### 7. Update Responder Availability
+# Updates the responder's availability status
+PUT {{baseUrl}}/responder/availability
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "status": "AVAILABLE"
+}
+
+### 8. Update Responder Profile
+# Updates the responder's profile information
+PUT {{baseUrl}}/responder/profile
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "badgeNumber": "R12345",
+  "phone": "+1234567890",
+  "department": "Police"
+}
+
+###############################################
+## ALERT HANDLING ENDPOINTS
+###############################################
+
+### 9. Get Pending Alerts
+# Retrieves all pending alerts for the authenticated responder
+GET {{baseUrl}}/responder/pending-alerts
+Authorization: Bearer {{authToken}}
+
+### 10. Get Accepted Alerts
+# Retrieves all alerts that have been accepted by the responder
+GET {{baseUrl}}/responder/accepted-alerts
+Authorization: Bearer {{authToken}}
+
+### 11. Accept Alert
+# Responder accepts an alert and takes responsibility
+PUT {{baseUrl}}/responder/accept-alert
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "alertId": "df06b9c9-fcb3-4aab-a0ec-b498d3909ff4"
+}
+
+### 12. Reject Alert
+# Responder rejects an alert
+PUT {{baseUrl}}/responder/reject-alert
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "alertId": "df06b9c9-fcb3-4aab-a0ec-b498d3909ff4"
+}
+
+### 13. Forward Alert
+# Responder forwards an alert to another responder
+PUT {{baseUrl}}/responder/forward-alert
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "alertId": "df06b9c9-fcb3-4aab-a0ec-b498d3909ff4",
+  "badgeNumber": "R67890"
+}
+
+###############################################
+## EMERGENCY RESPONSE ENDPOINTS
+###############################################
+
+### 14. Accept Emergency Response
+# Accept an emergency response alert through the notification system
+POST {{baseUrl}}/notifications/accept-emergency
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "alertId": "df06b9c9-fcb3-4aab-a0ec-b498d3909ff4",
+  "alertUserId": "8f7e6d5c-4b3a-2c1d-0f9e-8d7c6b5a4321",
+  "responderName": "John Doe"
+}
+
+### 15. Get Active Alerts (SOS Controller)
+# Get all active alerts in the system (responder only)
+GET {{baseUrl}}/sos/active-alerts
+Authorization: Bearer {{authToken}}
+
+###############################################
+## NOTIFICATION ENDPOINTS
+###############################################
+
+### 16. Get All Notifications
+# Retrieves all notifications for the responder
+GET {{baseUrl}}/notifications
+Authorization: Bearer {{authToken}}
+
+### 17. Get Unread Notifications
+# Retrieves only unread notifications for the responder
+GET {{baseUrl}}/notifications/unread
+Authorization: Bearer {{authToken}}
+
+### 18. Get Notification Count
+# Gets the count of notifications for the responder
+GET {{baseUrl}}/notifications/count
+Authorization: Bearer {{authToken}}
+
+### 19. Mark Notification as Read
+# Marks a specific notification as read
+POST {{baseUrl}}/notifications/mark-read
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "notificationId": "df06b9c9-fcb3-4aab-a0ec-b498d3909ff4"
+}
+
+### 20. Mark All Notifications as Read
+# Marks all notifications as read for the responder
+POST {{baseUrl}}/notifications/mark-all-read
+Authorization: Bearer {{authToken}}
+
+###############################################
+## REPORT ACCESS ENDPOINTS
+###############################################
+
+### 21. Get Public Reports
+# Gets public reports that responders can access
+GET {{baseUrl}}/report/public-reports
+Authorization: Bearer {{authToken}}
+
+### 22. Search Reports
+# Search for reports with filters
+GET {{baseUrl}}/report/search?incidentType=ASSAULT&visibility=PUBLIC
+Authorization: Bearer {{authToken}}

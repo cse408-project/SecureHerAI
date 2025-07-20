@@ -26,6 +26,11 @@ public interface AlertResponderRepository extends JpaRepository<AlertResponder, 
     @Query("SELECT ar FROM AlertResponder ar WHERE ar.alertId = :alertId AND ar.responderId = :responderId")
     Optional<AlertResponder> findByAlertIdAndResponderId(@Param("alertId") UUID alertId, @Param("responderId") UUID responderId);
     
+    // Check if a responder has accepted a specific alert
+    @Query("SELECT ar FROM AlertResponder ar WHERE ar.alertId = :alertId AND ar.responderId = :responderId AND ar.status = 'rejected'")
+    Optional<AlertResponder> findByAlertIdAndResponderIdRejected(@Param("alertId") UUID alertId, @Param("responderId") UUID responderId);
+    
+
     // Find accepted alerts by responder with specific status
     @Query("SELECT ar FROM AlertResponder ar WHERE ar.responderId = :responderId AND ar.status = :status ORDER BY ar.acceptedAt DESC")
     List<AlertResponder> findByResponderIdAndStatus(@Param("responderId") UUID responderId, @Param("status") String status);

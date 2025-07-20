@@ -31,4 +31,7 @@ public interface ResponderRepository extends JpaRepository<Responder, UUID> {
     );
     
     void deleteByUserId(UUID userId);
+
+    @Query("SELECT r FROM Responder r WHERE r.badgeNumber = :badgeNumber")
+    Optional<Responder> findByBadgeNumber(@Param("badgeNumber") String badgeNumber);
 }

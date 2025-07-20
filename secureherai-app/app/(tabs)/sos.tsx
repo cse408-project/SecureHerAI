@@ -71,8 +71,8 @@ export default function SOSScreen() {
       // Determine which API endpoint to call based on user role
       let response;
       if (isResponder) {
-        // For responders, get pending alerts only (since ResponderHomepage handles both)
-        response = await apiService.getPendingAlerts();
+        // For responders, get all active alerts from all users
+        response = await apiService.getAllActiveAlerts();
       } else {
         // For regular users, get their own alerts
         response = await apiService.getUserAlerts();
@@ -321,7 +321,7 @@ export default function SOSScreen() {
         {/* Alerts */}
         <View className="bg-white rounded-lg p-4 shadow-sm">
           <Text className="text-lg font-bold text-[#67082F] mb-4">
-            {isResponder ? "Active Emergency Alerts" : "Your Alert History"}
+            {isResponder ? "All System Alerts" : "Your Alert History"}
           </Text>
 
           {loading ? (
@@ -334,12 +334,12 @@ export default function SOSScreen() {
               <MaterialIcons name="history" size={48} color="#9CA3AF" />
               <Text className="text-gray-500 mt-2 text-center">
                 {isResponder
-                  ? "No active alerts at the moment"
+                  ? "No alerts in the system at the moment"
                   : "No emergency alerts yet"}
               </Text>
               <Text className="text-gray-400 text-sm text-center mt-1">
                 {isResponder
-                  ? "When users send emergency alerts, they will appear here"
+                  ? "All system alerts from users will appear here"
                   : "Your emergency alert history will appear here"}
               </Text>
             </View>
