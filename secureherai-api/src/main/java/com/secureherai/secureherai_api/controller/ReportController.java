@@ -36,6 +36,44 @@ public class ReportController {
     private JwtService jwtService;
     
     /**
+     * Get incident report by alert ID
+     * GET /api/report/alert-report?alertId=xxx
+     */
+    @GetMapping("/alert-report")
+    public ResponseEntity<ReportResponse.ReportDetailsResponse> getReportByAlertId(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam("alertId") UUID alertId) {
+        
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            
+            // Validate token
+            if (!jwtService.isTokenValid(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ReportResponse.ReportDetailsResponse(false, null, "User not authenticated"));
+            }
+            
+            UUID userId = jwtService.extractUserId(token);
+            String userRole = jwtService.extractRole(token);
+            
+            ReportResponse.ReportDetailsResponse response = reportService.getReportByAlertId(alertId, userId, userRole);
+            
+            if (response.isSuccess()) {
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            }
+            
+        } catch (io.jsonwebtoken.JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ReportResponse.ReportDetailsResponse(false, null, "Invalid authentication token"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ReportResponse.ReportDetailsResponse(false, null, "An unexpected error occurred"));
+        }
+    }
+
+    /**
      * Submit a new incident report
      * POST /api/report/submit
      */
@@ -377,7 +415,7 @@ public class ReportController {
             if (incidentType != null && !isValidIncidentType(incidentType)) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ReportResponse.UserReportsResponse(false, null, 
-                        "Invalid incident type. Must be one of: harassment, theft, assault, other"));
+                        "Invalid incident type. Must be one of: harassment, theft, assault, emergency, other"));
             }
             
             if (visibility != null && !isValidVisibility(visibility)) {
@@ -520,7 +558,8 @@ public class ReportController {
     private boolean isValidIncidentType(String incidentType) {
         return incidentType != null && 
                (incidentType.equals("harassment") || incidentType.equals("theft") || 
-                incidentType.equals("assault") || incidentType.equals("other"));
+                incidentType.equals("assault") || incidentType.equals("emergency") ||
+                incidentType.equals("other"));
     }
     
     private boolean isValidVisibility(String visibility) {

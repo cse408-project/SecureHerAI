@@ -15,6 +15,9 @@ import { router } from "expo-router";
 import apiService from "../../services/api";
 import { useAlert } from "../../context/AlertContext";
 import cloudinaryService from "../../services/cloudinary";
+import LocationSelectionModal, {
+  SelectedLocation,
+} from "../../components/LocationSelectionModal";
 
 // Place type options
 const places_options = [
@@ -53,6 +56,7 @@ const PlaceForm = ({
   isSubmitting,
   onImageUpload,
   isUploadingImage,
+  onLocationSelect,
 }: {
   isEdit?: boolean;
   onSubmit: () => void;
@@ -62,6 +66,7 @@ const PlaceForm = ({
   isSubmitting: boolean;
   onImageUpload: () => void;
   isUploadingImage: boolean;
+  onLocationSelect: () => void;
 }) => (
   <View className="bg-white rounded p-4 m-4 w-full max-w-sm">
     <Text className="text-lg font-bold text-[#67082F] mb-4 text-center">
@@ -91,49 +96,33 @@ const PlaceForm = ({
       </View>
     </View>
 
-    {/* Latitude Field */}
+    {/* Location Selection Button */}
     <View className="mb-3">
-      <Text className="text-sm text-gray-700 mb-1">Latitude *</Text>
-      <View className="flex-row items-center bg-white border border-gray-300 rounded px-3 py-3">
-        <TextInput
-          className="flex-1 ml-2 text-gray-900"
-          placeholder="Enter Latitude"
-          placeholderTextColor="#9CA3AF"
-          value={newPlace.latitude}
-          onChangeText={(text) => handlePlaceUpdate("latitude", text)}
-          keyboardType="numeric"
-        />
-      </View>
-    </View>
-
-    {/* Longitude Field */}
-    <View className="mb-3">
-      <Text className="text-sm text-gray-700 mb-1">Longitude *</Text>
-      <View className="flex-row items-center bg-white border border-gray-300 rounded px-3 py-3">
-        <TextInput
-          className="flex-1 ml-2 text-gray-900"
-          placeholder="Enter Longitude"
-          placeholderTextColor="#9CA3AF"
-          value={newPlace.longitude}
-          onChangeText={(text) => handlePlaceUpdate("longitude", text)}
-          keyboardType="numeric"
-        />
-      </View>
-    </View>
-
-    {/* Address Field */}
-    <View className="mb-3">
-      <Text className="text-sm text-gray-700 mb-1">Address *</Text>
-      <View className="flex-row items-center bg-white border border-gray-300 rounded px-3 py-3">
-        <TextInput
-          className="flex-1 ml-2 text-gray-900"
-          placeholder="Enter address"
-          placeholderTextColor="#9CA3AF"
-          value={newPlace.address}
-          onChangeText={(text) => handlePlaceUpdate("address", text)}
-          multiline
-        />
-      </View>
+      <Text className="text-sm text-gray-700 mb-1">Location *</Text>
+      <TouchableOpacity
+        onPress={onLocationSelect}
+        className="flex-row items-center bg-white border border-gray-300 rounded px-3 py-3"
+      >
+        <MaterialIcons name="place" size={20} color="#67082F" />
+        <View className="flex-1 ml-2">
+          {newPlace.latitude && newPlace.longitude ? (
+            <>
+              <Text className="text-gray-900 font-medium" numberOfLines={1}>
+                Location Selected
+              </Text>
+              <Text className="text-gray-500 text-sm" numberOfLines={1}>
+                {newPlace.address ||
+                  `${parseFloat(newPlace.latitude).toFixed(4)}, ${parseFloat(
+                    newPlace.longitude
+                  ).toFixed(4)}`}
+              </Text>
+            </>
+          ) : (
+            <Text className="text-gray-500">Select location on map</Text>
+          )}
+        </View>
+        <MaterialIcons name="chevron-right" size={20} color="#9CA3AF" />
+      </TouchableOpacity>
     </View>
 
     {/* Image Upload Section */}
@@ -230,6 +219,9 @@ export default function ManageSafePlacesScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [selectionMode, setSelectionMode] = useState(false);
+
+  // Location selection modal state
+  const [showLocationModal, setShowLocationModal] = useState(false);
 
   const [newPlace, setNewPlace] = useState<CreatePlace>({
     placeName: "",
@@ -476,6 +468,23 @@ export default function ManageSafePlacesScreen() {
     setEditingPlace(null);
   };
 
+  // Location selection function
+  const handleLocationSelect = () => {
+    setShowLocationModal(true);
+  };
+
+  const onLocationSelect = (location: SelectedLocation) => {
+    setNewPlace({
+      ...newPlace,
+      latitude: location.latitude.toString(),
+      longitude: location.longitude.toString(),
+      address:
+        location.address ||
+        `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`,
+    });
+    setShowLocationModal(false);
+  };
+
   // Image upload functions
   const uploadImageToCloudinary = async (
     option: "camera" | "gallery" | "url"
@@ -534,6 +543,7 @@ export default function ManageSafePlacesScreen() {
             isSubmitting={isSubmitting}
             onImageUpload={() => setShowImageUploadModal(true)}
             isUploadingImage={isUploadingImage}
+            onLocationSelect={handleLocationSelect}
           />
         </View>
       </Modal>
@@ -554,6 +564,7 @@ export default function ManageSafePlacesScreen() {
             isSubmitting={isSubmitting}
             onImageUpload={() => setShowImageUploadModal(true)}
             isUploadingImage={isUploadingImage}
+            onLocationSelect={handleLocationSelect}
           />
         </View>
       </Modal>
@@ -601,6 +612,27 @@ export default function ManageSafePlacesScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Location Selection Modal */}
+      <LocationSelectionModal
+        visible={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        onLocationSelect={onLocationSelect}
+        initialLocation={
+          newPlace.latitude && newPlace.longitude
+            ? {
+                latitude: parseFloat(newPlace.latitude),
+                longitude: parseFloat(newPlace.longitude),
+                address: newPlace.address,
+                name: newPlace.placeName || "Selected Location",
+              }
+            : undefined
+        }
+        title="Select Place Location"
+        confirmButtonText="Confirm Location"
+        enableSearch={true}
+        showCurrentLocationButton={true}
+      />
 
       {/* Main Content */}
       <ScrollView className="flex-1 p-4">

@@ -80,55 +80,57 @@ const FilterModal = ({
               Incident Type
             </Text>
             <View className="flex-row flex-wrap mb-4">
-              {["harassment", "theft", "assault", "other"].map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  className={`flex-row items-center px-3 py-2 rounded-lg mr-2 mb-2 border ${
-                    activeFilters.incidentType === type
-                      ? "border-2"
-                      : "bg-gray-100 border-gray-200"
-                  }`}
-                  style={
-                    activeFilters.incidentType === type
-                      ? {
-                          backgroundColor: `${getIncidentTypeColor(type)}15`,
-                          borderColor: getIncidentTypeColor(type),
-                        }
-                      : {}
-                  }
-                  onPress={() => {
-                    const newFilters = { ...activeFilters };
-                    if (newFilters.incidentType === type) {
-                      delete newFilters.incidentType;
-                    } else {
-                      newFilters.incidentType = type;
-                    }
-                    setActiveFilters(newFilters);
-                  }}
-                >
-                  <MaterialIcons
-                    name={getIncidentTypeIcon(type) as any}
-                    size={16}
-                    color={
+              {["harassment", "theft", "assault", "emergency", "other"].map(
+                (type) => (
+                  <TouchableOpacity
+                    key={type}
+                    className={`flex-row items-center px-3 py-2 rounded-lg mr-2 mb-2 border ${
                       activeFilters.incidentType === type
-                        ? getIncidentTypeColor(type)
-                        : "#6B7280"
+                        ? "border-2"
+                        : "bg-gray-100 border-gray-200"
+                    }`}
+                    style={
+                      activeFilters.incidentType === type
+                        ? {
+                            backgroundColor: `${getIncidentTypeColor(type)}15`,
+                            borderColor: getIncidentTypeColor(type),
+                          }
+                        : {}
                     }
-                    style={{ marginRight: 6 }}
-                  />
-                  <Text
-                    className={`capitalize text-sm font-medium`}
-                    style={{
-                      color:
-                        activeFilters.incidentType === type
-                          ? getIncidentTypeColor(type)
-                          : "#374151",
+                    onPress={() => {
+                      const newFilters = { ...activeFilters };
+                      if (newFilters.incidentType === type) {
+                        delete newFilters.incidentType;
+                      } else {
+                        newFilters.incidentType = type;
+                      }
+                      setActiveFilters(newFilters);
                     }}
                   >
-                    {type}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <MaterialIcons
+                      name={getIncidentTypeIcon(type) as any}
+                      size={16}
+                      color={
+                        activeFilters.incidentType === type
+                          ? getIncidentTypeColor(type)
+                          : "#6B7280"
+                      }
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text
+                      className={`capitalize text-sm font-medium`}
+                      style={{
+                        color:
+                          activeFilters.incidentType === type
+                            ? getIncidentTypeColor(type)
+                            : "#374151",
+                      }}
+                    >
+                      {type}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              )}
             </View>
 
             {/* Visibility Filter */}
@@ -582,6 +584,8 @@ export default function ReportsScreen() {
         return "money-off";
       case "assault":
         return "pan-tool";
+      case "emergency":
+        return "emergency";
       default:
         return "category";
     }
@@ -595,6 +599,8 @@ export default function ReportsScreen() {
         return "#7C2D12"; // Brown
       case "assault":
         return "#B91C1C"; // Dark Red
+      case "emergency":
+        return "#EF4444"; // Bright Red for emergencies
       default:
         return "#6B7280"; // Gray
     }

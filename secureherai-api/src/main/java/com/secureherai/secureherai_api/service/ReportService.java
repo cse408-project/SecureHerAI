@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.secureherai.secureherai_api.dto.report.ReportRequest;
 import com.secureherai.secureherai_api.dto.report.ReportResponse;
+import com.secureherai.secureherai_api.entity.Alert;
 import com.secureherai.secureherai_api.entity.IncidentReport;
 import com.secureherai.secureherai_api.entity.User;
 import com.secureherai.secureherai_api.entity.ReportEvidence;
@@ -37,6 +38,100 @@ public class ReportService {
     @Autowired
     private ReportEvidenceRepository evidenceRepository;
     
+    /**
+     * Auto-generate incident report from SOS alert
+     */
+    public IncidentReport autoGenerateReportFromAlert(Alert alert) {
+        try {
+            logger.info("Auto-generating incident report from SOS alert: {}", alert.getId());
+            
+            // Check if report already exists for this alert
+            Optional<IncidentReport> existingReport = reportRepository.findByAlertId(alert.getId());
+            if (existingReport.isPresent()) {
+                logger.warn("Report already exists for alert: {}", alert.getId());
+                return existingReport.get();
+            }
+            
+            // Create new incident report with emergency type
+            IncidentReport report = new IncidentReport(
+                alert.getUserId(),
+                "emergency", // Set type as emergency for SOS alerts
+                alert.getAlertMessage() != null ? alert.getAlertMessage() : "Emergency SOS alert triggered",
+                alert.getLatitude(),
+                alert.getLongitude(),
+                alert.getTriggeredAt(),
+                "officials_only", // Default visibility for SOS-generated reports
+                false // Not anonymous since it's from SOS
+            );
+            
+            // Set optional fields
+            if (alert.getAddress() != null) {
+                report.setAddress(alert.getAddress());
+            }
+            
+            // Link to the alert
+            report.setAlertId(alert.getId());
+            
+            // Save the report
+            IncidentReport savedReport = reportRepository.save(report);
+            logger.info("Auto-generated report saved with ID: {}", savedReport.getId());
+            
+            // Handle audio evidence if available
+            if (alert.getAudioRecording() != null && !alert.getAudioRecording().isEmpty()) {
+                try {
+                    ReportEvidence evidence = new ReportEvidence(
+                        savedReport.getId(),
+                        alert.getAudioRecording(),
+                        "audio",
+                        "SOS voice recording"
+                    );
+                    evidenceRepository.save(evidence);
+                    logger.info("Added audio evidence to auto-generated report");
+                } catch (Exception e) {
+                    logger.warn("Failed to add audio evidence to auto-generated report: {}", e.getMessage());
+                }
+            }
+            
+            return savedReport;
+            
+        } catch (Exception e) {
+            logger.error("Error auto-generating report from alert {}: {}", alert.getId(), e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * Get incident report by alert ID
+     */
+    public ReportResponse.ReportDetailsResponse getReportByAlertId(UUID alertId, UUID requestingUserId, String userRole) {
+        try {
+            logger.info("Getting report for alert: {} by user: {}", alertId, requestingUserId);
+            
+            Optional<IncidentReport> reportOpt = reportRepository.findByAlertId(alertId);
+            if (reportOpt.isEmpty()) {
+                return new ReportResponse.ReportDetailsResponse(false, null, "No report found for this alert");
+            }
+            
+            IncidentReport report = reportOpt.get();
+            
+            // Check authorization: report owner, responders can view officials_only/public reports
+            boolean canView = report.getUserId().equals(requestingUserId) || 
+                             ("RESPONDER".equals(userRole) && !report.getVisibility().equals("private")) ||
+                             "ADMIN".equals(userRole);
+            
+            if (!canView) {
+                return new ReportResponse.ReportDetailsResponse(false, null, "You don't have permission to view this report");
+            }
+            
+            ReportResponse.ReportDetails details = convertToReportDetails(report);
+            return new ReportResponse.ReportDetailsResponse(true, details, null);
+            
+        } catch (Exception e) {
+            logger.error("Error getting report for alert {}: {}", alertId, e.getMessage(), e);
+            return new ReportResponse.ReportDetailsResponse(false, null, "An error occurred while retrieving the report");
+        }
+    }
+
     /**
      * Submit a new incident report
      */
@@ -584,6 +679,7 @@ public class ReportService {
         ReportResponse.ReportDetails details = new ReportResponse.ReportDetails();
         
         details.setReportId(report.getId());
+        details.setUserId(report.getUserId());
         details.setAlertId(report.getAlertId());
         details.setIncidentType(report.getIncidentType());
         details.setDescription(report.getDescription());
@@ -841,7 +937,7 @@ public class ReportService {
         try {
             ReportResponse.Categories categories = new ReportResponse.Categories();
             
-            categories.setIncidentTypes(List.of("harassment", "theft", "assault", "other"));
+            categories.setIncidentTypes(List.of("harassment", "theft", "assault", "emergency", "other"));
             categories.setVisibilityOptions(List.of("public", "officials_only", "private"));
             categories.setStatusOptions(List.of("submitted", "under_review", "resolved", "closed"));
             
@@ -870,6 +966,7 @@ public class ReportService {
             reportsByType.put("harassment", 0);
             reportsByType.put("theft", 0);
             reportsByType.put("assault", 0);
+            reportsByType.put("emergency", 0);
             reportsByType.put("other", 0);
             
             for (IncidentReport report : userReports) {
@@ -924,6 +1021,7 @@ public class ReportService {
                (incidentType.equalsIgnoreCase("harassment") || 
                 incidentType.equalsIgnoreCase("theft") || 
                 incidentType.equalsIgnoreCase("assault") || 
+                incidentType.equalsIgnoreCase("emergency") ||
                 incidentType.equalsIgnoreCase("other"));
     }
     

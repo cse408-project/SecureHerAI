@@ -707,6 +707,30 @@ class ApiService {
     }
   }
 
+  async getReportByAlertId(alertId: string): Promise<ReportDetailsResponse> {
+    try {
+      console.log("API: Fetching report details for alert:", alertId);
+      const response = await fetch(
+        `${API_BASE_URL}/report/alert-report?alertId=${alertId}`,
+        {
+          method: "GET",
+          headers: await this.getHeaders(true),
+        }
+      );
+
+      const data = await response.json();
+      console.log("API: Report by alert ID response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Get report by alert ID error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while fetching report for alert",
+      };
+    }
+  }
+
   async uploadEvidence(
     evidenceData: UploadEvidenceRequest
   ): Promise<GenericReportResponse> {

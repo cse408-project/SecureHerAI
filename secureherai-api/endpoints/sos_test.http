@@ -399,6 +399,33 @@ Content-Type: application/json
     "password": "user_password_here"
 }
 
+### Get Report by Alert ID - This will retrieve the auto-generated report for an SOS alert
+# When an SOS alert is successful, a report is automatically generated
+# Use the alertId from a successful SOS alert response to get the report
+GET {{baseUrl}}/report/alert-report?alertId=2b2a0e32-d086-4da2-895a-3e2c3b7aaf05
+Authorization: Bearer {{authToken}}
+
+### Response should look like:
+# {
+#   "success": true,
+#   "report": {
+#     "reportId": "uuid",
+#     "alertId": "2b2a0e32-d086-4da2-895a-3e2c3b7aaf05",
+#     "incidentType": "emergency",
+#     "description": "Emergency SOS alert triggered", // or actual voice message
+#     "location": {
+#       "latitude": 23.8103,
+#       "longitude": 90.4125,
+#       "address": "Dhaka, Bangladesh"
+#     },
+#     "incidentTime": "2024-01-20T10:30:00",
+#     "visibility": "officials_only",
+#     "evidence": ["audio_url_if_available"],
+#     ...
+#   },
+#   "error": null
+# }
+
 ### Update Notification Preferences Only (backward compatibility)
 PUT {{baseUrl}}/settings/notifications
 Authorization: Bearer {{authToken}}

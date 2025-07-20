@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import DatePicker from "../../components/DatePicker";
 import {
   View,
@@ -16,6 +16,9 @@ import apiService from "../../services/api";
 import cloudinaryService from "../../services/cloudinary";
 import { SubmitReportRequest } from "../../types/report";
 import { useAlert } from "../../context/AlertContext";
+import LocationSelectionModal, {
+  SelectedLocation,
+} from "../../components/LocationSelectionModal";
 
 interface LocationData {
   latitude: string;
@@ -40,7 +43,7 @@ export default function SubmitReportScreen() {
 
   // Form state
   const [incidentType, setIncidentType] = useState<
-    "harassment" | "theft" | "assault" | "other"
+    "harassment" | "theft" | "assault" | "emergency" | "other"
   >("harassment");
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("");
@@ -57,11 +60,38 @@ export default function SubmitReportScreen() {
   const [showImagePickerModal, setShowImagePickerModal] = useState(false);
   const [isUploadingToCloud, setIsUploadingToCloud] = useState(false);
 
+  // Location selection modal state
+  const [showLocationModal, setShowLocationModal] = useState(false);
+
   // Form validation
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   // Alert context
   const { showAlert, showConfirmAlert } = useAlert();
+
+  const getCurrentLocation = useCallback(async () => {
+    setGettingLocation(true);
+    try {
+      // For demo purposes, immediately set default location without requiring user interaction
+      setCurrentLocation({
+        latitude: "23.8103",
+        longitude: "90.4125",
+      });
+      setAddress("Dhaka, Bangladesh");
+
+      // Show a toast or alert to inform the user (optional)
+      // showAlert(
+      //   'Location Set',
+      //   'Using default location (Dhaka, Bangladesh) for demo purposes.',
+      //   'info'
+      // );
+    } catch (error) {
+      console.error("Error getting location:", error);
+      showAlert("Error", "Could not get current location", "error");
+    } finally {
+      setGettingLocation(false);
+    }
+  }, [showAlert]);
 
   // Helper function to determine file type from URI
   const determineFileType = (
@@ -173,15 +203,15 @@ export default function SubmitReportScreen() {
 
     // Handle SOS/Alert pre-populated data
     if (searchParams.autoFill === "true") {
-      // Set incident type based on trigger method or default to assault for SOS
+      // Set incident type based on trigger method or default to emergency for SOS
       const triggerMethod = searchParams.triggerMethod;
       if (
         triggerMethod === "VOICE_COMMAND" ||
         triggerMethod === "TEXT_COMMAND"
       ) {
-        setIncidentType("assault");
+        setIncidentType("emergency");
       } else {
-        setIncidentType("other");
+        setIncidentType("emergency");
       }
 
       // Set description if provided
@@ -230,30 +260,34 @@ export default function SubmitReportScreen() {
     } else {
       getCurrentLocation();
     }
-  }, []);
+  }, [
+    searchParams?.autoFill,
+    searchParams?.incidentType,
+    searchParams?.description,
+    searchParams?.triggerMethod,
+    searchParams?.location,
+    searchParams?.address,
+    searchParams?.triggeredAt,
+    searchParams?.evidence,
+    searchParams?.details,
+    getCurrentLocation,
+  ]);
 
-  const getCurrentLocation = async () => {
-    setGettingLocation(true);
-    try {
-      // For demo purposes, immediately set default location without requiring user interaction
-      setCurrentLocation({
-        latitude: "23.8103",
-        longitude: "90.4125",
-      });
-      setAddress("Dhaka, Bangladesh");
+  // Location selection modal handlers
+  const handleLocationSelect = () => {
+    setShowLocationModal(true);
+  };
 
-      // Show a toast or alert to inform the user (optional)
-      // showAlert(
-      //   'Location Set',
-      //   'Using default location (Dhaka, Bangladesh) for demo purposes.',
-      //   'info'
-      // );
-    } catch (error) {
-      console.error("Error getting location:", error);
-      showAlert("Error", "Could not get current location", "error");
-    } finally {
-      setGettingLocation(false);
-    }
+  const onLocationSelect = (location: SelectedLocation) => {
+    setCurrentLocation({
+      latitude: location.latitude.toString(),
+      longitude: location.longitude.toString(),
+    });
+    setAddress(
+      location.address ||
+        `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`
+    );
+    setShowLocationModal(false);
   };
 
   const validateForm = (): boolean => {
@@ -346,15 +380,19 @@ export default function SubmitReportScreen() {
           response.error &&
           response.error.includes("similar report already exists")
         ) {
-            showAlert(
+          showAlert(
             "Similar Report Detected",
             "Our system detected a very similar report that was recently submitted. To proceed:\n\n• Wait 15 minutes before submitting again, or\n• Add more specific details to differentiate this incident",
             "warning"
-            );
+          );
         } else {
           // Handle other errors - clean up newly uploaded files
           await cleanupNewEvidenceFiles();
-          showAlert("Error", response.error || "Failed to submit report", "error");
+          showAlert(
+            "Error",
+            response.error || "Failed to submit report",
+            "error"
+          );
         }
       }
     } catch (error: any) {
@@ -623,6 +661,12 @@ export default function SubmitReportScreen() {
     },
     { value: "theft", label: "Theft", icon: "money-off", color: "#7C2D12" },
     { value: "assault", label: "Assault", icon: "pan-tool", color: "#B91C1C" },
+    {
+      value: "emergency",
+      label: "Emergency",
+      icon: "emergency",
+      color: "#EF4444",
+    },
     { value: "other", label: "Other", icon: "category", color: "#6B7280" },
   ] as const;
 
@@ -812,6 +856,19 @@ export default function SubmitReportScreen() {
             {currentLocation && (
               <MaterialIcons name="check-circle" size={20} color="#10B981" />
             )}
+          </TouchableOpacity>
+
+          {/* Select from Map Button */}
+          <TouchableOpacity
+            className="flex-row items-center p-3 border border-[#67082F] rounded-lg mb-3 bg-[#67082F]/5"
+            onPress={handleLocationSelect}
+            disabled={searchParams.autoFill === "true"}
+          >
+            <MaterialIcons name="place" size={20} color="#67082F" />
+            <Text className="ml-2 text-sm font-medium text-[#67082F]">
+              Select location on map
+            </Text>
+            <MaterialIcons name="chevron-right" size={20} color="#67082F" />
           </TouchableOpacity>
 
           {currentLocation && (
@@ -1284,6 +1341,27 @@ export default function SubmitReportScreen() {
           </View>
         </Modal>
       )}
+
+      {/* Location Selection Modal */}
+      <LocationSelectionModal
+        visible={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        onLocationSelect={onLocationSelect}
+        initialLocation={
+          currentLocation
+            ? {
+                latitude: parseFloat(currentLocation.latitude),
+                longitude: parseFloat(currentLocation.longitude),
+                address: address,
+                name: "Incident Location",
+              }
+            : undefined
+        }
+        title="Select Incident Location"
+        confirmButtonText="Confirm Location"
+        enableSearch={true}
+        showCurrentLocationButton={true}
+      />
     </View>
   );
 }

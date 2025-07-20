@@ -42,7 +42,9 @@ export interface MapMarker {
     | "general"
     | "harassment"
     | "theft"
-    | "assault"; // Add marker type including incident types
+    | "assault"
+    | "emergency"
+    | "own-report"; // Add marker type including incident types
   // Additional data for callouts
   subtitle?: string;
   onCalloutPress?: () => void;
@@ -66,7 +68,7 @@ interface MapComponentProps {
   showsBuildings?: boolean;
   showsTraffic?: boolean;
   showsMyLocationButton?: boolean;
-  mapType?: 'standard' | 'satellite' | 'hybrid' | 'terrain';
+  mapType?: "standard" | "satellite" | "hybrid" | "terrain";
   showsIndoors?: boolean;
   showsCompass?: boolean;
   showsScale?: boolean;
@@ -97,7 +99,7 @@ export default function MapComponent({
   showsBuildings = true,
   showsTraffic = false,
   showsMyLocationButton = false,
-  mapType = 'standard',
+  mapType = "standard",
   showsIndoors = false,
   showsCompass = true,
   showsScale = false,
@@ -150,9 +152,9 @@ export default function MapComponent({
             description={marker.description}
             onPress={() => onMarkerPress?.(marker)}
           >
-            <CustomMarker 
-              type={marker.type || "general"} 
-              size={32} 
+            <CustomMarker
+              type={marker.type || "general"}
+              size={32}
               imageUrl={marker.img_url}
             />
           </Marker>

@@ -89,6 +89,31 @@ Authorization: Bearer {{authToken}}
 }
 ###
 
+### Get Report Details by Alert ID (New endpoint for SOS-generated reports)
+# This endpoint gets the auto-generated report for an SOS alert
+GET {{baseUrl}}/report/alert-report?alertId=550e8400-e29b-41d4-a716-446655440000
+Authorization: Bearer {{authToken}}
+
+### Expected Response:
+# {
+#   "success": true,
+#   "report": {
+#     "reportId": "uuid",
+#     "alertId": "550e8400-e29b-41d4-a716-446655440000",
+#     "incidentType": "emergency",
+#     "description": "Emergency SOS alert triggered",
+#     "location": {
+#       "latitude": 23.8103,
+#       "longitude": 90.4125,
+#       "address": "Dhaka, Bangladesh"
+#     },
+#     "visibility": "officials_only",
+#     "evidence": ["audio_url_if_available"],
+#     ...
+#   },
+#   "error": null
+# }
+
 ### Get Report Details
 GET {{baseUrl}}/report/details?reportId=eb8671f7-dab8-4366-8b6b-bdc761beede9
 Authorization: Bearer {{authToken}}

@@ -32,6 +32,16 @@ const getAdvancedCustomMarkerStyle = (
     },
     theft: { color: "#7C2D12", emoji: "💰", description: "Theft Report" },
     assault: { color: "#B91C1C", emoji: "🚨", description: "Assault Report" },
+    emergency: {
+      color: "#EF4444",
+      emoji: "🆘",
+      description: "Emergency Alert",
+    },
+    "own-report": {
+      color: "#8B5CF6",
+      emoji: "⭐",
+      description: "Your Report",
+    },
     safe_zone: {
       color: "#10B981",
       emoji: "🛡️",
@@ -225,7 +235,9 @@ export interface MapMarker {
     | "general"
     | "harassment"
     | "theft"
-    | "assault"; // Add marker type including incident types
+    | "assault"
+    | "emergency"
+    | "own-report"; // Add marker type including incident types
   // Additional data for callouts
   subtitle?: string;
   onCalloutPress?: () => void;
@@ -261,7 +273,7 @@ interface MapComponentProps {
   showsBuildings?: boolean;
   showsTraffic?: boolean;
   showsMyLocationButton?: boolean;
-  mapType?: 'standard' | 'satellite' | 'hybrid' | 'terrain';
+  mapType?: "standard" | "satellite" | "hybrid" | "terrain";
   showsIndoors?: boolean;
   showsCompass?: boolean;
   showsScale?: boolean;
@@ -292,7 +304,7 @@ export default function MapComponent({
   showsBuildings = true,
   showsTraffic = false,
   showsMyLocationButton = false,
-  mapType = 'standard',
+  mapType = "standard",
   showsIndoors = false,
   showsCompass = true,
   showsScale = false,
@@ -334,12 +346,17 @@ export default function MapComponent({
         streetViewControl: false,
         fullscreenControl: true,
         // Apply built-in features where supported by Google Maps JS API
-        mapTypeId: mapType === 'satellite' ? 'satellite' : 
-                  mapType === 'hybrid' ? 'hybrid' : 
-                  mapType === 'terrain' ? 'terrain' : 'roadmap',
+        mapTypeId:
+          mapType === "satellite"
+            ? "satellite"
+            : mapType === "hybrid"
+            ? "hybrid"
+            : mapType === "terrain"
+            ? "terrain"
+            : "roadmap",
         // These are Google Maps JS API equivalents
         clickableIcons: showsPointsOfInterest, // POI clicking
-        gestureHandling: 'auto',
+        gestureHandling: "auto",
         zoomControl: showsCompass,
         scaleControl: showsScale,
         rotateControl: true,
@@ -390,8 +407,8 @@ export default function MapComponent({
           map: mapInstance.current,
           radius: 25,
           opacity: 0.8,
-            // Perfect red-to-blue gradient (reversed)
-            gradient: [
+          // Perfect red-to-blue gradient (reversed)
+          gradient: [
             "rgba(255, 0, 0, 0)", // Transparent red
             "rgba(255, 50, 0, 0.6)", // Light red
             "rgba(255, 100, 0, 0.7)", // Medium red-orange

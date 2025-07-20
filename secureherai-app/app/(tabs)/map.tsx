@@ -42,6 +42,7 @@ export default function MapScreen() {
   const [loading, setLoading] = useState(true);
   const [reports, setReports] = useState<ReportSummary[]>([]);
   const [safePlaces, setSafePlaces] = useState<SafePlace[]>([]);
+  const [userReportIds, setUserReportIds] = useState<Set<string>>(new Set());
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showReports, setShowReports] = useState(true);
   const [showSafePlaces, setShowSafePlaces] = useState(true);
@@ -92,6 +93,8 @@ export default function MapScreen() {
         return "#7C2D12"; // Brown
       case "assault":
         return "#B91C1C"; // Dark Red
+      case "emergency":
+        return "#EF4444"; // Bright Red for emergencies
       default:
         return "#6B7280"; // Gray
     }
@@ -122,8 +125,11 @@ export default function MapScreen() {
       // Calculate weight based on incident type severity
       let weight = 0.5; // Base weight
       switch (report.incidentType) {
+        case "emergency":
+          weight = 1.0; // Highest severity for emergencies
+          break;
         case "assault":
-          weight = 1.0; // Highest severity
+          weight = 0.95; // Very high severity
           break;
         case "harassment":
           weight = 0.9;
@@ -147,6 +153,8 @@ export default function MapScreen() {
 
   const getIncidentTypeDescription = (type: string): string => {
     switch (type) {
+      case "emergency":
+        return "🚨 EMERGENCY ALERT: Immediate danger reported in this area. Avoid if possible and contact authorities.";
       case "harassment":
         return "🚨 This area has reported harassment incidents. Exercise caution and consider alternative routes if possible.";
       case "theft":
@@ -350,9 +358,14 @@ export default function MapScreen() {
         ]);
 
         let allReports: ReportSummary[] = [];
+        const userReportIdSet = new Set<string>();
 
         if (userResponse.success && userResponse.reports) {
           allReports = [...userResponse.reports];
+          // Track user's own report IDs
+          userResponse.reports.forEach((report) => {
+            userReportIdSet.add(report.reportId);
+          });
         }
 
         if (publicResponse.success && publicResponse.reports) {
@@ -366,6 +379,7 @@ export default function MapScreen() {
           allReports = [...allReports, ...uniquePublicReports];
         }
 
+        setUserReportIds(userReportIdSet);
         setReports(allReports);
       } catch (error) {
         console.error("Error initializing map:", error);
@@ -433,6 +447,7 @@ export default function MapScreen() {
             const timeAgo = getTimeAgo(reportDate);
             const isRecent =
               new Date().getTime() - reportDate.getTime() < 24 * 60 * 60 * 1000; // Less than 24 hours
+            const isOwnReport = userReportIds.has(report.reportId);
 
             return {
               id: report.reportId,
@@ -440,22 +455,22 @@ export default function MapScreen() {
                 latitude: report.location.latitude,
                 longitude: report.location.longitude,
               },
-              title: `🚨 ${
+              title: `${isOwnReport ? "🌟 MY REPORT: " : "🚨 "}${
                 report.incidentType.charAt(0).toUpperCase() +
                 report.incidentType.slice(1)
               }`,
               subtitle: `${report.visibility} • ${timeAgo}${
                 isRecent ? " • 🔴" : ""
-              }`,
+              }${isOwnReport ? " • 🌟 YOURS" : ""}`,
               description: `${
                 report.description
               }\n\n${getIncidentTypeDescription(report.incidentType)}\n\n� ${
                 report.visibility
-              }${report.anonymous ? " • 🔒 ANONYMOUS" : ""} • ⏰ ${timeAgo}${
-                isRecent ? " • 🔴 RECENT" : ""
-              }`,
+              }${report.anonymous ? " • 🔒 ANONYMOUS" : ""}${
+                isOwnReport ? " • 🌟 YOUR REPORT" : ""
+              } • ⏰ ${timeAgo}${isRecent ? " • 🔴 RECENT" : ""}`,
               reportData: report,
-              type: report.incidentType as any,
+              type: isOwnReport ? "own-report" : (report.incidentType as any),
               color: getIncidentTypeColor(report.incidentType),
               onCalloutPress: () => handleReportDetails(report),
             };
@@ -467,7 +482,14 @@ export default function MapScreen() {
     };
 
     updateMarkers();
-  }, [showReports, showSafePlaces, safePlaces, reports, currentLocation]);
+  }, [
+    showReports,
+    showSafePlaces,
+    safePlaces,
+    reports,
+    currentLocation,
+    userReportIds,
+  ]);
 
   const handleMapPress = (event: MapPressEvent) => {
     // Map press functionality disabled - no more custom marker creation
@@ -517,13 +539,13 @@ export default function MapScreen() {
       <View className="flex-1 bg-[#FFE4D6] max-w-screen-md mx-auto w-full">
         <Header
           title={`Safety Map${
-        showReports && showSafePlaces
-          ? " - Reports & Safety"
-          : showReports
-          ? " - Reports"
-          : showSafePlaces
-          ? " - Emergency Services"
-          : " - No Filters"
+            showReports && showSafePlaces
+              ? " - Reports & Safety"
+              : showReports
+              ? " - Reports"
+              : showSafePlaces
+              ? " - Emergency Services"
+              : " - No Filters"
           }`}
           onNotificationPress={() => setShowNotifications(true)}
           showNotificationDot={false}
@@ -532,45 +554,45 @@ export default function MapScreen() {
         {/* Map Controls */}
         <View className="bg-white mx-4 mb-2 p-3 rounded-lg shadow-sm">
           <View className="flex-row items-center justify-between mb-3">
-        <Text className="text-sm font-semibold text-gray-700">
-          Map Display Options
-        </Text>
-        <Text className="text-xs text-gray-500">
-          {reports.length} report{reports.length !== 1 ? "s" : ""} •{" "}
-          {safePlaces.length} safe places
-        </Text>
+            <Text className="text-sm font-semibold text-gray-700">
+              Map Display Options
+            </Text>
+            <Text className="text-xs text-gray-500">
+              {reports.length} report{reports.length !== 1 ? "s" : ""} •{" "}
+              {safePlaces.length} safe places
+            </Text>
           </View>
 
           <View className="flex-row justify-between items-start space-x-3">
-        {/* Filter Button */}
-        <TouchableOpacity
-          className="flex-1 flex-row items-center justify-center py-2.5 px-3 bg-[#67082F] rounded-lg"
-          onPress={() => setShowFilterModal(true)}
-        >
-          <MaterialIcons name="filter-list" size={16} color="white" />
-          <Text className="text-white text-sm font-medium ml-1">
-            Filters
-          </Text>
-          <View className="ml-2 bg-white/20 px-1.5 py-0.5 rounded-full">
-            <Text className="text-white text-xs font-medium">
-              {(showReports ? 1 : 0) +
-                (showSafePlaces ? 1 : 0) +
-                (showHeatmap ? 1 : 0) +
-                (showPOIs ? 1 : 0)}
-            </Text>
-          </View>
-        </TouchableOpacity>
+            {/* Filter Button */}
+            <TouchableOpacity
+              className="flex-1 flex-row items-center justify-center py-2.5 px-3 bg-[#67082F] rounded-lg"
+              onPress={() => setShowFilterModal(true)}
+            >
+              <MaterialIcons name="filter-list" size={16} color="white" />
+              <Text className="text-white text-sm font-medium ml-1">
+                Filters
+              </Text>
+              <View className="ml-2 bg-white/20 px-1.5 py-0.5 rounded-full">
+                <Text className="text-white text-xs font-medium">
+                  {(showReports ? 1 : 0) +
+                    (showSafePlaces ? 1 : 0) +
+                    (showHeatmap ? 1 : 0) +
+                    (showPOIs ? 1 : 0)}
+                </Text>
+              </View>
+            </TouchableOpacity>
 
-        {/* Manage Button */}
-        <TouchableOpacity
-          className="flex-1 flex-row items-center justify-center py-2.5 px-3 bg-[#67082F] rounded-lg"
-          onPress={() => router.push("/places/manage" as any)}
-        >
-          <MaterialIcons name="edit-location" size={16} color="white" />
-          <Text className="text-white text-sm font-medium ml-1">
-            Manage Safe Places
-          </Text>
-        </TouchableOpacity>
+            {/* Manage Button */}
+            <TouchableOpacity
+              className="flex-1 flex-row items-center justify-center py-2.5 px-3 bg-[#67082F] rounded-lg"
+              onPress={() => router.push("/places/manage" as any)}
+            >
+              <MaterialIcons name="edit-location" size={16} color="white" />
+              <Text className="text-white text-sm font-medium ml-1">
+                Manage Safe Places
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -599,17 +621,17 @@ export default function MapScreen() {
                 showsUserLocation={true}
                 followsUserLocation={false}
                 // Built-in React Native Maps features:
-                showsPointsOfInterest={showPOIs}  // Toggle POIs on/off
-                showsBuildings={true}             // Show building outlines
-                showsTraffic={false}              // Keep traffic off to avoid distraction
-                showsMyLocationButton={Platform.OS === 'android'} // Android location button
-                mapType={mapType}                 // Uses your mapType state
-                showsCompass={true}               // Show compass control
+                showsPointsOfInterest={showPOIs} // Toggle POIs on/off
+                showsBuildings={true} // Show building outlines
+                showsTraffic={false} // Keep traffic off to avoid distraction
+                showsMyLocationButton={Platform.OS === "android"} // Android location button
+                mapType={mapType} // Uses your mapType state
+                showsCompass={true} // Show compass control
                 // Scale can be cluttering
                 className="flex-1"
-                />
+              />
 
-                {/* Search Bar Overlay - Top of Map
+              {/* Search Bar Overlay - Top of Map
                 <View className="absolute top-4 left-45 right-45 z-10">
                 <View className="bg-white rounded-xl shadow-lg border border-gray-200">
                   <View className="flex-row items-center px-3 py-2.5">

@@ -4,12 +4,12 @@ export interface Location {
 }
 
 export interface SubmitReportRequest {
-  incidentType: 'harassment' | 'theft' | 'assault' | 'other';
+  incidentType: "harassment" | "theft" | "assault" | "emergency" | "other";
   description: string;
   location?: Location;
   address?: string;
   incidentTime: string; // ISO string
-  visibility: 'public' | 'officials_only' | 'private';
+  visibility: "public" | "officials_only" | "private";
   anonymous: boolean;
   alertId?: string;
   evidence?: string[]; // URLs to evidence files
@@ -36,6 +36,7 @@ export interface ReportSummary {
 
 export interface ReportDetails {
   reportId: string;
+  userId: string;
   alertId?: string;
   incidentType: string;
   description: string;
@@ -84,14 +85,14 @@ export interface DeleteEvidenceRequest {
 
 export interface UpdateReportRequest {
   reportId: string;
-  incidentType?: 'harassment' | 'theft' | 'assault' | 'other';
+  incidentType?: "harassment" | "theft" | "assault" | "emergency" | "other";
   description?: string;
   location?: Location;
   address?: string;
   incidentTime?: string;
-  visibility?: 'public' | 'officials_only' | 'private';
+  visibility?: "public" | "officials_only" | "private";
   anonymous?: boolean;
   actionTaken?: string;
   involvedParties?: string;
-  status?: 'submitted' | 'under_review' | 'resolved';
+  status?: "submitted" | "under_review" | "resolved";
 }

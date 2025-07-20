@@ -486,6 +486,7 @@ class ReportControllerTest {
     private ReportResponse.ReportDetails createReportDetails() {
         ReportResponse.ReportDetails details = new ReportResponse.ReportDetails();
         details.setReportId(testReportId);
+        details.setUserId(testUserId);
         details.setIncidentType("harassment");
         details.setDescription("Test incident description");
         details.setStatus("submitted");

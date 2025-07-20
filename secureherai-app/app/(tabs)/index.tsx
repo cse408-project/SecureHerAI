@@ -94,32 +94,16 @@ export default function Home() {
     // Refresh notifications since emergency notifications have been sent
     refreshNotificationCount();
 
-    // Show confirmation and ask if user wants to submit a report
+    // Show confirmation and inform user about auto-generated report
     showConfirmAlert(
       "SOS Alert Sent",
-      "Your SOS alert has been sent successfully. Would you like to provide more details by submitting an incident report?",
+      "Your SOS alert has been sent successfully! An incident report has been automatically generated. Would you like to view and update it with additional details?",
       () => {
-        // Navigate directly to report submission with pre-populated data
-        const reportParams = new URLSearchParams({
-          autoFill: "true",
-          details: response.alertMessage || "Emergency SOS alert triggered",
-          location: `${response.latitude},${response.longitude}`,
-          address: response.address || "",
-          incidentType: "assault", // Default for SOS alerts, but allow editing
-          triggerMethod: response.triggerMethod || "",
-          alertId: response.alertId || "",
-          triggeredAt: response.triggeredAt || "",
-        });
-
-        // Add audio evidence if available
-        if (response.audioRecording) {
-          reportParams.append("evidence", response.audioRecording);
-          reportParams.append("sosAudio", "true"); // Mark as SOS audio to prevent deletion
-        }
-
-        // Navigate directly to report submission page
+        // Navigate directly to the auto-generated report using the alert ID
         resetSOSState();
-        router.push(`/reports/submit?${reportParams.toString()}` as any);
+        router.push(
+          `/reports/details?alertId=${response.alertId}&mode=update&fromAlert=true` as any
+        );
       },
       () => {
         // Reset SOS trigger state if user declines

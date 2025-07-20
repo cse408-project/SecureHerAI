@@ -11,8 +11,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAlert } from "../../context/AlertContext";
 import Header from "../../components/Header";
 import apiService from "../../services/api";
-import { Alert as AlertType, AlertResponse } from "../../types/sos";
-import ReportModal from "../../components/ReportModal";
+import { Alert as AlertType } from "../../types/sos";
 import NotificationModal from "../../components/NotificationModal";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -21,10 +20,6 @@ export default function SOSScreen() {
   const [loading, setLoading] = useState(true);
   const [alerts, setAlerts] = useState<AlertType[]>([]);
   const [isResponder, setIsResponder] = useState(false);
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [selectedAlert, setSelectedAlert] = useState<AlertResponse | null>(
-    null
-  );
   const [cancelingAlertId, setCancelingAlertId] = useState<string | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -122,32 +117,40 @@ export default function SOSScreen() {
     );
   };
 
-  const handleCreateReport = (alert: AlertType) => {
-    // Navigate directly to report submission with pre-populated data (like SOS)
-    const reportParams = new URLSearchParams({
-      autoFill: "true",
-      details: alert.alertMessage || "Emergency alert triggered",
-      location: `${alert.latitude},${alert.longitude}`,
-      address: alert.address || "",
-      incidentType: "assault", // Default for emergency alerts, but allow editing
-      triggerMethod: alert.triggerMethod || "",
-      alertId: alert.id || "",
-      triggeredAt: alert.triggeredAt || "",
-    });
+  const handleViewUpdateReport = async (alert: AlertType) => {
+    try {
+      // First, try to get the auto-generated report for this alert
+      const reportResponse = await apiService.getReportByAlertId(alert.id);
 
-    // Add audio evidence if available
-    if (alert.audioRecording) {
-      reportParams.append("evidence", alert.audioRecording);
-      reportParams.append("sosAudio", "true"); // Mark as SOS audio to prevent deletion
+      if (reportResponse.success && reportResponse.report) {
+        // Report exists, navigate to update it
+        const reportParams = new URLSearchParams({
+          reportId: reportResponse.report.reportId,
+          mode: "update",
+          fromAlert: "true",
+        });
+
+        // Navigate to report details/update page
+        // @ts-ignore
+        import("expo-router").then(({ router }) => {
+          router.push(`/reports/details?${reportParams.toString()}`);
+        });
+      } else {
+        // Report doesn't exist yet, show error
+        showAlert(
+          "Report Not Found",
+          "The report for this alert hasn't been generated yet. Please wait a moment and try again.",
+          "warning"
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching report for alert:", error);
+      showAlert(
+        "Error",
+        "Failed to fetch report for this alert. Please try again.",
+        "error"
+      );
     }
-
-    // Navigate directly to report submission page
-    // Use router from expo-router
-    // Dynamically import router to avoid breaking SSR
-    // @ts-ignore
-    import("expo-router").then(({ router }) => {
-      router.push(`/reports/submit?${reportParams.toString()}`);
-    });
   };
 
   const getStatusColor = (status: string) => {
@@ -359,10 +362,10 @@ export default function SOSScreen() {
                     )}
 
                     <View className="flex-row mt-3">
-                      {/* Create Report button */}
+                      {/* View/Update Report button */}
                       <TouchableOpacity
                         className="bg-blue-100 rounded-md py-2 px-3 mr-2 flex-row items-center"
-                        onPress={() => handleCreateReport(alert)}
+                        onPress={() => handleViewUpdateReport(alert)}
                       >
                         <MaterialIcons
                           name="description"
@@ -370,7 +373,7 @@ export default function SOSScreen() {
                           color="#1E40AF"
                         />
                         <Text className="text-blue-700 text-xs font-medium ml-1">
-                          Create Report
+                          Update Report
                         </Text>
                       </TouchableOpacity>
 
@@ -422,13 +425,6 @@ export default function SOSScreen() {
           </Text>
         </View>
       </ScrollView>
-
-      {/* Report Modal */}
-      <ReportModal
-        visible={showReportModal}
-        onClose={() => setShowReportModal(false)}
-        alertData={selectedAlert}
-      />
 
       <NotificationModal
         visible={showNotifications}

@@ -7,7 +7,11 @@ interface CustomMarkerProps {
   imageUrl?: string; // Add imageUrl prop for safe zones with images
 }
 
-export default function CustomMarker({ type, size = 32, imageUrl }: CustomMarkerProps) {
+export default function CustomMarker({
+  type,
+  size = 32,
+  imageUrl,
+}: CustomMarkerProps) {
   const getMarkerIcon = () => {
     switch (type) {
       case "harassment":
@@ -166,6 +170,58 @@ export default function CustomMarker({ type, size = 32, imageUrl }: CustomMarker
           </View>
         );
 
+      case "emergency":
+        return (
+          <View
+            style={{
+              position: "relative",
+              width: size,
+              height: size * 1.2,
+              alignItems: "center",
+            }}
+          >
+            {/* Pin base with pulsing effect */}
+            <View
+              style={{
+                backgroundColor: "#EF4444",
+                borderRadius: size / 2,
+                width: size,
+                height: size,
+                justifyContent: "center",
+                alignItems: "center",
+                borderWidth: 3,
+                borderColor: "#FFFFFF",
+                shadowColor: "#EF4444",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 1.0,
+                shadowRadius: 12,
+                elevation: 20,
+              }}
+            >
+              <Text style={{ fontSize: size * 0.6, textAlign: "center" }}>
+                🆘
+              </Text>
+            </View>
+            {/* Pin point */}
+            <View
+              style={{
+                position: "absolute",
+                bottom: 0,
+                width: 0,
+                height: 0,
+                borderLeftWidth: size * 0.15,
+                borderRightWidth: size * 0.15,
+                borderTopWidth: size * 0.2,
+                borderStyle: "solid",
+                backgroundColor: "transparent",
+                borderLeftColor: "transparent",
+                borderRightColor: "transparent",
+                borderTopColor: "#EF4444",
+              }}
+            />
+          </View>
+        );
+
       case "safe_zone":
         return (
           <View
@@ -226,6 +282,59 @@ export default function CustomMarker({ type, size = 32, imageUrl }: CustomMarker
                 borderLeftColor: "transparent",
                 borderRightColor: "transparent",
                 borderTopColor: "#10B981",
+              }}
+            />
+          </View>
+        );
+
+      // Own report case - unified styling with star indicator
+      case "own-report":
+        return (
+          <View
+            style={{
+              position: "relative",
+              width: size,
+              height: size * 1.2,
+              alignItems: "center",
+            }}
+          >
+            {/* Pin base with golden border */}
+            <View
+              style={{
+                backgroundColor: "#8B5CF6", // Purple background for own reports
+                borderRadius: size / 2,
+                width: size,
+                height: size,
+                justifyContent: "center",
+                alignItems: "center",
+                borderWidth: 4,
+                borderColor: "#FFD700", // Gold border for own reports
+                shadowColor: "#FFD700",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.9,
+                shadowRadius: 10,
+                elevation: 18,
+              }}
+            >
+              <Text style={{ fontSize: size * 0.6, textAlign: "center" }}>
+                ⭐
+              </Text>
+            </View>
+            {/* Pin point */}
+            <View
+              style={{
+                position: "absolute",
+                bottom: 0,
+                width: 0,
+                height: 0,
+                borderLeftWidth: size * 0.15,
+                borderRightWidth: size * 0.15,
+                borderTopWidth: size * 0.2,
+                borderStyle: "solid",
+                backgroundColor: "transparent",
+                borderLeftColor: "transparent",
+                borderRightColor: "transparent",
+                borderTopColor: "#8B5CF6",
               }}
             />
           </View>
