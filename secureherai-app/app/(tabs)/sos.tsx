@@ -13,6 +13,7 @@ import Header from "../../components/Header";
 import apiService from "../../services/api";
 import { Alert as AlertType, AlertResponse } from "../../types/sos";
 import ReportModal from "../../components/ReportModal";
+import NotificationModal from "../../components/NotificationModal";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function SOSScreen() {
@@ -25,6 +26,7 @@ export default function SOSScreen() {
     null
   );
   const [cancelingAlertId, setCancelingAlertId] = useState<string | null>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const { showAlert, showConfirmAlert } = useAlert();
 
@@ -209,7 +211,7 @@ export default function SOSScreen() {
     <View className="flex-1 bg-[#FFE4D6] max-w-screen-md mx-auto w-full">
       <Header
         title={isResponder ? "Active Alerts" : "Emergency Management"}
-        onNotificationPress={() => {}}
+        onNotificationPress={() => setShowNotifications(true)}
         showNotificationDot={false}
       />
 
@@ -426,6 +428,11 @@ export default function SOSScreen() {
         visible={showReportModal}
         onClose={() => setShowReportModal(false)}
         alertData={selectedAlert}
+      />
+
+      <NotificationModal
+        visible={showNotifications}
+        onClose={() => setShowNotifications(false)}
       />
     </View>
   );

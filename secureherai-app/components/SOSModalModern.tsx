@@ -8,7 +8,6 @@ import {
   TextInput,
   ActivityIndicator,
   ScrollView,
-  SafeAreaView,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -517,41 +516,39 @@ const SOSModalModern: React.FC<SOSModalProps> = ({
   return (
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.overlay}>
-        <SafeAreaView style={styles.container}>
-          <View style={styles.modal}>
-            <View style={styles.header}>
-              <Text style={styles.headerTitle}>Emergency SOS</Text>
-              <TouchableOpacity onPress={handleCancel} disabled={isLoading}>
-                <MaterialIcons
-                  name="close"
-                  size={24}
-                  color={isLoading ? "#ccc" : "#666"}
-                />
+        <View style={styles.modal}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Emergency SOS</Text>
+            <TouchableOpacity onPress={handleCancel} disabled={isLoading}>
+              <MaterialIcons
+                name="close"
+                size={24}
+                color={isLoading ? "#ccc" : "#666"}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView
+            style={styles.scrollView}
+            showsVerticalScrollIndicator={false}
+          >
+            {renderContent()}
+          </ScrollView>
+
+          {/* Cancel Alert Option */}
+          {lastAlertId && (
+            <View style={styles.cancelContainer}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowCancelAlert(true)}
+                disabled={isLoading}
+              >
+                <MaterialIcons name="cancel" size={20} color="#FF6B6B" />
+                <Text style={styles.cancelButtonText}>Cancel Last Alert</Text>
               </TouchableOpacity>
             </View>
-
-            <ScrollView
-              style={styles.scrollView}
-              showsVerticalScrollIndicator={false}
-            >
-              {renderContent()}
-            </ScrollView>
-
-            {/* Cancel Alert Option */}
-            {lastAlertId && (
-              <View style={styles.cancelContainer}>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => setShowCancelAlert(true)}
-                  disabled={isLoading}
-                >
-                  <MaterialIcons name="cancel" size={20} color="#FF6B6B" />
-                  <Text style={styles.cancelButtonText}>Cancel Last Alert</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </SafeAreaView>
+          )}
+        </View>
       </View>
 
       {/* Cancel Confirmation Modal */}
@@ -597,7 +594,9 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
   },
   container: {
     flex: 1,
@@ -605,9 +604,18 @@ const styles = StyleSheet.create({
   },
   modal: {
     backgroundColor: "white",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "90%",
+    borderRadius: 16,
+    padding: 24,
+    margin: 16,
+    maxHeight: "80%",
+    width: "100%",
+    maxWidth: 360,
+    // shadow for modal
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 8,
   },
   header: {
     flexDirection: "row",

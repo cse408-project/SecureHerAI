@@ -256,6 +256,15 @@ interface MapComponentProps {
   showsUserLocation?: boolean;
   followsUserLocation?: boolean;
   className?: string;
+  // Built-in React Native Maps features (for compatibility)
+  showsPointsOfInterest?: boolean;
+  showsBuildings?: boolean;
+  showsTraffic?: boolean;
+  showsMyLocationButton?: boolean;
+  mapType?: 'standard' | 'satellite' | 'hybrid' | 'terrain';
+  showsIndoors?: boolean;
+  showsCompass?: boolean;
+  showsScale?: boolean;
 }
 
 // Default location (Dhaka, Bangladesh)
@@ -278,6 +287,15 @@ export default function MapComponent({
   showsUserLocation = true,
   followsUserLocation = false,
   className,
+  // Built-in features (web implementation will handle what's possible)
+  showsPointsOfInterest = false,
+  showsBuildings = true,
+  showsTraffic = false,
+  showsMyLocationButton = false,
+  mapType = 'standard',
+  showsIndoors = false,
+  showsCompass = true,
+  showsScale = false,
 }: MapComponentProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
@@ -315,6 +333,17 @@ export default function MapComponent({
         mapTypeControl: true,
         streetViewControl: false,
         fullscreenControl: true,
+        // Apply built-in features where supported by Google Maps JS API
+        mapTypeId: mapType === 'satellite' ? 'satellite' : 
+                  mapType === 'hybrid' ? 'hybrid' : 
+                  mapType === 'terrain' ? 'terrain' : 'roadmap',
+        // These are Google Maps JS API equivalents
+        clickableIcons: showsPointsOfInterest, // POI clicking
+        gestureHandling: 'auto',
+        zoomControl: showsCompass,
+        scaleControl: showsScale,
+        rotateControl: true,
+        tilt: 0,
       });
 
       // Add click listener
@@ -567,6 +596,10 @@ export default function MapComponent({
     onPress,
     onMarkerPress,
     onCalloutPress,
+    mapType,
+    showsPointsOfInterest,
+    showsCompass,
+    showsScale,
   ]);
 
   const mapStyle = [styles.map, style];

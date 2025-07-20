@@ -61,6 +61,15 @@ interface MapComponentProps {
   showsUserLocation?: boolean;
   followsUserLocation?: boolean;
   className?: string;
+  // Built-in React Native Maps features
+  showsPointsOfInterest?: boolean;
+  showsBuildings?: boolean;
+  showsTraffic?: boolean;
+  showsMyLocationButton?: boolean;
+  mapType?: 'standard' | 'satellite' | 'hybrid' | 'terrain';
+  showsIndoors?: boolean;
+  showsCompass?: boolean;
+  showsScale?: boolean;
 }
 
 // Default location (Dhaka, Bangladesh)
@@ -83,6 +92,15 @@ export default function MapComponent({
   showsUserLocation = true,
   followsUserLocation = false,
   className,
+  // Built-in features with defaults
+  showsPointsOfInterest = false,
+  showsBuildings = true,
+  showsTraffic = false,
+  showsMyLocationButton = false,
+  mapType = 'standard',
+  showsIndoors = false,
+  showsCompass = true,
+  showsScale = false,
 }: MapComponentProps) {
   // Prepare the region with proper delta values
   const region: Region = {
@@ -103,6 +121,15 @@ export default function MapComponent({
       showsUserLocation={showsUserLocation}
       followsUserLocation={followsUserLocation}
       onPress={onPress}
+      // Built-in React Native Maps features
+      showsPointsOfInterest={showsPointsOfInterest}
+      showsBuildings={showsBuildings}
+      showsTraffic={showsTraffic}
+      showsMyLocationButton={showsMyLocationButton}
+      mapType={mapType}
+      showsIndoors={showsIndoors}
+      showsCompass={showsCompass}
+      showsScale={showsScale}
     >
       {/* Heatmap Overlay - render first so it appears below markers */}
       {showHeatmap && heatmapPoints.length > 0 && (

@@ -260,8 +260,8 @@ export default function NotificationModal({
       transparent
       onRequestClose={onClose}
     >
-      <View className="flex-1 bg-black/30 justify-center items-center">
-        <View className="bg-white rounded-2xl w-[90%] max-h-[80%] shadow-xl">
+      <View className="flex-1 bg-black/50 items-center justify-center p-4">
+        <View className="bg-white rounded-xl p-6 shadow-lg max-w-md w-full max-h-[80%]">
           {/* Header */}
           <View className="flex-row justify-between items-center p-4 border-b border-gray-200">
             <View className="flex-row items-center">

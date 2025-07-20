@@ -15,6 +15,7 @@ import { ReportSummary } from "../../types/report";
 import Header from "../../components/Header";
 import DatePicker from "../../components/DatePicker";
 import { useAlert } from "../../context/AlertContext";
+import NotificationModal from "../../components/NotificationModal";
 
 interface Time {
   start: string;
@@ -275,7 +276,7 @@ const FilterModal = ({
   );
 };
 
-export default function ReportsTabScreen() {
+export default function ReportsScreen() {
   const { showAlert } = useAlert();
 
   const [reports, setReports] = useState<ReportSummary[]>([]);
@@ -300,6 +301,9 @@ export default function ReportsTabScreen() {
     visibility?: string;
     status?: string;
   }>({});
+
+  // Notification modal state
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Reload reports when screen comes into focus
   useFocusEffect(
@@ -746,7 +750,7 @@ export default function ReportsTabScreen() {
     <View className="flex-1 bg-[#FFE4D6] max-w-screen-md mx-auto w-full">
       <Header
         title={viewMode === "user" ? "My Reports" : "All Reports"}
-        onNotificationPress={() => {}}
+        onNotificationPress={() => setShowNotifications(true)}
         showNotificationDot={false}
       />
 
@@ -997,6 +1001,12 @@ export default function ReportsTabScreen() {
         isTimeSubmitting={isTimeSubmitting}
         getIncidentTypeIcon={getIncidentTypeIcon}
         getIncidentTypeColor={getIncidentTypeColor}
+      />
+
+      {/* Notification Modal */}
+      <NotificationModal
+        visible={showNotifications}
+        onClose={() => setShowNotifications(false)}
       />
     </View>
   );
