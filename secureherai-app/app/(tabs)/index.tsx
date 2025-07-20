@@ -10,6 +10,7 @@ import QuickAction from "../../components/QuickAction";
 import NotificationModal from "../../components/NotificationModal";
 import SOSModalModern from "../../components/SOSModalModern";
 import { AlertResponse } from "../../types/sos";
+import ApiService from "../../services/api";
 
 export default function Home() {
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -98,12 +99,19 @@ export default function Home() {
     showConfirmAlert(
       "SOS Alert Sent",
       "Your SOS alert has been sent successfully! An incident report has been automatically generated. Would you like to view and update it with additional details?",
-      () => {
+      async () => {
         // Navigate directly to the auto-generated report using the alert ID
         resetSOSState();
-        router.push(
-          `/reports/details?alertId=${response.alertId}&mode=update&fromAlert=true` as any
-        );
+        // get the report from the alert
+        if (response.alertId) {
+          const data = await ApiService.getReportByAlertId(response.alertId);
+          if (data.report && data.report.reportId) {
+            // Navigate to report details with alertId
+            router.push(
+              `/reports/details?id=${data.report.reportId}&mode=update&fromAlert=true` as any
+            );
+          }
+        }
       },
       () => {
         // Reset SOS trigger state if user declines

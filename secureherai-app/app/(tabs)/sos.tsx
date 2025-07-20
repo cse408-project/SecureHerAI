@@ -125,7 +125,7 @@ export default function SOSScreen() {
       if (reportResponse.success && reportResponse.report) {
         // Report exists, navigate to update it
         const reportParams = new URLSearchParams({
-          reportId: reportResponse.report.reportId,
+          id: reportResponse.report.reportId,
           mode: "update",
           fromAlert: "true",
         });

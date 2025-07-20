@@ -154,6 +154,7 @@ public class SOSService {
             alert.setTriggerMethod("voice");
             alert.setAlertMessage(transcribedText);
             alert.setAudioRecording(audioUrl); // Use the provided URL directly
+            alert.setTriggeredAt(LocalDateTime.now());
             
             // Save the alert
             Alert savedAlert = alertRepository.save(alert);
@@ -206,6 +207,7 @@ public class SOSService {
                 alert.setAddress(location.getAddress());
                 alert.setTriggerMethod("text");
                 alert.setAlertMessage(message);
+                alert.setTriggeredAt(LocalDateTime.now());
                 
                 // Save the alert
                 Alert savedAlert = alertRepository.save(alert);
