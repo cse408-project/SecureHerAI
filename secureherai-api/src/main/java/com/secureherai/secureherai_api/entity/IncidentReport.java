@@ -26,7 +26,7 @@ public class IncidentReport {
     private UUID alertId;
     
     @Column(name = "incident_type", nullable = false)
-    private String incidentType; // harassment, theft, assault, other
+    private String incidentType; // harassment, theft, assault, other, emergency
     
     @Column(nullable = false, columnDefinition = "TEXT")
     private String description;

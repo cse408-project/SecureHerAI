@@ -36,6 +36,44 @@ public class ReportController {
     private JwtService jwtService;
     
     /**
+     * Get incident report by alert ID
+     * GET /api/report/alert-report?alertId=xxx
+     */
+    @GetMapping("/alert-report")
+    public ResponseEntity<ReportResponse.ReportDetailsResponse> getReportByAlertId(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam("alertId") UUID alertId) {
+        
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            
+            // Validate token
+            if (!jwtService.isTokenValid(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ReportResponse.ReportDetailsResponse(false, null, "User not authenticated"));
+            }
+            
+            UUID userId = jwtService.extractUserId(token);
+            String userRole = jwtService.extractRole(token);
+            
+            ReportResponse.ReportDetailsResponse response = reportService.getReportByAlertId(alertId, userId, userRole);
+            
+            if (response.isSuccess()) {
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            }
+            
+        } catch (io.jsonwebtoken.JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ReportResponse.ReportDetailsResponse(false, null, "Invalid authentication token"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ReportResponse.ReportDetailsResponse(false, null, "An unexpected error occurred"));
+        }
+    }
+
+    /**
      * Submit a new incident report
      * POST /api/report/submit
      */
@@ -153,6 +191,8 @@ public class ReportController {
     
     /**
      * Get details of a specific report
+     * - Users: Can view their own reports or public reports
+     * - Admin/Responder: Can view all reports regardless of visibility
      * GET /api/report/details?reportId={reportId}
      */
     @GetMapping("/details")
@@ -170,12 +210,20 @@ public class ReportController {
             }
             
             UUID userId = jwtService.extractUserId(token);
-            ReportResponse.ReportDetailsResponse response = reportService.getReportDetails(reportId, userId);
+            String userRole;
+            try {
+                userRole = jwtService.extractRole(token);
+            } catch (Exception e) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ReportResponse.ReportDetailsResponse(false, null, "Invalid authentication token"));
+            }
+            
+            ReportResponse.ReportDetailsResponse response = reportService.getReportDetails(reportId, userId, userRole);
             
             if (response.isSuccess()) {
                 return ResponseEntity.ok(response);
             } else {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
             }
             
         } catch (io.jsonwebtoken.JwtException e) {
@@ -297,10 +345,10 @@ public class ReportController {
     }
     
     /**
-     * Get public reports (for admins and responders)
-     * GET /api/report/public-reports
+     * Get all reports (accessible to all authenticated users)
+     * GET /api/report/all-reports
      */
-    @GetMapping("/public-reports")
+    @GetMapping("/all-reports")
     public ResponseEntity<ReportResponse.UserReportsResponse> getPublicReports(
             @RequestHeader("Authorization") String authHeader) {
         
@@ -313,7 +361,7 @@ public class ReportController {
                     .body(new ReportResponse.UserReportsResponse(false, null, "User not authenticated"));
             }
             
-            // Extract user role for authorization
+            // Extract user role for service layer processing
             String userRole;
             try {
                 userRole = jwtService.extractRole(token);
@@ -322,13 +370,8 @@ public class ReportController {
                     .body(new ReportResponse.UserReportsResponse(false, null, "Invalid authentication token"));
             }
             
-            // Only allow admins and responders to access public reports
-            if (!"ADMIN".equals(userRole) && !"RESPONDER".equals(userRole)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ReportResponse.UserReportsResponse(false, null, "Insufficient permissions to access public reports"));
-            }
-            
-            ReportResponse.UserReportsResponse response = reportService.getPublicReports(userRole);
+            // Allow all authenticated users to access all reports
+            ReportResponse.UserReportsResponse response = reportService.getAllReports(userRole);
             
             if (response.isSuccess()) {
                 return ResponseEntity.ok(response);
@@ -372,7 +415,7 @@ public class ReportController {
             if (incidentType != null && !isValidIncidentType(incidentType)) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ReportResponse.UserReportsResponse(false, null, 
-                        "Invalid incident type. Must be one of: harassment, theft, assault, other"));
+                        "Invalid incident type. Must be one of: harassment, theft, assault, emergency, other"));
             }
             
             if (visibility != null && !isValidVisibility(visibility)) {
@@ -515,7 +558,8 @@ public class ReportController {
     private boolean isValidIncidentType(String incidentType) {
         return incidentType != null && 
                (incidentType.equals("harassment") || incidentType.equals("theft") || 
-                incidentType.equals("assault") || incidentType.equals("other"));
+                incidentType.equals("assault") || incidentType.equals("emergency") ||
+                incidentType.equals("other"));
     }
     
     private boolean isValidVisibility(String visibility) {

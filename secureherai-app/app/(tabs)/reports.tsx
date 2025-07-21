@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  Alert,
   ActivityIndicator,
   Modal,
 } from "react-native";
@@ -18,6 +17,7 @@ import Header from "../../components/Header";
 import DatePicker from "../../components/DatePicker";
 import { useAlert } from "../../context/AlertContext";
 import { useAuth } from "../../context/AuthContext";
+import NotificationModal from "../../components/NotificationModal";
 
 interface Time {
   start: string;
@@ -82,55 +82,57 @@ const FilterModal = ({
               Incident Type
             </Text>
             <View className="flex-row flex-wrap mb-4">
-              {["harassment", "theft", "assault", "other"].map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  className={`flex-row items-center px-3 py-2 rounded-lg mr-2 mb-2 border ${
-                    activeFilters.incidentType === type
-                      ? "border-2"
-                      : "bg-gray-100 border-gray-200"
-                  }`}
-                  style={
-                    activeFilters.incidentType === type
-                      ? {
-                          backgroundColor: `${getIncidentTypeColor(type)}15`,
-                          borderColor: getIncidentTypeColor(type),
-                        }
-                      : {}
-                  }
-                  onPress={() => {
-                    const newFilters = { ...activeFilters };
-                    if (newFilters.incidentType === type) {
-                      delete newFilters.incidentType;
-                    } else {
-                      newFilters.incidentType = type;
-                    }
-                    setActiveFilters(newFilters);
-                  }}
-                >
-                  <MaterialIcons
-                    name={getIncidentTypeIcon(type) as any}
-                    size={16}
-                    color={
+              {["harassment", "theft", "assault", "emergency", "other"].map(
+                (type) => (
+                  <TouchableOpacity
+                    key={type}
+                    className={`flex-row items-center px-3 py-2 rounded-lg mr-2 mb-2 border ${
                       activeFilters.incidentType === type
-                        ? getIncidentTypeColor(type)
-                        : "#6B7280"
+                        ? "border-2"
+                        : "bg-gray-100 border-gray-200"
+                    }`}
+                    style={
+                      activeFilters.incidentType === type
+                        ? {
+                            backgroundColor: `${getIncidentTypeColor(type)}15`,
+                            borderColor: getIncidentTypeColor(type),
+                          }
+                        : {}
                     }
-                    style={{ marginRight: 6 }}
-                  />
-                  <Text
-                    className={`capitalize text-sm font-medium`}
-                    style={{
-                      color:
-                        activeFilters.incidentType === type
-                          ? getIncidentTypeColor(type)
-                          : "#374151",
+                    onPress={() => {
+                      const newFilters = { ...activeFilters };
+                      if (newFilters.incidentType === type) {
+                        delete newFilters.incidentType;
+                      } else {
+                        newFilters.incidentType = type;
+                      }
+                      setActiveFilters(newFilters);
                     }}
                   >
-                    {type}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <MaterialIcons
+                      name={getIncidentTypeIcon(type) as any}
+                      size={16}
+                      color={
+                        activeFilters.incidentType === type
+                          ? getIncidentTypeColor(type)
+                          : "#6B7280"
+                      }
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text
+                      className={`capitalize text-sm font-medium`}
+                      style={{
+                        color:
+                          activeFilters.incidentType === type
+                            ? getIncidentTypeColor(type)
+                            : "#374151",
+                      }}
+                    >
+                      {type}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              )}
             </View>
 
             {/* Visibility Filter */}
@@ -278,7 +280,7 @@ const FilterModal = ({
   );
 };
 
-export default function ReportsTabScreen() {
+export default function ReportsScreen() {
   const { showAlert } = useAlert();
   const { user } = useAuth();
 
@@ -293,6 +295,11 @@ export default function ReportsTabScreen() {
   const [isTimeSubmitting, setIsTimeSubmitting] = useState(false);
   const [isResponder, setIsResponder] = useState(false);
 
+  // Report view state
+  const [viewMode, setViewMode] = useState<"user" | "all">("user");
+  const [userReports, setUserReports] = useState<ReportSummary[]>([]);
+  const [publicReports, setPublicReports] = useState<ReportSummary[]>([]);
+
   // Filter state
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [activeFilters, setActiveFilters] = useState<{
@@ -301,61 +308,160 @@ export default function ReportsTabScreen() {
     status?: string;
   }>({});
 
+  // Notification modal state
+  const [showNotifications, setShowNotifications] = useState(false);
+
   // Reload reports when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      checkUserRole();
-      loadReports();
-    }, [])
+      const loadReportsForFocus = async () => {
+        try {
+          setLoading(true);
+
+          if (viewMode === "user") {
+            // Load user's own reports
+            const response = await apiService.getUserReports();
+            if (response.success && response.reports) {
+              setUserReports(response.reports);
+              setReports(response.reports);
+              setAllReports(response.reports);
+            } else {
+              const errorMessage =
+                response.error || "Failed to load user reports";
+              showAlert("Error", errorMessage, "error");
+            }
+          } else {
+            // Load all accessible reports (user + public)
+            try {
+              const [userResponse, publicResponse] = await Promise.all([
+                apiService.getUserReports(),
+                apiService.getPublicReports(),
+              ]);
+
+              let combinedReports: ReportSummary[] = [];
+
+              if (userResponse.success && userResponse.reports) {
+                setUserReports(userResponse.reports);
+                combinedReports = [...userResponse.reports];
+              }
+
+              if (publicResponse.success && publicResponse.reports) {
+                setPublicReports(publicResponse.reports);
+                // Filter out duplicates (user's own reports that are also public)
+                const userReportIds = new Set(
+                  userResponse.reports?.map((r) => r.reportId) || []
+                );
+                const uniquePublicReports = publicResponse.reports.filter(
+                  (report) => !userReportIds.has(report.reportId)
+                );
+                combinedReports = [...combinedReports, ...uniquePublicReports];
+              }
+
+              setReports(combinedReports);
+              setAllReports(combinedReports);
+            } catch (error) {
+              console.error("Error loading public reports:", error);
+              // Fallback to user reports if public reports fail
+              const userResponse = await apiService.getUserReports();
+              if (userResponse.success && userResponse.reports) {
+                setUserReports(userResponse.reports);
+                setReports(userResponse.reports);
+                setAllReports(userResponse.reports);
+                showAlert(
+                  "Warning",
+                  "Could not load public reports, showing your reports only",
+                  "warning"
+                );
+              } else {
+                throw new Error(userResponse.error || "Failed to load reports");
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Load reports error:", error);
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : "Network error occurred. Please check your connection.";
+          showAlert("Error", errorMessage, "error");
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      loadReportsForFocus();
+    }, [viewMode, showAlert])
   );
 
-  const checkUserRole = async () => {
+  const loadReports = async (mode: "user" | "all" = viewMode) => {
     try {
-      // Check if user is a responder
-      if (user?.role) {
-        const isResponderUser = user.role === "RESPONDER";
-        setIsResponder(isResponderUser);
-        return;
-      }
+      setLoading(true);
 
-      // Fallback to AsyncStorage
-      const userDataStr = await AsyncStorage.getItem("user_data");
-      if (userDataStr) {
-        const userData = JSON.parse(userDataStr);
-        const userRole = userData.role;
-        setIsResponder(userRole === "RESPONDER");
-      }
-    } catch (error) {
-      console.error("Error checking user role:", error);
-      setIsResponder(false);
-    }
-  };
+      if (mode === "user") {
+        // Load user's own reports
+        const response = await apiService.getUserReports();
+        if (response.success && response.reports) {
+          setUserReports(response.reports);
+          setReports(response.reports);
+          setAllReports(response.reports);
+        } else {
+          const errorMessage = response.error || "Failed to load user reports";
+          showAlert("Error", errorMessage, "error");
+        }
+      } else {
+        // Load all accessible reports (user + public)
+        try {
+          const [userResponse, publicResponse] = await Promise.all([
+            apiService.getUserReports(),
+            apiService.getPublicReports(),
+          ]);
 
-  const loadReports = async () => {
-    try {
-      // Check user role first
-      await checkUserRole();
-      
-      let response;
-      
-      // If user is a responder, get all public reports; otherwise get user's own reports
-      if (isResponder) {
-        response = await apiService.getPublicReports();
-      } else {
-        response = await apiService.getUserReports();
-      }
-      if (response.success && response.reports) {
-        setReports(response.reports);
-        setAllReports(response.reports); // Keep original for filtering
-      } else {
-        const errorMessage = response.error || "Failed to load reports";
-        Alert.alert("Error", errorMessage);
+          let combinedReports: ReportSummary[] = [];
+
+          if (userResponse.success && userResponse.reports) {
+            setUserReports(userResponse.reports);
+            combinedReports = [...userResponse.reports];
+          }
+
+          if (publicResponse.success && publicResponse.reports) {
+            setPublicReports(publicResponse.reports);
+            // Filter out duplicates (user's own reports that are also public)
+            const userReportIds = new Set(
+              userResponse.reports?.map((r) => r.reportId) || []
+            );
+            const uniquePublicReports = publicResponse.reports.filter(
+              (report) => !userReportIds.has(report.reportId)
+            );
+            combinedReports = [...combinedReports, ...uniquePublicReports];
+          }
+
+          setReports(combinedReports);
+          setAllReports(combinedReports);
+        } catch (error) {
+          console.error("Error loading public reports:", error);
+          // Fallback to user reports if public reports fail
+          const userResponse = await apiService.getUserReports();
+          if (userResponse.success && userResponse.reports) {
+            setUserReports(userResponse.reports);
+            setReports(userResponse.reports);
+            setAllReports(userResponse.reports);
+            showAlert(
+              "Warning",
+              "Could not load public reports, showing your reports only",
+              "warning"
+            );
+          } else {
+            throw new Error(userResponse.error || "Failed to load reports");
+          }
+        }
       }
     } catch (error) {
       console.error("Load reports error:", error);
       const errorMessage =
-        "Network error occurred. Please check your connection.";
-      Alert.alert("Error", errorMessage);
+        error instanceof Error
+          ? error.message
+          : "Network error occurred. Please check your connection.";
+      showAlert("Error", errorMessage, "error");
     } finally {
       setLoading(false);
     }
@@ -363,7 +469,7 @@ export default function ReportsTabScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadReports();
+    await loadReports(viewMode);
     setRefreshing(false);
   };
 
@@ -427,7 +533,7 @@ export default function ReportsTabScreen() {
       setActiveFilters(filters);
     } catch (error) {
       console.error("Filter error:", error);
-      Alert.alert("Error", "Failed to apply filters");
+      showAlert("Error", "Failed to apply filters", "error");
     } finally {
       setLoading(false);
     }
@@ -482,6 +588,8 @@ export default function ReportsTabScreen() {
         return "money-off";
       case "assault":
         return "pan-tool";
+      case "emergency":
+        return "emergency";
       default:
         return "category";
     }
@@ -495,6 +603,8 @@ export default function ReportsTabScreen() {
         return "#7C2D12"; // Brown
       case "assault":
         return "#B91C1C"; // Dark Red
+      case "emergency":
+        return "#EF4444"; // Bright Red for emergencies
       default:
         return "#6B7280"; // Gray
     }
@@ -649,8 +759,8 @@ export default function ReportsTabScreen() {
   return (
     <View className="flex-1 bg-[#FFE4D6] max-w-screen-md mx-auto w-full">
       <Header
-        title={isResponder ? "All Reports" : "My Reports"}
-        onNotificationPress={() => {}}
+        title={viewMode === "user" ? "My Reports" : "All Reports"}
+        onNotificationPress={() => setShowNotifications(true)}
         showNotificationDot={false}
       />
 
@@ -659,7 +769,7 @@ export default function ReportsTabScreen() {
           <View className="bg-white rounded-lg p-8 shadow-sm items-center">
             <ActivityIndicator size="large" color="#67082F" />
             <Text className="text-gray-600 mt-4 font-medium">
-              {isResponder ? "Loading system reports..." : "Loading your reports..."}
+              Loading {viewMode === "user" ? "your" : "all"} reports...
             </Text>
             <Text className="text-gray-400 text-sm mt-2">
               Please wait a moment
@@ -701,6 +811,49 @@ export default function ReportsTabScreen() {
                 <MaterialIcons name="arrow-forward" size={20} color="white" />
               </TouchableOpacity>
             )}
+
+            {/* View Mode Toggle */}
+            <View className="flex-row bg-gray-100 rounded-lg p-1 mb-3">
+              <TouchableOpacity
+                className={`flex-1 py-2 px-4 rounded-md ${
+                  viewMode === "user"
+                    ? "bg-[#67082F] shadow-sm"
+                    : "bg-transparent"
+                }`}
+                onPress={() => {
+                  setViewMode("user");
+                  loadReports("user");
+                }}
+              >
+                <Text
+                  className={`text-center font-medium ${
+                    viewMode === "user" ? "text-white" : "text-gray-600"
+                  }`}
+                >
+                  My Reports
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className={`flex-1 py-2 px-4 rounded-md ${
+                  viewMode === "all"
+                    ? "bg-[#67082F] shadow-sm"
+                    : "bg-transparent"
+                }`}
+                onPress={() => {
+                  setViewMode("all");
+                  loadReports("all");
+                }}
+              >
+                <Text
+                  className={`text-center font-medium ${
+                    viewMode === "all" ? "text-white" : "text-gray-600"
+                  }`}
+                >
+                  All Reports
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             {/* Secondary Actions */}
             <View className="flex-row justify-between">
@@ -866,6 +1019,12 @@ export default function ReportsTabScreen() {
         isTimeSubmitting={isTimeSubmitting}
         getIncidentTypeIcon={getIncidentTypeIcon}
         getIncidentTypeColor={getIncidentTypeColor}
+      />
+
+      {/* Notification Modal */}
+      <NotificationModal
+        visible={showNotifications}
+        onClose={() => setShowNotifications(false)}
       />
     </View>
   );

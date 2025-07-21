@@ -17,6 +17,7 @@ import ApiService from "../../services/api";
 import Header from "../../components/Header";
 import DatePicker from "../../components/DatePicker";
 import ResponderFields from "../../components/ResponderFields";
+import NotificationModal from "../../components/NotificationModal";
 import cloudinaryService from "../../services/cloudinary";
 import * as Location from "expo-location";
 
@@ -52,6 +53,7 @@ interface UserProfile {
 }
 
 export default function SettingsScreen() {
+  const [showNotifications, setShowNotifications] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [emailAlerts, setEmailAlerts] = useState(true);
@@ -679,7 +681,7 @@ export default function SettingsScreen() {
       <View className="flex-1 bg-[#FFE4D6] max-w-screen-md mx-auto w-full">
         <Header
           title="Settings"
-          onNotificationPress={() => {}}
+          onNotificationPress={() => setShowNotifications(true)}
           showNotificationDot={false}
         />
         <View className="flex-1 items-center justify-center">
@@ -694,7 +696,7 @@ export default function SettingsScreen() {
     <View className="flex-1 bg-[#FFE4D6] max-w-screen-md mx-auto w-full">
       <Header
         title="Settings"
-        onNotificationPress={() => {}}
+        onNotificationPress={() => setShowNotifications(true)}
         showNotificationDot={false}
       />
 
@@ -1616,6 +1618,11 @@ export default function SettingsScreen() {
       )}
 
       {/* Note: We've removed the custom WebAlert component since we now use the universal alert system */}
+
+      <NotificationModal
+        visible={showNotifications}
+        onClose={() => setShowNotifications(false)}
+      />
     </View>
   );
 }

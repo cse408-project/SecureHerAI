@@ -58,3 +58,16 @@ for responder registration, include currentLatitude, currentLongitude, branch na
 alert keyword set option in setting entity. use this keyword to verify sos, (for now it is "help"). by default this will be help, user can change and view it, using password in frontend's settings. write the endpoint to view and set keyword in sos_test.http. first read the existing sos endpoint and their implementation where they use keyword then implement. do efficient coding not add any file use existing one in backend and frontend. first implement backend.
 ekta settings entity create koiro. oitai sob settings thakbe. keyword o okhane thakbe. ekhnkar notification settings ja ache (frontend e) okhanei thakbe. backend e notification preference ke delete kore/ change kore settings entity jeno use kore omn banate hbe.
 successful na hole/ voice retry korle storage theke delete audio. and success er por je report ta likhte asbe otake thik kora. existing jeta report er jonno page ache otai use kora. okhane details=alertmessage, evidence  = audio (if available), keyword show  korbe na though, ar location tao set hoe jabe automatic. baki aro nije add korte parbe.
+
+
+
+
+
+
+update backend seureherai-api:
+whenever create an sos, if sos is successful a report will auto generate for the alert using description = alert message, location address = alert location address, type emergency. primary evidence= audiourl (if voice), etc.
+Implement an endpoint get /alert-report/alertId=? returns report details.
+Report can be updated by only owner and responder. responder can't delete owner's uploaded evidence.
+
+update frontend secureherai-app:
+Instead of create report after sos and in emergency alert page, Use update report use the new get /alert-report/alertId=? No more create report button anymore in emergency page.

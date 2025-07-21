@@ -15,6 +15,7 @@ import SOSModalModern from "../../components/SOSModalModern";
 import ReportModal from "../../components/ReportModal";
 import ResponderHomepage from "../../components/ResponderHomepage";
 import { AlertResponse } from "../../types/sos";
+import ApiService from "../../services/api";
 
 export default function Home() {
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -171,32 +172,23 @@ export default function Home() {
     // Refresh notifications since emergency notifications have been sent
     refreshNotificationCount();
 
-    // Show confirmation and ask if user wants to submit a report
+    // Show confirmation and inform user about auto-generated report
     showConfirmAlert(
       "SOS Alert Sent",
-      "Your SOS alert has been sent successfully. Would you like to provide more details by submitting an incident report?",
-      () => {
-        // Navigate directly to report submission with pre-populated data
-        const reportParams = new URLSearchParams({
-          autoFill: "true",
-          details: response.alertMessage || "Emergency SOS alert triggered",
-          location: `${response.latitude},${response.longitude}`,
-          address: response.address || "",
-          incidentType: "assault", // Default for SOS alerts, but allow editing
-          triggerMethod: response.triggerMethod || "",
-          alertId: response.alertId || "",
-          triggeredAt: response.triggeredAt || "",
-        });
-
-        // Add audio evidence if available
-        if (response.audioRecording) {
-          reportParams.append("evidence", response.audioRecording);
-          reportParams.append("sosAudio", "true"); // Mark as SOS audio to prevent deletion
-        }
-
-        // Navigate directly to report submission page
+      "Your SOS alert has been sent successfully! An incident report has been automatically generated. Would you like to view and update it with additional details?",
+      async () => {
+        // Navigate directly to the auto-generated report using the alert ID
         resetSOSState();
-        router.push(`/reports/submit?${reportParams.toString()}` as any);
+        // get the report from the alert
+        if (response.alertId) {
+          const data = await ApiService.getReportByAlertId(response.alertId);
+          if (data.report && data.report.reportId) {
+            // Navigate to report details with alertId
+            router.push(
+              `/reports/details?id=${data.report.reportId}&mode=update&fromAlert=true` as any
+            );
+          }
+        }
       },
       () => {
         // Reset SOS trigger state if user declines

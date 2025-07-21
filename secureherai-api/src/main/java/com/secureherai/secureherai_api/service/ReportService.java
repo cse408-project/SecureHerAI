@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.secureherai.secureherai_api.dto.report.ReportRequest;
 import com.secureherai.secureherai_api.dto.report.ReportResponse;
+import com.secureherai.secureherai_api.entity.Alert;
 import com.secureherai.secureherai_api.entity.IncidentReport;
 import com.secureherai.secureherai_api.entity.User;
 import com.secureherai.secureherai_api.entity.ReportEvidence;
@@ -37,6 +38,103 @@ public class ReportService {
     @Autowired
     private ReportEvidenceRepository evidenceRepository;
     
+    /**
+     * Auto-generate incident report from SOS alert
+     */
+    public IncidentReport autoGenerateReportFromAlert(Alert alert) {
+        try {
+            logger.info("Auto-generating incident report from SOS alert: {}", alert.getId());
+            
+            // Check if report already exists for this alert
+            Optional<IncidentReport> existingReport = reportRepository.findByAlertId(alert.getId());
+            if (existingReport.isPresent()) {
+                logger.warn("Report already exists for alert: {}", alert.getId());
+                return existingReport.get();
+            }
+            
+            // Create new incident report with emergency type
+            // Use alert's triggered time, or current time if null (to prevent database constraint violation)
+            LocalDateTime incidentTime = alert.getTriggeredAt() != null ? alert.getTriggeredAt() : LocalDateTime.now();
+            
+            IncidentReport report = new IncidentReport(
+                alert.getUserId(),
+                "emergency", // Set type as emergency for SOS alerts
+                alert.getAlertMessage() != null ? alert.getAlertMessage() : "Emergency SOS alert triggered",
+                alert.getLatitude(),
+                alert.getLongitude(),
+                incidentTime,
+                "officials_only", // Default visibility for SOS-generated reports
+                false // Not anonymous since it's from SOS
+            );
+            
+            // Set optional fields
+            if (alert.getAddress() != null) {
+                report.setAddress(alert.getAddress());
+            }
+            
+            // Link to the alert
+            report.setAlertId(alert.getId());
+            
+            // Save the report
+            IncidentReport savedReport = reportRepository.save(report);
+            logger.info("Auto-generated report saved with ID: {}", savedReport.getId());
+            
+            // Handle audio evidence if available
+            if (alert.getAudioRecording() != null && !alert.getAudioRecording().isEmpty()) {
+                try {
+                    ReportEvidence evidence = new ReportEvidence(
+                        savedReport.getId(),
+                        alert.getAudioRecording(),
+                        "audio",
+                        "SOS voice recording"
+                    );
+                    evidenceRepository.save(evidence);
+                    logger.info("Added audio evidence to auto-generated report");
+                } catch (Exception e) {
+                    logger.warn("Failed to add audio evidence to auto-generated report: {}", e.getMessage());
+                }
+            }
+            
+            return savedReport;
+            
+        } catch (Exception e) {
+            logger.error("Error auto-generating report from alert {}: {}", alert.getId(), e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * Get incident report by alert ID
+     */
+    public ReportResponse.ReportDetailsResponse getReportByAlertId(UUID alertId, UUID requestingUserId, String userRole) {
+        try {
+            logger.info("Getting report for alert: {} by user: {}", alertId, requestingUserId);
+            
+            Optional<IncidentReport> reportOpt = reportRepository.findByAlertId(alertId);
+            if (reportOpt.isEmpty()) {
+                return new ReportResponse.ReportDetailsResponse(false, null, "No report found for this alert");
+            }
+            
+            IncidentReport report = reportOpt.get();
+            
+            // Check authorization: report owner, responders can view officials_only/public reports
+            boolean canView = report.getUserId().equals(requestingUserId) || 
+                             ("RESPONDER".equals(userRole) && !report.getVisibility().equals("private")) ||
+                             "ADMIN".equals(userRole);
+            
+            if (!canView) {
+                return new ReportResponse.ReportDetailsResponse(false, null, "You don't have permission to view this report");
+            }
+            
+            ReportResponse.ReportDetails details = convertToReportDetails(report);
+            return new ReportResponse.ReportDetailsResponse(true, details, null);
+            
+        } catch (Exception e) {
+            logger.error("Error getting report for alert {}: {}", alertId, e.getMessage(), e);
+            return new ReportResponse.ReportDetailsResponse(false, null, "An error occurred while retrieving the report");
+        }
+    }
+
     /**
      * Submit a new incident report
      */
@@ -271,23 +369,43 @@ public class ReportService {
     }
     
     /**
-     * Get detailed information for a specific report
+     * Get detailed information for a specific report with access control
+     * - Regular users: Can view their own reports or public reports
+     * - Admin/Responder: Can view all reports regardless of visibility
      */
-    public ReportResponse.ReportDetailsResponse getReportDetails(UUID reportId, UUID userId) {
+    public ReportResponse.ReportDetailsResponse getReportDetails(UUID reportId, UUID userId, String userRole) {
         try {
-            logger.debug("Retrieving report details for report: {} by user: {}", reportId, userId);
+            logger.debug("Retrieving report details for report: {} by user: {} with role: {}", reportId, userId, userRole);
             
-            // Find report and verify ownership
-            Optional<IncidentReport> reportOpt = reportRepository.findByIdAndUserId(reportId, userId);
+            // Find the report first
+            Optional<IncidentReport> reportOpt = reportRepository.findById(reportId);
             if (reportOpt.isEmpty()) {
-                logger.warn("Report not found or access denied - Report: {}, User: {}", reportId, userId);
-                return new ReportResponse.ReportDetailsResponse(false, null, "Report not found or access denied");
+                logger.warn("Report not found - Report: {}", reportId);
+                return new ReportResponse.ReportDetailsResponse(false, null, "Report not found");
             }
             
             IncidentReport report = reportOpt.get();
+            
+            // Check access permissions
+            boolean isOwner = report.getUserId().equals(userId);
+            boolean isAdminOrResponder = "ADMIN".equals(userRole) || "RESPONDER".equals(userRole);
+            boolean isPublicReport = "public".equals(report.getVisibility());
+            
+            // Access control logic:
+            // 1. Admin/Responder can view any report
+            // 2. Regular users can view their own reports
+            // 3. Regular users can view public reports from others
+            if (!isAdminOrResponder && !isOwner && !isPublicReport) {
+                logger.warn("Access denied for report details - Report: {}, User: {}, Role: {}, Visibility: {}", 
+                           reportId, userId, userRole, report.getVisibility());
+                return new ReportResponse.ReportDetailsResponse(false, null, 
+                    "Access denied. You can only view your own reports or public reports.");
+            }
+            
             ReportResponse.ReportDetails reportDetails = convertToReportDetails(report);
             
-            logger.debug("Successfully retrieved report details for: {}", reportId);
+            logger.debug("Successfully retrieved report details for: {} by user: {} (role: {})", 
+                        reportId, userId, userRole);
             return new ReportResponse.ReportDetailsResponse(true, reportDetails, null);
             
         } catch (Exception e) {
@@ -489,33 +607,26 @@ public class ReportService {
     /**
      * Get reports for admin/officials (with appropriate visibility filtering)
      */
-    public ReportResponse.UserReportsResponse getPublicReports(String userRole) {
+    public ReportResponse.UserReportsResponse getAllReports(String userRole) {
         try {
-            logger.debug("Retrieving public reports for user role: {}", userRole);
+            logger.debug("Retrieving reports for user role: {}", userRole);
             List<IncidentReport> reports;
             
-            reports = switch (userRole) {
-                case "ADMIN" -> {
+            switch (userRole) {
+                case "ADMIN":
                     // Admins can see all reports
-                    List<IncidentReport> adminReports = reportRepository.findAll();
-                    logger.debug("Admin access: Retrieved {} total reports", adminReports.size());
-                    yield adminReports;
-                }
-                case "RESPONDER" -> {
+                    reports = reportRepository.findAll();
+                    logger.debug("Admin access: Retrieved {} total reports", reports.size());
+                    break;
+                case "RESPONDER":
                     // Responders can see public and officials_only reports
-                    List<IncidentReport> responderReports = reportRepository.findPublicReports();
-                    logger.debug("Responder access: Retrieved {} public/officials_only reports", responderReports.size());
-                    yield responderReports;
-                }
-                default -> {
+                    reports = reportRepository.findPublicReports();
+                    logger.debug("Responder access: Retrieved {} public/officials_only reports", reports.size());
+                    break;
+                default:
                     // Regular users should not access this endpoint
                     logger.warn("Access denied for user role: {}", userRole);
-                    yield null;
-                }
-            };
-            
-            if (reports == null) {
-                return new ReportResponse.UserReportsResponse(false, null, "Access denied");
+                    return new ReportResponse.UserReportsResponse(false, null, "Access denied. Insufficient privileges.");
             }
             
             List<ReportResponse.ReportSummary> reportSummaries = reports.stream()
@@ -525,7 +636,7 @@ public class ReportService {
             return new ReportResponse.UserReportsResponse(true, reportSummaries, null);
             
         } catch (Exception e) {
-            logger.error("Error retrieving public reports for role {}: {}", userRole, e.getMessage(), e);
+            logger.error("Error retrieving reports for role {}: {}", userRole, e.getMessage(), e);
             return new ReportResponse.UserReportsResponse(false, null, "An error occurred while retrieving reports: " + e.getMessage());
         }
     }
@@ -564,6 +675,7 @@ public class ReportService {
         ReportResponse.ReportDetails details = new ReportResponse.ReportDetails();
         
         details.setReportId(report.getId());
+        details.setUserId(report.getUserId());
         details.setAlertId(report.getAlertId());
         details.setIncidentType(report.getIncidentType());
         details.setDescription(report.getDescription());
@@ -821,7 +933,7 @@ public class ReportService {
         try {
             ReportResponse.Categories categories = new ReportResponse.Categories();
             
-            categories.setIncidentTypes(List.of("harassment", "theft", "assault", "other"));
+            categories.setIncidentTypes(List.of("harassment", "theft", "assault", "emergency", "other"));
             categories.setVisibilityOptions(List.of("public", "officials_only", "private"));
             categories.setStatusOptions(List.of("submitted", "under_review", "resolved", "closed"));
             
@@ -850,6 +962,7 @@ public class ReportService {
             reportsByType.put("harassment", 0);
             reportsByType.put("theft", 0);
             reportsByType.put("assault", 0);
+            reportsByType.put("emergency", 0);
             reportsByType.put("other", 0);
             
             for (IncidentReport report : userReports) {
@@ -904,6 +1017,7 @@ public class ReportService {
                (incidentType.equalsIgnoreCase("harassment") || 
                 incidentType.equalsIgnoreCase("theft") || 
                 incidentType.equalsIgnoreCase("assault") || 
+                incidentType.equalsIgnoreCase("emergency") ||
                 incidentType.equalsIgnoreCase("other"));
     }
     

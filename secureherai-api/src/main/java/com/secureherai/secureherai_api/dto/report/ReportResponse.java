@@ -251,6 +251,7 @@ public class ReportResponse {
     // Full report details class
     public static class ReportDetails {
         private UUID reportId;
+        private UUID userId;
         private UUID alertId;
         private String incidentType;
         private String description;
@@ -275,6 +276,14 @@ public class ReportResponse {
         
         public void setReportId(UUID reportId) {
             this.reportId = reportId;
+        }
+        
+        public UUID getUserId() {
+            return userId;
+        }
+        
+        public void setUserId(UUID userId) {
+            this.userId = userId;
         }
         
         public UUID getAlertId() {

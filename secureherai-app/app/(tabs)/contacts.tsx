@@ -23,6 +23,7 @@ import type {
   UserContactData,
   GetAllUsersContactsResponse,
 } from "../../types/usersAndContacts";
+import NotificationModal from "../../components/NotificationModal";
 
 // Emergency contacts - these remain static
 const emergencyContacts = [
@@ -48,6 +49,7 @@ export default function ContactsScreen() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [isResponder, setIsResponder] = useState(false);
   const [allUsersAndContacts, setAllUsersAndContacts] = useState<UserContactData[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const [newContact, setNewContact] = useState<CreateContactRequest>({
     name: "",
@@ -293,7 +295,6 @@ export default function ContactsScreen() {
       setIsSubmitting(false);
     }
   };
-  
 
   const handleDeleteContacts = async () => {
     if (selected.length === 0) return;
@@ -381,88 +382,89 @@ export default function ContactsScreen() {
   };
 
   return (
-    <View className="flex-1 bg-[#FFE4D6] max-w-screen-md mx-auto w-full">
-      <Header
-        title="Emergency Contacts"
-        onNotificationPress={() => {}}
-        showNotificationDot={false}
-      />
+    <>
+      <View className="flex-1 bg-[#FFE4D6] max-w-screen-md mx-auto w-full">
+        <Header
+          title="Emergency Contacts"
+          onNotificationPress={() => setShowNotifications(true)}
+          showNotificationDot={false}
+        />
 
-      {/* Add Contact Modal */}
-      <Modal
-        visible={showAddContact}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowAddContact(false)}
-      >
-        <View className="flex-1 bg-black/50 items-center justify-center p-4">
-          <ScrollView
-            contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
-            keyboardShouldPersistTaps="handled"
-          >
-            <ContactForm
-              contact={newContact}
-              onContactChange={handleContactChange}
-              onSubmit={handleAddContact}
-              onCancel={handleFormCancel}
-              isSubmitting={isSubmitting}
-            />
-          </ScrollView>
-        </View>
-      </Modal>
+        {/* Add Contact Modal */}
+        <Modal
+          visible={showAddContact}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowAddContact(false)}
+        >
+          <View className="flex-1 bg-black/50 items-center justify-center p-4">
+            <ScrollView
+              contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
+              keyboardShouldPersistTaps="handled"
+            >
+              <ContactForm
+                contact={newContact}
+                onContactChange={handleContactChange}
+                onSubmit={handleAddContact}
+                onCancel={handleFormCancel}
+                isSubmitting={isSubmitting}
+              />
+            </ScrollView>
+          </View>
+        </Modal>
 
-      {/* Edit Contact Modal */}
-      <Modal
-        visible={showEditContact}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowEditContact(false)}
-      >
-        <View className="flex-1 bg-black/50 items-center justify-center p-4">
-          <ScrollView
-            contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
-            keyboardShouldPersistTaps="handled"
-          >
-            <ContactForm
-              isEdit={true}
-              contact={newContact}
-              onContactChange={handleContactChange}
-              onSubmit={handleEditContact}
-              onCancel={handleFormCancel}
-              isSubmitting={isSubmitting}
-            />
-          </ScrollView>
-        </View>
-      </Modal>
+        {/* Edit Contact Modal */}
+        <Modal
+          visible={showEditContact}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowEditContact(false)}
+        >
+          <View className="flex-1 bg-black/50 items-center justify-center p-4">
+            <ScrollView
+              contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
+              keyboardShouldPersistTaps="handled"
+            >
+              <ContactForm
+                isEdit={true}
+                contact={newContact}
+                onContactChange={handleContactChange}
+                onSubmit={handleEditContact}
+                onCancel={handleFormCancel}
+                isSubmitting={isSubmitting}
+              />
+            </ScrollView>
+          </View>
+        </Modal>
 
-      {/* Main Content */}
-      <ScrollView
-        className="flex-1 p-4"
-        contentContainerStyle={{ paddingBottom: 80 }}
-      >
-        {/* Emergency Services */}
-        <Text className="text-lg font-bold text-[#67082F] mb-4">
-          Emergency Services
-        </Text>
-        {emergencyContacts.map((contact, index) => (
-          <TouchableOpacity
-            key={index}
-            className="flex-row items-center bg-white p-4 rounded-lg mb-3 shadow-sm"
-            onPress={() => handleCall(contact.phone)}
-            activeOpacity={0.7}
-          >
-            <View className="w-10 h-10 bg-[#67082F]/10 rounded-full items-center justify-center mr-4">
-              <MaterialIcons name={contact.icon} size={24} color="#67082F" />
-            </View>
-            <View className="flex-1">
-              <Text className="font-semibold text-gray-800">
-                {contact.name}
-              </Text>
-              <Text className="text-gray-600">{contact.phone}</Text>
-            </View>
-            <MaterialIcons name="phone" size={24} color="#67082F" />
-          </TouchableOpacity>
-        ))}
+        {/* Main Content */}
+        <ScrollView
+          className="flex-1 p-4"
+          contentContainerStyle={{ paddingBottom: 80 }}
+        >
+          {/* Emergency Services */}
+          <Text className="text-lg font-bold text-[#67082F] mb-4">
+            Emergency Services
+          </Text>
+          {emergencyContacts.map((contact, index) => (
+            <TouchableOpacity
+              key={index}
+              className="flex-row items-center bg-white p-4 rounded-lg mb-3 shadow-sm"
+              onPress={() => handleCall(contact.phone)}
+              activeOpacity={0.7}
+            >
+              <View className="w-10 h-10 bg-[#67082F]/10 rounded-full items-center justify-center mr-4">
+                <MaterialIcons name={contact.icon} size={24} color="#67082F" />
+              </View>
+              <View className="flex-1">
+                <Text className="font-semibold text-gray-800">
+                  {contact.name}
+                </Text>
+                <Text className="text-gray-600">{contact.phone}</Text>
+              </View>
+              <MaterialIcons name="phone" size={24} color="#67082F" />
+            </TouchableOpacity>
+          ))}
 
         {/* Action Buttons Section - Hidden for Responders */}
         {!isResponder && (
@@ -717,6 +719,7 @@ export default function ContactsScreen() {
                   )}
                 </View>
 
+                
                 <View className="flex-row items-center space-x-2">
                   <TouchableOpacity
                     onPress={() => handleCall(contact.phone)}
@@ -731,8 +734,14 @@ export default function ContactsScreen() {
                   >
                     <MaterialIcons name="edit" size={20} color="#67082F" />
                   </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => startEditContact(contact)}
+                    className="p-2"
+                  >
+                    <MaterialIcons name="edit" size={20} color="#67082F" />
+                  </TouchableOpacity>
 
-                  {selectionMode && (
+                {selectionMode && (
                     <View>
                       {selected.includes(contact.contactId) ? (
                         <MaterialIcons
@@ -756,5 +765,10 @@ export default function ContactsScreen() {
         )}
       </ScrollView>
     </View>
+    <NotificationModal
+        visible={showNotifications}
+        onClose={() => setShowNotifications(false)}
+      />
+    </>
   );
 }

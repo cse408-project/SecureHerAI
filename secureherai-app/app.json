@@ -18,7 +18,12 @@
         "backgroundColor": "#67082F"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.cse408project.secureheraiapp"
+      "package": "com.cse408project.secureheraiapp",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBG9qOWygU6I5bKH0cZxPK6F1SJGN7bMr0"
+        }
+      }
     },
     "web": {
       "bundler": "metro",

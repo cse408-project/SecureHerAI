@@ -737,7 +737,7 @@ class ApiService {
       };
     }
   }
-  
+
   async getReportDetails(reportId: string): Promise<ReportDetailsResponse> {
     try {
       console.log("API: Fetching report details for:", reportId);
@@ -758,6 +758,30 @@ class ApiService {
       return {
         success: false,
         error: "Network error occurred while fetching report details",
+      };
+    }
+  }
+
+  async getReportByAlertId(alertId: string): Promise<ReportDetailsResponse> {
+    try {
+      console.log("API: Fetching report details for alert:", alertId);
+      const response = await fetch(
+        `${API_BASE_URL}/report/alert-report?alertId=${alertId}`,
+        {
+          method: "GET",
+          headers: await this.getHeaders(true),
+        }
+      );
+
+      const data = await response.json();
+      console.log("API: Report by alert ID response:", data);
+
+      return data;
+    } catch (error) {
+      console.error("API: Get report by alert ID error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while fetching report for alert",
       };
     }
   }
@@ -845,8 +869,8 @@ class ApiService {
 
   async getPublicReports(): Promise<UserReportsResponse> {
     try {
-      console.log("API: Fetching public reports");
-      const response = await fetch(`${API_BASE_URL}/report/public-reports`, {
+      console.log("API: Fetching all reports");
+      const response = await fetch(`${API_BASE_URL}/report/all-reports`, {
         method: "GET",
         headers: await this.getHeaders(true),
       });
@@ -856,7 +880,7 @@ class ApiService {
 
       return data;
     } catch (error) {
-      console.error("API: Get public reports error:", error);
+      console.error("API: Get all reports error:", error);
       return {
         success: false,
         error: "Network error occurred while fetching public reports",
@@ -1642,6 +1666,296 @@ class ApiService {
       return {
         success: false,
         error: "Network error occurred while updating alert status",
+      };
+    }
+  }
+
+  // Favorite Places API Methods
+  async getPlaceInfos() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/favorite_place`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to fetch places",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error fetching places:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  async addFavoritePlace(place_info: any) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/favorite_place/add`, {
+        method: "POST",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({ place_info }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to add place",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error adding place:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  async updateFavoritePlace(place_id: string, place_info: any) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/favorite_place/update`, {
+        method: "PUT",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({ place_id, place_info }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to update place",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error updating place:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  async deleteFavoritePlace(place_id: string) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/favorite_place/delete`, {
+        method: "DELETE",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({ place_id }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to delete place",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error deleting place:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  async getOneFavoritePlace(place_id: string) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/favorite_place/get_one`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({ place_id }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to get place",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error getting place:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  // Emergency Services API Methods
+  async getEmergencyServices(
+    location: { latitude: number; longitude: number },
+    radius: number = 5000
+  ) {
+    try {
+      const params = new URLSearchParams({
+        latitude: location.latitude.toString(),
+        longitude: location.longitude.toString(),
+        radius: radius.toString(),
+      });
+
+      const response = await fetch(
+        `${API_BASE_URL}/emergency-services?${params}`,
+        {
+          method: "GET",
+          headers: await this.getHeaders(true),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error:
+            data.error || data.message || "Failed to fetch emergency services",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error fetching emergency services:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  async getPoliceStations(
+    location: { latitude: number; longitude: number },
+    radius: number = 5000
+  ) {
+    try {
+      const params = new URLSearchParams({
+        latitude: location.latitude.toString(),
+        longitude: location.longitude.toString(),
+        radius: radius.toString(),
+      });
+
+      const response = await fetch(
+        `${API_BASE_URL}/emergency-services/police?${params}`,
+        {
+          method: "GET",
+          headers: await this.getHeaders(true),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error:
+            data.error || data.message || "Failed to fetch police stations",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error fetching police stations:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  async getHospitals(
+    location: { latitude: number; longitude: number },
+    radius: number = 5000
+  ) {
+    try {
+      const params = new URLSearchParams({
+        latitude: location.latitude.toString(),
+        longitude: location.longitude.toString(),
+        radius: radius.toString(),
+      });
+
+      const response = await fetch(
+        `${API_BASE_URL}/emergency-services/hospitals?${params}`,
+        {
+          method: "GET",
+          headers: await this.getHeaders(true),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to fetch hospitals",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error fetching hospitals:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  async getFireStations(
+    location: { latitude: number; longitude: number },
+    radius: number = 5000
+  ) {
+    try {
+      const params = new URLSearchParams({
+        latitude: location.latitude.toString(),
+        longitude: location.longitude.toString(),
+        radius: radius.toString(),
+      });
+
+      const response = await fetch(
+        `${API_BASE_URL}/emergency-services/fire?${params}`,
+        {
+          method: "GET",
+          headers: await this.getHeaders(true),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to fetch fire stations",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error fetching fire stations:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
       };
     }
   }

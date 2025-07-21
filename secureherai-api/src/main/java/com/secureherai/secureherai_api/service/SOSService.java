@@ -2,6 +2,7 @@ package com.secureherai.secureherai_api.service;
 
 import com.secureherai.secureherai_api.dto.sos.LocationDto;
 import com.secureherai.secureherai_api.entity.Alert;
+import com.secureherai.secureherai_api.entity.IncidentReport;
 import com.secureherai.secureherai_api.repository.AlertRepository;
 import com.secureherai.secureherai_api.service.AzureSpeechService.SpeechTranscriptionResult;
 
@@ -37,6 +38,7 @@ public class SOSService {
     private final AzureSpeechService azureSpeechService;
     private final NotificationService notificationService;
     private final SettingsService settingsService;
+    private final ReportService reportService;
     
     // Default SOS keywords
     private static final List<String> DEFAULT_KEYWORDS = Arrays.asList("help", "emergency", "sos");
@@ -92,6 +94,16 @@ public class SOSService {
                 // Save the alert
                 Alert savedAlert = alertRepository.save(alert);
                 
+                // Auto-generate incident report for this alert
+                try {
+                    IncidentReport autoReport = reportService.autoGenerateReportFromAlert(savedAlert);
+                    if (autoReport != null) {
+                        log.info("Auto-generated incident report for alert: {}", savedAlert.getId());
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to auto-generate report for alert {}: {}", savedAlert.getId(), e.getMessage());
+                }
+                
                 // Send notifications to trusted contacts and nearby responders
                 notificationService.sendSOSAlertNotifications(savedAlert);
                 
@@ -142,9 +154,20 @@ public class SOSService {
             alert.setTriggerMethod("voice");
             alert.setAlertMessage(transcribedText);
             alert.setAudioRecording(audioUrl); // Use the provided URL directly
+            alert.setTriggeredAt(LocalDateTime.now());
             
             // Save the alert
             Alert savedAlert = alertRepository.save(alert);
+            
+            // Auto-generate incident report for this alert
+            try {
+                IncidentReport autoReport = reportService.autoGenerateReportFromAlert(savedAlert);
+                if (autoReport != null) {
+                    log.info("Auto-generated incident report for alert: {}", savedAlert.getId());
+                }
+            } catch (Exception e) {
+                log.warn("Failed to auto-generate report for alert {}: {}", savedAlert.getId(), e.getMessage());
+            }
             
             // Send notifications to trusted contacts and nearby responders
             notificationService.sendSOSAlertNotifications(savedAlert);
@@ -184,9 +207,20 @@ public class SOSService {
                 alert.setAddress(location.getAddress());
                 alert.setTriggerMethod("text");
                 alert.setAlertMessage(message);
+                alert.setTriggeredAt(LocalDateTime.now());
                 
                 // Save the alert
                 Alert savedAlert = alertRepository.save(alert);
+                
+                // Auto-generate incident report for this alert
+                try {
+                    IncidentReport autoReport = reportService.autoGenerateReportFromAlert(savedAlert);
+                    if (autoReport != null) {
+                        log.info("Auto-generated incident report for alert: {}", savedAlert.getId());
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to auto-generate report for alert {}: {}", savedAlert.getId(), e.getMessage());
+                }
                 
                 // Send notifications to trusted contacts and nearby responders
                 notificationService.sendSOSAlertNotifications(savedAlert);

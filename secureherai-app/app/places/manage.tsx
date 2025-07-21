@@ -4,22 +4,24 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  Linking,
   ActivityIndicator,
   Modal,
   TextInput,
-  Switch,
   Image,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { MaterialIcons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
+import apiService from "../../services/api";
 import { useAlert } from "../../context/AlertContext";
 import cloudinaryService from "../../services/cloudinary";
+import LocationSelectionModal, {
+  SelectedLocation,
+} from "../../components/LocationSelectionModal";
 
-// Relationship options
+// Place type options
 const places_options = [
-  { label: "Select place...", value: "" },
+  { label: "Select place type...", value: "" },
   { label: "Home", value: "Home" },
   { label: "Office", value: "Office" },
   { label: "Campus", value: "Campus" },
@@ -36,7 +38,7 @@ interface PlaceInfo {
   created_at?: string;
 }
 
-interface CreatPlace {
+interface CreatePlace {
   placeName: string;
   latitude: string;
   longitude: string;
@@ -44,181 +46,7 @@ interface CreatPlace {
   img_url: string;
 }
 
-// API Service - simplified and embedded
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
-
-class SimpleApiService {
-  private async getHeaders(
-    includeAuth: boolean = false
-  ): Promise<Record<string, string>> {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (includeAuth) {
-      const token = await AsyncStorage.getItem("auth_token");
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
-    }
-
-    return headers;
-  }
-
-  async getPlaceInfos() {
-    try {
-      const response = await fetch(`${API_BASE_URL}/favorite_place`, {
-        method: "GET",
-        headers: await this.getHeaders(true),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return {
-          success: false,
-          error: data.error || data.message || "Failed to fetch Places",
-        };
-      }
-
-      return { success: true, data: data };
-    } catch (error) {
-      console.error("API: Error fetching Places:", error);
-      return {
-        success: false,
-        error: "Network error. Please check your connection and try again.",
-      };
-    }
-  }
-
-  async addfavoritePlace(place_info: CreatPlace) {
-    try {
-      console.log("Sending place data:", place_info); // Debug log
-      const response = await fetch(`${API_BASE_URL}/favorite_place/add`, {
-        method: "POST",
-        headers: await this.getHeaders(true),
-        body: JSON.stringify({ place_info }),
-      });
-
-      const data = await response.json();
-      console.log("API response:", data); // Debug log
-
-      if (!response.ok) {
-        return {
-          success: false,
-          error: data.error || data.message || "Failed to add place",
-        };
-      }
-
-      return { success: true, data: data };
-    } catch (error) {
-      console.error("API: Error adding Place:", error);
-      return {
-        success: false,
-        error: "Network error. Please check your connection and try again.",
-      };
-    }
-  }
-
-  async updatefavoritePlace(place_id: string, place_info: CreatPlace) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/favorite_place/update`, {
-        method: "PUT",
-        headers: await this.getHeaders(true),
-        body: JSON.stringify({ place_id, place_info }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return {
-          success: false,
-          error: data.error || data.message || "Failed to update place",
-        };
-      }
-
-      return { success: true, data: data };
-    } catch (error) {
-      console.error("API: Error updating place:", error);
-      return {
-        success: false,
-        error: "Network error. Please check your connection and try again.",
-      };
-    }
-  }
-
-  async deletefavoritePlace(place_id: string) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/favorite_place/delete`, {
-        method: "DELETE",
-        headers: await this.getHeaders(true),
-        body: JSON.stringify({ place_id }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return {
-          success: false,
-          error: data.error || data.message || "Failed to delete place",
-        };
-      }
-
-      return { success: true, data: data };
-    } catch (error) {
-      console.error("API: Error deleting place:", error);
-      return {
-        success: false,
-        error: "Network error. Please check your connection and try again.",
-      };
-    }
-  }
-
-  async getonefavoritePlace(place_id: string) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/favorite_place/get_one`, {
-        method: "GET",
-        headers: await this.getHeaders(true),
-        body: JSON.stringify({ place_id }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return {
-          success: false,
-          error: data.error || data.message || "Failed to get place",
-        };
-      }
-
-      return { success: true, data: data };
-    } catch (error) {
-      console.error("API: Error getting place:", error);
-      return {
-        success: false,
-        error: "Network error. Please check your connection and try again.",
-      };
-    }
-  }
-}
-
-const apiService = new SimpleApiService();
-
-// The component accepts the following props:
-
-// isEdit: A boolean that determines whether the form is for editing an existing Place (true) or adding a new one (false). Defaults to false.
-//is edit diya 2 ta  kaj kora jai
-// onSubmit: A callback function that will be triggered when the user submits the form (either to add or update the Place).
-//jkono form submission e ei function kaje lage
-// newPlace: An object that holds the current Place's data. It is used to populate the fields.
-//current place / Place data hold kore
-// handlePlaceUpdate: A function to handle updates to the fields (such as name, phone, email, etc.). This function will be called when the user modifies a field's value.
-//value update korle eita call hoi
-// handleFormCancel: A function that will be called if the user cancels the form (e.g., pressing the "Cancel" button).
-
-// isSubmitting: A boolean that indicates if the form is currently in the process of being submitted, preventing multiple submissions.
-// // Simple Place Form Component - moved outside to prevent re-creation
+// Place Form Component
 const PlaceForm = ({
   isEdit = false,
   onSubmit,
@@ -228,41 +56,26 @@ const PlaceForm = ({
   isSubmitting,
   onImageUpload,
   isUploadingImage,
+  onLocationSelect,
 }: {
   isEdit?: boolean;
   onSubmit: () => void;
-  newPlace: CreatPlace;
-  handlePlaceUpdate: (field: keyof CreatPlace, value: any) => void;
+  newPlace: CreatePlace;
+  handlePlaceUpdate: (field: keyof CreatePlace, value: any) => void;
   handleFormCancel: () => void;
   isSubmitting: boolean;
   onImageUpload: () => void;
   isUploadingImage: boolean;
+  onLocationSelect: () => void;
 }) => (
   <View className="bg-white rounded p-4 m-4 w-full max-w-sm">
     <Text className="text-lg font-bold text-[#67082F] mb-4 text-center">
       {isEdit ? "Update Place" : "Add Place"}
     </Text>
-    {/* //eta moadl er jonno */}
 
-    {/* Name Field
+    {/* Place Type Field */}
     <View className="mb-3">
-      <Text className="text-sm text-gray-700 mb-1">Place Name *</Text>
-      <View className="flex-row items-center bg-white border border-gray-300 rounded px-3 py-3">
-      
-        <TextInput
-          className="flex-1 ml-2 text-gray-900"
-          placeholder="Enter place name"
-          placeholderTextColor="#9CA3AF"
-          value={newPlace.placeName}
-          onChangeText={(text) => handlePlaceUpdate("placeName", text)}
-          autoCapitalize="words"
-        />
-      </View>
-    </View> */}
-
-    {/* Relationship Field */}
-    <View className="mb-3">
-      <Text className="text-sm text-gray-700 mb-1">Place_name* *</Text>
+      <Text className="text-sm text-gray-700 mb-1">Place Type *</Text>
       <View className="bg-white border border-gray-300 rounded">
         <Picker
           selectedValue={newPlace.placeName}
@@ -283,52 +96,33 @@ const PlaceForm = ({
       </View>
     </View>
 
-    {/* Lattitude Field */}
+    {/* Location Selection Button */}
     <View className="mb-3">
-      <Text className="text-sm text-gray-700 mb-1">Latitude *</Text>
-      <View className="flex-row items-center bg-white border border-gray-300 rounded px-3 py-3">
-        {/* <MaterialIcons name="phone" size={20} color="#67082F" /> */}
-        <TextInput
-          className="flex-1 ml-2 text-gray-900"
-          placeholder="Enter Latitude"
-          placeholderTextColor="#9CA3AF"
-          value={newPlace.latitude}
-          onChangeText={(text) => handlePlaceUpdate("latitude", text)}
-          autoCapitalize="words"
-        />
-      </View>
-    </View>
-
-    {/* Longitude Field */}
-    <View className="mb-3">
-      <Text className="text-sm text-gray-700 mb-1">Longitude *</Text>
-      <View className="flex-row items-center bg-white border border-gray-300 rounded px-3 py-3">
-        {/* <MaterialIcons name="phone" size={20} color="#67082F" /> */}
-        <TextInput
-          className="flex-1 ml-2 text-gray-900"
-          placeholder="Enter Longitude"
-          placeholderTextColor="#9CA3AF"
-          value={newPlace.longitude}
-          onChangeText={(text) => handlePlaceUpdate("longitude", text)}
-          autoCapitalize="words"
-        />
-      </View>
-    </View>
-
-    {/* address Field */}
-    <View className="mb-3">
-      <Text className="text-sm text-gray-700 mb-1">Address *</Text>
-      <View className="flex-row items-center bg-white border border-gray-300 rounded px-3 py-3">
-        {/* <MaterialIcons name="email" size={20} color="#67082F" /> */}
-        <TextInput
-          className="flex-1 ml-2 text-gray-900"
-          placeholder="Enter address name"
-          placeholderTextColor="#9CA3AF"
-          value={newPlace.address}
-          onChangeText={(text) => handlePlaceUpdate("address", text)}
-          autoCapitalize="words"
-        />
-      </View>
+      <Text className="text-sm text-gray-700 mb-1">Location *</Text>
+      <TouchableOpacity
+        onPress={onLocationSelect}
+        className="flex-row items-center bg-white border border-gray-300 rounded px-3 py-3"
+      >
+        <MaterialIcons name="place" size={20} color="#67082F" />
+        <View className="flex-1 ml-2">
+          {newPlace.latitude && newPlace.longitude ? (
+            <>
+              <Text className="text-gray-900 font-medium" numberOfLines={1}>
+                Location Selected
+              </Text>
+              <Text className="text-gray-500 text-sm" numberOfLines={1}>
+                {newPlace.address ||
+                  `${parseFloat(newPlace.latitude).toFixed(4)}, ${parseFloat(
+                    newPlace.longitude
+                  ).toFixed(4)}`}
+              </Text>
+            </>
+          ) : (
+            <Text className="text-gray-500">Select location on map</Text>
+          )}
+        </View>
+        <MaterialIcons name="chevron-right" size={20} color="#9CA3AF" />
+      </TouchableOpacity>
     </View>
 
     {/* Image Upload Section */}
@@ -415,9 +209,9 @@ const PlaceForm = ({
   </View>
 );
 
-export default function SimplePlacesScreen() {
+export default function ManageSafePlacesScreen() {
   const { showAlert, showConfirmAlert } = useAlert();
-  const [PlaceInfos, setPlaceInfos] = useState<PlaceInfo[]>([]);
+  const [placeInfos, setPlaceInfos] = useState<PlaceInfo[]>([]);
   const [showAddPlace, setShowAddPlace] = useState(false);
   const [showEditPlace, setShowEditPlace] = useState(false);
   const [editingPlace, setEditingPlace] = useState<PlaceInfo | null>(null);
@@ -426,11 +220,14 @@ export default function SimplePlacesScreen() {
   const [selected, setSelected] = useState<string[]>([]);
   const [selectionMode, setSelectionMode] = useState(false);
 
-  const [newPlace, setnewPlace] = useState<CreatPlace>({
+  // Location selection modal state
+  const [showLocationModal, setShowLocationModal] = useState(false);
+
+  const [newPlace, setNewPlace] = useState<CreatePlace>({
     placeName: "",
     latitude: "",
     longitude: "",
-    address: "unknown location",
+    address: "",
     img_url: "",
   });
 
@@ -438,54 +235,102 @@ export default function SimplePlacesScreen() {
   const [showImageUploadModal, setShowImageUploadModal] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
-  // Load trusted Places on component mount
+  // Load places on component mount
   useEffect(() => {
-    loadPlaceInfos();
-  }, []);
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const response = await apiService.getPlaceInfos();
+        console.log("Loading places...");
+        if (response.success && response.data) {
+          setPlaceInfos(response.data.favoritePlaces || []);
+        } else {
+          showAlert(
+            "Error",
+            response.error || "Failed to load places",
+            "error"
+          );
+        }
+      } catch (error) {
+        console.error("Error loading places:", error);
+        showAlert("Error", "Failed to load places", "error");
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const loadPlaceInfos = async () => {
+    loadData();
+  }, [showAlert]);
+
+  const resetNewPlace = () => {
+    setNewPlace({
+      placeName: "",
+      latitude: "",
+      longitude: "",
+      address: "",
+      img_url: "",
+    });
+  };
+
+  const reloadPlaces = async () => {
     setIsLoading(true);
     try {
       const response = await apiService.getPlaceInfos();
-      console.log("inside load");
       if (response.success && response.data) {
         setPlaceInfos(response.data.favoritePlaces || []);
-        // favoritePlaces eta actually getPlaceInfo() er body te ki name response  dey
       } else {
-        showAlert("Error", response.error || "Failed to load Places", "error");
+        showAlert("Error", response.error || "Failed to load places", "error");
       }
-    } catch {
-      showAlert("Error", "Failed to load Places", "error");
+    } catch (error) {
+      console.error("Error loading places:", error);
+      showAlert("Error", "Failed to load places", "error");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const resetnewPlace = () => {
-    setnewPlace({
-      placeName: "",
-      latitude: "",
-      longitude: "",
-      address: "unknown location",
-      img_url: "",
-    });
-  };
-
   const validatePlace = () => {
     if (!newPlace.placeName.trim()) {
-      showAlert("Validation Error", "Please enter a Place name", "error");
+      showAlert("Validation Error", "Please select a place type", "error");
       return false;
     }
 
-    // if (!newPlace.longitude.trim()) {
-    //   showAlert("Validation Error", "Please enter a longitude", "error");
-    //   return false;
-    // }
+    if (!newPlace.latitude.trim()) {
+      showAlert("Validation Error", "Please enter latitude", "error");
+      return false;
+    }
 
-    // if (!newPlace.latitude.trim()) {
-    //   showAlert("Validation Error", "Please specify the latitude", "error");
-    //   return false;
-    // }
+    if (!newPlace.longitude.trim()) {
+      showAlert("Validation Error", "Please enter longitude", "error");
+      return false;
+    }
+
+    if (!newPlace.address.trim()) {
+      showAlert("Validation Error", "Please enter an address", "error");
+      return false;
+    }
+
+    // Validate latitude and longitude ranges
+    const lat = parseFloat(newPlace.latitude);
+    const lng = parseFloat(newPlace.longitude);
+
+    if (isNaN(lat) || lat < -90 || lat > 90) {
+      showAlert(
+        "Validation Error",
+        "Latitude must be between -90 and 90",
+        "error"
+      );
+      return false;
+    }
+
+    if (isNaN(lng) || lng < -180 || lng > 180) {
+      showAlert(
+        "Validation Error",
+        "Longitude must be between -180 and 180",
+        "error"
+      );
+      return false;
+    }
 
     return true;
   };
@@ -495,17 +340,18 @@ export default function SimplePlacesScreen() {
 
     setIsSubmitting(true);
     try {
-      const response = await apiService.addfavoritePlace(newPlace);
+      const response = await apiService.addFavoritePlace(newPlace);
       if (response.success) {
         showAlert("Success", "Place added successfully", "success");
-        resetnewPlace();
+        resetNewPlace();
         setShowAddPlace(false);
-        loadPlaceInfos();
+        reloadPlaces();
       } else {
-        showAlert("Error", response.error || "Failed to add Place", "error");
+        showAlert("Error", response.error || "Failed to add place", "error");
       }
-    } catch {
-      showAlert("Error", "Failed to add Place", "error");
+    } catch (error) {
+      console.error("Error adding place:", error);
+      showAlert("Error", "Failed to add place", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -513,7 +359,7 @@ export default function SimplePlacesScreen() {
 
   const handleEditPlace = async () => {
     if (!editingPlace) {
-      showAlert("Error", "No Place selected for editing", "error");
+      showAlert("Error", "No place selected for editing", "error");
       return;
     }
 
@@ -521,22 +367,22 @@ export default function SimplePlacesScreen() {
 
     setIsSubmitting(true);
     try {
-      const response = await apiService.updatefavoritePlace(
+      const response = await apiService.updateFavoritePlace(
         editingPlace.id,
         newPlace
       );
       if (response.success) {
         showAlert("Success", "Place updated successfully", "success");
-        resetnewPlace();
+        resetNewPlace();
         setShowEditPlace(false);
         setEditingPlace(null);
-        loadPlaceInfos();
+        reloadPlaces();
       } else {
-        showAlert("Error", response.error || "Failed to update Place", "error");
+        showAlert("Error", response.error || "Failed to update place", "error");
       }
     } catch (error) {
-      console.error("Error updating Place:", error);
-      showAlert("Error", "Failed to update Place", "error");
+      console.error("Error updating place:", error);
+      showAlert("Error", "Failed to update place", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -545,23 +391,23 @@ export default function SimplePlacesScreen() {
   const handleDeletePlaces = async () => {
     if (selected.length === 0) return;
 
-    const PlaceNames = selected
-      .map((id) => PlaceInfos.find((c) => c.id === id)?.placeName)
+    const placeNames = selected
+      .map((id) => placeInfos.find((p) => p.id === id)?.placeName)
       .filter(Boolean)
       .join(", ");
 
     showConfirmAlert(
       "Delete Places",
-      `Are you sure you want to delete: ${PlaceNames}?`,
+      `Are you sure you want to delete: ${placeNames}?`,
       async () => {
         setIsSubmitting(true);
         try {
-          for (const PlaceId of selected) {
-            const response = await apiService.deletefavoritePlace(PlaceId);
+          for (const placeId of selected) {
+            const response = await apiService.deleteFavoritePlace(placeId);
             if (!response.success) {
               showAlert(
                 "Error",
-                response.error || "Failed to delete some Places",
+                response.error || "Failed to delete some places",
                 "error"
               );
               break;
@@ -571,10 +417,10 @@ export default function SimplePlacesScreen() {
           showAlert("Success", "Places deleted successfully", "success");
           setSelected([]);
           setSelectionMode(false);
-          loadPlaceInfos();
+          reloadPlaces();
         } catch (error) {
-          console.error("Error deleting Places:", error);
-          showAlert("Error", "Failed to delete Places", "error");
+          console.error("Error deleting places:", error);
+          showAlert("Error", "Failed to delete places", "error");
         } finally {
           setIsSubmitting(false);
         }
@@ -582,44 +428,61 @@ export default function SimplePlacesScreen() {
     );
   };
 
-  const startEditPlace = (Place: PlaceInfo) => {
-    setEditingPlace(Place);
-    setnewPlace({
-      placeName: Place.placeName,
-      longitude: Place.longitude,
-      latitude: Place.latitude,
-      address: Place.address,
-      img_url: Place.img_url,
+  const startEditPlace = (place: PlaceInfo) => {
+    setEditingPlace(place);
+    setNewPlace({
+      placeName: place.placeName,
+      longitude: place.longitude,
+      latitude: place.latitude,
+      address: place.address,
+      img_url: place.img_url,
     });
     setShowEditPlace(true);
   };
 
-  const handleLongPress = (PlaceId: string) => {
+  const handleLongPress = (placeId: string) => {
     if (!selectionMode) {
       setSelectionMode(true);
-      setSelected([PlaceId]);
+      setSelected([placeId]);
     }
   };
 
-  const handleSelect = (PlaceId: string) => {
+  const handleSelect = (placeId: string) => {
     if (selectionMode) {
       setSelected((prev) =>
-        prev.includes(PlaceId)
-          ? prev.filter((id) => id !== PlaceId)
-          : [...prev, PlaceId]
+        prev.includes(placeId)
+          ? prev.filter((id) => id !== placeId)
+          : [...prev, placeId]
       );
     }
   };
 
-  const handlePlaceUpdate = (field: keyof CreatPlace, value: any) => {
-    setnewPlace({ ...newPlace, [field]: value });
+  const handlePlaceUpdate = (field: keyof CreatePlace, value: any) => {
+    setNewPlace({ ...newPlace, [field]: value });
   };
 
   const handleFormCancel = () => {
-    resetnewPlace();
+    resetNewPlace();
     setShowAddPlace(false);
     setShowEditPlace(false);
     setEditingPlace(null);
+  };
+
+  // Location selection function
+  const handleLocationSelect = () => {
+    setShowLocationModal(true);
+  };
+
+  const onLocationSelect = (location: SelectedLocation) => {
+    setNewPlace({
+      ...newPlace,
+      latitude: location.latitude.toString(),
+      longitude: location.longitude.toString(),
+      address:
+        location.address ||
+        `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`,
+    });
+    setShowLocationModal(false);
   };
 
   // Image upload functions
@@ -640,13 +503,13 @@ export default function SimplePlacesScreen() {
 
       if (result.success && result.url) {
         handlePlaceUpdate("img_url", result.url);
-        showAlert("Success", "Image uploaded successfully!");
+        showAlert("Success", "Image uploaded successfully!", "success");
       } else {
-        showAlert("Error", result.error || "Failed to upload image");
+        showAlert("Error", result.error || "Failed to upload image", "error");
       }
     } catch (error) {
       console.error("Image upload error:", error);
-      showAlert("Error", "Failed to upload image");
+      showAlert("Error", "Failed to upload image", "error");
     } finally {
       setIsUploadingImage(false);
       setShowImageUploadModal(false);
@@ -655,12 +518,13 @@ export default function SimplePlacesScreen() {
 
   return (
     <View className="flex-1 bg-[#FFE4D6] max-w-3xl mx-auto w-full">
-      {/* Simple Header */}
-      {/* header of this page */}
-
+      {/* Header */}
       <View className="bg-[#67082F] px-4 pt-12 pb-4 flex-row justify-between items-center">
-        <Text className="text-white text-lg font-bold flex-1">
-          Favorite Places
+        <TouchableOpacity onPress={() => router.back()}>
+          <MaterialIcons name="arrow-back" size={24} color="white" />
+        </TouchableOpacity>
+        <Text className="text-white text-lg font-bold flex-1 ml-4">
+          Manage Safe Places
         </Text>
       </View>
 
@@ -679,6 +543,7 @@ export default function SimplePlacesScreen() {
             isSubmitting={isSubmitting}
             onImageUpload={() => setShowImageUploadModal(true)}
             isUploadingImage={isUploadingImage}
+            onLocationSelect={handleLocationSelect}
           />
         </View>
       </Modal>
@@ -699,6 +564,7 @@ export default function SimplePlacesScreen() {
             isSubmitting={isSubmitting}
             onImageUpload={() => setShowImageUploadModal(true)}
             isUploadingImage={isUploadingImage}
+            onLocationSelect={handleLocationSelect}
           />
         </View>
       </Modal>
@@ -747,6 +613,27 @@ export default function SimplePlacesScreen() {
         </View>
       </Modal>
 
+      {/* Location Selection Modal */}
+      <LocationSelectionModal
+        visible={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        onLocationSelect={onLocationSelect}
+        initialLocation={
+          newPlace.latitude && newPlace.longitude
+            ? {
+                latitude: parseFloat(newPlace.latitude),
+                longitude: parseFloat(newPlace.longitude),
+                address: newPlace.address,
+                name: newPlace.placeName || "Selected Location",
+              }
+            : undefined
+        }
+        title="Select Place Location"
+        confirmButtonText="Confirm Location"
+        enableSearch={true}
+        showCurrentLocationButton={true}
+      />
+
       {/* Main Content */}
       <ScrollView className="flex-1 p-4">
         {/* Action Buttons Section */}
@@ -759,7 +646,7 @@ export default function SimplePlacesScreen() {
             <Text className="text-white font-medium ml-1">Add Place</Text>
           </TouchableOpacity>
 
-          {PlaceInfos.length > 0 && (
+          {placeInfos.length > 0 && (
             <TouchableOpacity
               className="flex-1 ml-2 bg-white rounded py-2 px-3 flex-row items-center justify-center border border-gray-200"
               onPress={() => {
@@ -784,21 +671,21 @@ export default function SimplePlacesScreen() {
         </View>
 
         {/* Select All Button when in selection mode */}
-        {selectionMode && PlaceInfos.length > 0 && (
+        {selectionMode && placeInfos.length > 0 && (
           <View className="mb-3">
             <TouchableOpacity
               className="bg-[#67082F]/10 rounded py-2 px-3 flex-row items-center justify-center border border-[#67082F]/20"
               onPress={() => {
-                if (selected.length === PlaceInfos.length) {
+                if (selected.length === placeInfos.length) {
                   setSelected([]);
                 } else {
-                  setSelected(PlaceInfos.map((Place) => Place.id));
+                  setSelected(placeInfos.map((place) => place.id));
                 }
               }}
             >
               <MaterialIcons
                 name={
-                  selected.length === PlaceInfos.length
+                  selected.length === placeInfos.length
                     ? "check-circle"
                     : "radio-button-unchecked"
                 }
@@ -806,7 +693,7 @@ export default function SimplePlacesScreen() {
                 color="#67082F"
               />
               <Text className="text-[#67082F] font-medium ml-1">
-                {selected.length === PlaceInfos.length
+                {selected.length === placeInfos.length
                   ? "Deselect All"
                   : "Select All"}
               </Text>
@@ -814,7 +701,7 @@ export default function SimplePlacesScreen() {
           </View>
         )}
 
-        {/* Delete Button when Places are selected */}
+        {/* Delete Button when places are selected */}
         {selected.length > 0 && (
           <View className="mb-3">
             <TouchableOpacity
@@ -836,9 +723,9 @@ export default function SimplePlacesScreen() {
           </View>
         )}
 
-        {/* Trusted Places */}
+        {/* Safe Places List */}
         <Text className="text-lg font-bold text-[#67082F] mb-3">
-          Trusted Places
+          Safe Places
         </Text>
 
         {isLoading ? (
@@ -846,54 +733,62 @@ export default function SimplePlacesScreen() {
             <ActivityIndicator size="large" color="#67082F" />
             <Text className="text-gray-600 mt-2">Loading...</Text>
           </View>
-        ) : PlaceInfos.length === 0 ? (
+        ) : placeInfos.length === 0 ? (
           <View className="bg-white p-4 rounded items-center">
-            {/* <MaterialIcons name="Places" size={40} color="#9CA3AF" /> */}
+            <MaterialIcons name="place" size={40} color="#9CA3AF" />
             <Text className="text-gray-600 mt-2 text-center">
-              No Places yet
+              No safe places yet
+            </Text>
+            <Text className="text-gray-500 text-sm text-center mt-1">
+              Add your first safe place to get started
             </Text>
           </View>
         ) : (
-          PlaceInfos.map((Place) => (
+          placeInfos.map((place) => (
             <TouchableOpacity
-              key={Place.id}
+              key={place.id}
               className={`flex-row items-center bg-white p-3 rounded mb-2 ${
-                selected.includes(Place.id) ? "border border-red-600" : ""
+                selected.includes(place.id) ? "border border-red-600" : ""
               }`}
-              onPress={() => handleSelect(Place.id)}
-              onLongPress={() => handleLongPress(Place.id)}
+              onPress={() => handleSelect(place.id)}
+              onLongPress={() => handleLongPress(place.id)}
             >
-              <View className="w-8 h-8 bg-[#67082F]/10 rounded items-center justify-center mr-3">
-                <MaterialIcons name="person" size={20} color="#67082F" />
+              {/* Place Image or Icon */}
+              <View className="w-12 h-12 mr-3">
+                {place.img_url ? (
+                  <Image
+                    source={{ uri: place.img_url }}
+                    className="w-12 h-12 rounded"
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View className="w-12 h-12 bg-[#67082F]/10 rounded items-center justify-center">
+                    <MaterialIcons name="place" size={24} color="#67082F" />
+                  </View>
+                )}
               </View>
+
               <View className="flex-1">
                 <Text className="font-medium text-gray-800">
-                  {Place.placeName}
+                  {place.placeName}
                 </Text>
-                <Text className="text-gray-600">{Place.longitude}</Text>
-                <Text className="text-xs text-[#67082F]">{Place.latitude}</Text>
-                <Text className="text-xs text-[#67082F]">{Place.img_url}</Text>
-                <Text className="text-xs text-[#67082F]">{Place.address}</Text>
+                <Text className="text-gray-600 text-sm">{place.address}</Text>
+                <Text className="text-xs text-gray-500">
+                  {place.latitude}, {place.longitude}
+                </Text>
               </View>
 
               <View className="flex-row items-center">
                 <TouchableOpacity
-                  onPress={() => handleAddPlace()}
-                  className="p-1 mr-1"
-                >
-                  {/* <MaterialIcons name="phone" size={18} color="#67082F" /> */}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => startEditPlace(Place)}
-                  className="p-1 mr-1"
+                  onPress={() => startEditPlace(place)}
+                  className="p-2 mr-1"
                 >
                   <MaterialIcons name="edit" size={18} color="#67082F" />
                 </TouchableOpacity>
 
                 {selectionMode && (
                   <View>
-                    {selected.includes(Place.id) ? (
+                    {selected.includes(place.id) ? (
                       <MaterialIcons
                         name="check-circle"
                         size={20}

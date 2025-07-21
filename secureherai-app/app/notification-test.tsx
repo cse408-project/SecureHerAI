@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, Alert } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNotifications } from "../context/NotificationContext";
 import { useAuth } from "../context/AuthContext";
@@ -7,6 +7,8 @@ import { NotificationType } from "../types/notification";
 import Header from "../components/Header";
 import NotificationModal from "../components/NotificationModal";
 import AlertNotificationViewer from "../components/AlertNotificationViewer";
+import { useAlert } from "../context/AlertContext";
+
 
 export default function NotificationTestScreen() {
   const { user } = useAuth();
@@ -18,7 +20,8 @@ export default function NotificationTestScreen() {
     refreshNotificationCount,
     addNotification,
   } = useNotifications();
-
+  
+  const {showAlert} = useAlert();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAlertViewer, setShowAlertViewer] = useState(false);
   const [testAlertId, setTestAlertId] = useState<string>("");
@@ -42,9 +45,10 @@ export default function NotificationTestScreen() {
     };
 
     addNotification(testNotification);
-    Alert.alert(
+    showAlert(
       "Test Notification Added",
-      "A test emergency notification has been added"
+      "A test emergency notification has been added",
+      "success"
     );
   };
 
@@ -55,9 +59,9 @@ export default function NotificationTestScreen() {
         fetchUnreadNotifications(),
         refreshNotificationCount(),
       ]);
-      Alert.alert("Success", "Notification data refreshed");
+      showAlert("Success", "Notification data refreshed", "success");
     } catch {
-      Alert.alert("Error", "Failed to refresh notification data");
+      showAlert("Error", "Failed to refresh notification data", "error");
     }
   };
 
