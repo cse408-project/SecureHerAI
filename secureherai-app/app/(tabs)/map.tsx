@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -6,8 +6,7 @@ import {
   TouchableOpacity,
   Modal,
   ScrollView,
-  TextInput,
-  ActivityIndicator,
+  Linking,
 } from "react-native";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -24,6 +23,29 @@ import { ReportSummary } from "../../types/report";
 import { SafePlace } from "../../types/emergencyServices";
 import { useAlert } from "../../context/AlertContext";
 import NotificationModal from "../../components/NotificationModal";
+import WebPlacesInput from "../../components/WebPlacesInput";
+import MapViewDirectionsWeb from "../../components/MapViewDirectionsWeb";
+
+// Conditional import for MapViewDirections (only on native platforms)
+let MapViewDirections: any = null;
+try {
+  if (Platform.OS !== "web") {
+    MapViewDirections = require("react-native-maps-directions").default;
+  }
+} catch (error) {
+  console.log("MapViewDirections not available on this platform");
+}
+
+// Conditional import for GooglePlacesAutocomplete (only on native platforms)
+let GooglePlacesAutocomplete: any = null;
+try {
+  if (Platform.OS !== "web") {
+    const GooglePlacesModule = require("react-native-google-places-autocomplete");
+    GooglePlacesAutocomplete = GooglePlacesModule.GooglePlacesAutocomplete;
+  }
+} catch (error) {
+  console.log("GooglePlacesAutocomplete not available on this platform");
+}
 
 // Extended interface for map markers with report data
 interface ExtendedMapMarker extends MapMarker {
@@ -35,6 +57,7 @@ interface ExtendedMapMarker extends MapMarker {
 export default function MapScreen() {
   const { showAlert } = useAlert();
   const [showNotifications, setShowNotifications] = useState(false);
+  const mapRef = useRef<any>(null);
 
   const [currentLocation, setCurrentLocation] = useState<MapLocation | null>(
     null
@@ -50,40 +73,28 @@ export default function MapScreen() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showDropdown, setShowDropdown] = useState(true);
 
-  // Search functionality
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [showSearchResults, setShowSearchResults] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false);
+  // New directions functionality
+  const [origin, setOrigin] = useState<MapLocation | null>(null);
+  const [destination, setDestination] = useState<MapLocation | null>(null);
+  const [showDirections, setShowDirections] = useState(false);
+  const [distance, setDistance] = useState("");
+  const [duration, setDuration] = useState("");
+  const [showDirectionsModal, setShowDirectionsModal] = useState(false);
+  const [travelMode, setTravelMode] = useState<
+    "DRIVING" | "WALKING" | "BICYCLING" | "TRANSIT"
+  >("DRIVING");
+
+  // States for controlling the destination field visibility
+  const [originSelected, setOriginSelected] = useState(false);
+  const [showDestinationField, setShowDestinationField] = useState(false);
+  const [originText, setOriginText] = useState("");
+  const [destinationText, setDestinationText] = useState("");
 
   // Map controls
   const [mapType, setMapType] = useState<"standard" | "satellite" | "hybrid">(
     "standard"
   );
   const [showPOIs, setShowPOIs] = useState(false);
-  // const [showDropdown, setShowDropdown] = useState(false);
-  // const [interactiveOptions, setInteractiveOptions] = useState<
-  //   InteractiveOption[]
-  // >([
-  //   { id: "restaurants", label: "Restaurants", icon: "🍽️", enabled: true },
-  //   { id: "shopping", label: "Shopping Centers", icon: "🛍️", enabled: true },
-  //   {
-  //     id: "transportation",
-  //     label: "Public Transport",
-  //     icon: "🚌",
-  //     enabled: false,
-  //   },
-  //   {
-  //     id: "education",
-  //     label: "Schools & Universities",
-  //     icon: "🏫",
-  //     enabled: false,
-  //   },
-  //   { id: "entertainment", label: "Entertainment", icon: "🎭", enabled: false },
-  //   { id: "hotels", label: "Hotels & Lodging", icon: "🏨", enabled: false },
-  //   { id: "banks", label: "Banks & ATMs", icon: "🏦", enabled: false },
-  //   { id: "gas_stations", label: "Gas Stations", icon: "⛽", enabled: false },
-  // ]);
 
   // Helper functions for incident types
   const getIncidentTypeColor = (type: string): string => {
@@ -167,76 +178,6 @@ export default function MapScreen() {
     }
   };
 
-  // Search functionality
-  const handleSearch = async (query: string) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      setShowSearchResults(false);
-      return;
-    }
-
-    setSearchLoading(true);
-    try {
-      // Simulate search API call - replace with actual search service
-      // This could be Google Places API, Mapbox Geocoding, etc.
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Mock search results - replace with actual API results
-      const mockResults = [
-        {
-          id: "1",
-          name: `${query} - Restaurant`,
-          address: `123 ${query} Street, Dhaka`,
-          location: {
-            latitude: 23.8103 + Math.random() * 0.01,
-            longitude: 90.4125 + Math.random() * 0.01,
-          },
-          type: "restaurant",
-          distance: "0.5 km",
-        },
-        {
-          id: "2",
-          name: `${query} - Shopping Center`,
-          address: `456 ${query} Avenue, Dhaka`,
-          location: {
-            latitude: 23.8103 + Math.random() * 0.01,
-            longitude: 90.4125 + Math.random() * 0.01,
-          },
-          type: "shopping",
-          distance: "1.2 km",
-        },
-      ];
-
-      setSearchResults(mockResults);
-      setShowSearchResults(true);
-    } catch (error) {
-      console.error("Search error:", error);
-      showAlert("Error", "Failed to search locations", "error");
-    } finally {
-      setSearchLoading(false);
-    }
-  };
-
-  const selectSearchResult = (result: any) => {
-    // Add marker for selected location
-    const newMarker: ExtendedMapMarker = {
-      id: `search-${result.id}`,
-      coordinate: result.location,
-      title: result.name,
-      description: result.address,
-      type: "custom",
-      color: "#4285F4",
-    };
-
-    setMarkers((prev) => [
-      ...prev.filter((m) => !m.id.startsWith("search-")),
-      newMarker,
-    ]);
-    setCurrentLocation(result.location);
-    setShowSearchResults(false);
-    setSearchQuery(result.name);
-  };
-
   const getCurrentLocation = async () => {
     try {
       const location = await locationService.getCurrentLocation();
@@ -250,51 +191,27 @@ export default function MapScreen() {
     }
   };
 
-  const getDirections = (destination: any) => {
-    if (!currentLocation) {
-      showAlert(
-        "Location Required",
-        "Please enable location services to get directions",
-        "error"
-      );
-      return;
+  // Handle directions
+  const handleDirectionsReady = (result: any) => {
+    setDistance(result.distance.toFixed(2) + " km");
+    setDuration(result.duration.toFixed(2) + " min");
+
+    // Fit the map to show the entire route
+    if (mapRef.current && result.coordinates && result.coordinates.length > 0) {
+      // Calculate bounds for reference (not directly used, but useful for debugging)
+      // const bounds = {
+      //   north: Math.max(...result.coordinates.map((coord: any) => coord.latitude)),
+      //   south: Math.min(...result.coordinates.map((coord: any) => coord.latitude)),
+      //   east: Math.max(...result.coordinates.map((coord: any) => coord.longitude)),
+      //   west: Math.min(...result.coordinates.map((coord: any) => coord.longitude)),
+      // };
+
+      mapRef.current.fitToCoordinates(result.coordinates, {
+        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+        animated: true,
+      });
     }
-
-    // For now, just show an alert - this could be expanded to open external map apps
-    showAlert(
-      "Directions",
-      `Directions to ${destination.name} would open here`,
-      "info"
-    );
-
-    // Optional: Open external map app
-    // const url = Platform.select({
-    //   ios: `maps:?daddr=${destination.location.latitude},${destination.location.longitude}`,
-    //   android: `geo:0,0?q=${destination.location.latitude},${destination.location.longitude}(${destination.name})`,
-    // });
-    // if (url) Linking.openURL(url);
   };
-
-  // Toggle interactive option
-  // const toggleInteractiveOption = (id: string) => {
-  //   setInteractiveOptions((prev) =>
-  //     prev.map((option) =>
-  //       option.id === id ? { ...option, enabled: !option.enabled } : option
-  //     )
-  //   );
-  // };
-
-  // const handleNormalPlaceDetails = useCallback(
-  //   (placeName: string) => {
-  //     // Handle normal place interactions - could open directions, details, etc.
-  //     showAlert(
-  //       "Place Information",
-  //       `You selected ${placeName}. This would typically open directions or more details.`,
-  //       "info"
-  //     );
-  //   },
-  //   [showAlert]
-  // );
 
   // Initialize location and load reports
   useEffect(() => {
@@ -473,7 +390,7 @@ export default function MapScreen() {
                 isOwnReport ? " • 🌟 YOUR REPORT" : ""
               } • ⏰ ${timeAgo}${isRecent ? " • 🔴 RECENT" : ""}`,
               reportData: report,
-              type: (report.incidentType as any),
+              type: report.incidentType as any,
               color: getIncidentTypeColor(report.incidentType),
               onCalloutPress: () => handleReportDetails(report),
             };
@@ -525,7 +442,15 @@ export default function MapScreen() {
         }
       };
     }
-  }, [safePlaces]);
+  });
+
+  // Update route when travel mode changes
+  useEffect(() => {
+    if (showDirections && origin && destination) {
+      // Re-render directions with the new travel mode
+      setOrigin({ ...origin, mode: travelMode.toLowerCase() });
+    }
+  }, [travelMode, origin, destination, showDirections]);
 
   const handleMarkerPress = (marker: ExtendedMapMarker) => {
     // This function is now mainly for the current location marker
@@ -541,7 +466,15 @@ export default function MapScreen() {
 
   return (
     <>
-      <View className="flex-1 bg-[#FFE4D6] max-w-screen-md mx-auto w-full">
+      <View
+        className="flex-1 bg-[#FFE4D6] max-w-screen-md mx-auto w-full"
+        style={{
+          // Ensure proper stacking context for web dropdowns
+          ...(Platform.OS === "web" && {
+            isolation: "isolate" as any,
+          }),
+        }}
+      >
         <Header
           title={`Safety Map${
             showReports && showSafePlaces
@@ -557,6 +490,465 @@ export default function MapScreen() {
         />
 
         {/* Map Controls */}
+        {/* Directions Section */}
+        <View
+          className="bg-white mx-4 mb-2 p-3 rounded-lg shadow-sm"
+          style={{
+            zIndex: 10000,
+            // Ensure overflow is visible for dropdowns on web
+            ...(Platform.OS === "web" && {
+              overflow: "visible" as any,
+            }),
+          }}
+        >
+          <View className="flex-row items-center justify-between mb-3">
+            <Text className="text-sm font-semibold text-gray-700">
+              Navigation
+            </Text>
+            {showDirections && (
+              <View className="flex-row items-center">
+                <TouchableOpacity
+                  onPress={() => setShowDirectionsModal(true)}
+                  className="mr-2 bg-[#67082F] rounded-md px-2 py-1"
+                >
+                  <Text className="text-white text-xs font-medium">
+                    {distance} • {duration}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowDirections(false);
+                    setOrigin(null);
+                    setDestination(null);
+                    setOriginSelected(false);
+                    setShowDestinationField(false);
+                    setOriginText("");
+                    setDestinationText("");
+                    // Remove navigation markers
+                    setMarkers((prevMarkers) =>
+                      prevMarkers.filter(
+                        (marker) =>
+                          marker.id !== "origin" && marker.id !== "destination"
+                      )
+                    );
+                  }}
+                  className="bg-gray-200 rounded-full p-1"
+                >
+                  <MaterialIcons name="close" size={12} color="#67082F" />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+
+          {/* Origin Input Field Row */}
+          <View
+            className="mb-3 flex-row items-center space-x-2"
+            style={{
+              zIndex: 20000,
+              position: "relative",
+            }}
+          >
+            {/* Input Field - Takes most of the space */}
+            <View className="flex-1">
+              {GooglePlacesAutocomplete && Platform.OS !== "web" ? (
+                <GooglePlacesAutocomplete
+                  placeholder="Enter starting point"
+                  fetchDetails={true}
+                  onPress={(data: any, details: any = null) => {
+                    if (details?.geometry?.location) {
+                      const location = {
+                        latitude: details.geometry.location.lat,
+                        longitude: details.geometry.location.lng,
+                      };
+                      setOrigin(location);
+                      setOriginSelected(true);
+
+                      // Create or update origin marker
+                      const originMarker: ExtendedMapMarker = {
+                        id: "origin",
+                        coordinate: location,
+                        title:
+                          data.structured_formatting?.main_text || "Origin",
+                        description: data.description || "",
+                        type: "custom", // Changed from "general" to a valid type
+                        color: "#4285F4", // Blue
+                      };
+
+                      // Filter out any existing origin marker
+                      setMarkers((prevMarkers) => [
+                        ...prevMarkers.filter(
+                          (marker) =>
+                            marker.id !== "origin" &&
+                            marker.id !== "destination"
+                        ),
+                        originMarker,
+                        ...(destination
+                          ? [
+                              {
+                                id: "destination",
+                                coordinate: destination,
+                                title: "Destination",
+                                description: "",
+                                type: "custom", // Changed from "general" to a valid type
+                                color: "#EA4335", // Red
+                              } as ExtendedMapMarker,
+                            ]
+                          : []),
+                      ]);
+
+                      if (destination) {
+                        setShowDirections(true);
+                      }
+                    }
+                  }}
+                  query={{
+                    key: process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || "",
+                    language: "en",
+                    components: "country:bd",
+                  }}
+                  styles={{
+                    container: {
+                      flex: 1,
+                      marginBottom: 8,
+                      zIndex: 20000,
+                    },
+                    textInputContainer: {
+                      backgroundColor: "rgba(0,0,0,0)",
+                      borderTopWidth: 0,
+                      borderBottomWidth: 0,
+                    },
+                    textInput: {
+                      marginLeft: 0,
+                      marginRight: 0,
+                      height: 40,
+                      color: "#5d5d5d",
+                      fontSize: 14,
+                      borderWidth: 1,
+                      borderColor: "#ddd",
+                      borderRadius: 8,
+                    },
+                    predefinedPlacesDescription: {
+                      color: "#1faadb",
+                    },
+                    listView: {
+                      position: "absolute",
+                      top: 40,
+                      left: 0,
+                      right: 0,
+                      backgroundColor: "white",
+                      borderRadius: 5,
+                      elevation: 3,
+                      zIndex: 20001,
+                    },
+                    row: {
+                      padding: 13,
+                      height: 50,
+                      flexDirection: "row",
+                    },
+                    separator: {
+                      height: 0.5,
+                      backgroundColor: "#c8c7cc",
+                    },
+                    description: {
+                      fontSize: 14,
+                    },
+                  }}
+                  currentLocation={true}
+                  currentLocationLabel="Current location"
+                  enablePoweredByContainer={false}
+                />
+              ) : (
+                <WebPlacesInput
+                  placeholder="Enter starting point"
+                  currentLocation={currentLocation || undefined}
+                  safePlaces={safePlaces}
+                  zIndexBase={20000}
+                  value={originText}
+                  onValueChange={setOriginText}
+                  onPlaceSelect={(place) => {
+                    console.log("=== ORIGIN PLACE SELECTED IN MAP ===");
+                    console.log("Place received:", place);
+                    console.log("Has geometry:", !!place.geometry);
+                    console.log("Has location:", !!place.geometry?.location);
+
+                    if (place.geometry?.location) {
+                      const location = {
+                        latitude: place.geometry.location.lat(),
+                        longitude: place.geometry.location.lng(),
+                      };
+                      console.log("Setting origin to:", location);
+                      setOrigin(location);
+                      setOriginSelected(true);
+
+                      // Create or update origin marker
+                      const originMarker: ExtendedMapMarker = {
+                        id: "origin",
+                        coordinate: location,
+                        title: place.name || "Origin",
+                        description: place.formatted_address || "",
+                        type: "custom",
+                        color: "#00EE55",
+                      };
+
+                      console.log("Creating origin marker:", originMarker);
+                      setMarkers((prevMarkers) => {
+                        const newMarkers = [
+                          ...prevMarkers.filter(
+                            (marker) =>
+                              marker.id !== "origin" &&
+                              marker.id !== "destination"
+                          ),
+                          originMarker,
+                          ...(destination
+                            ? [
+                                {
+                                  id: "destination",
+                                  coordinate: destination,
+                                  title: "Destination",
+                                  description: "",
+                                  type: "custom",
+                                  color: "#00EE55",
+                                } as ExtendedMapMarker,
+                              ]
+                            : []),
+                        ];
+                        console.log("Updated markers array:", newMarkers);
+                        return newMarkers;
+                      });
+
+                      if (destination) {
+                        setShowDirections(true);
+                      }
+                    }
+                  }}
+                />
+              )}
+            </View>
+
+            {/* Dropdown Button - shows beside the input field after origin is selected */}
+            {originSelected && (
+              <TouchableOpacity
+                onPress={() => setShowDestinationField(!showDestinationField)}
+                className="bg-gray-100 rounded-lg p-2"
+                style={{ height: 40, justifyContent: "center" }}
+              >
+                <MaterialIcons
+                  name={
+                    showDestinationField
+                      ? "keyboard-arrow-up"
+                      : "keyboard-arrow-down"
+                  }
+                  size={24}
+                  color="#67082F"
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Destination Field - shows when dropdown is opened */}
+          {originSelected && showDestinationField && (
+            <View
+              className="mb-2 flex-row items-center space-x-2"
+              style={{
+                zIndex: 15000, // Lower z-index than first field but high enough for proper suggestions
+                position: "relative",
+              }}
+            >
+              {/* Destination Input Field - Takes most of the space */}
+              <View className="flex-1">
+                {GooglePlacesAutocomplete && Platform.OS !== "web" ? (
+                  <GooglePlacesAutocomplete
+                    placeholder="Enter destination"
+                    fetchDetails={true}
+                    onPress={(data: any, details: any = null) => {
+                      if (details?.geometry?.location) {
+                        const location = {
+                          latitude: details.geometry.location.lat,
+                          longitude: details.geometry.location.lng,
+                        };
+                        setDestination(location);
+
+                        // Create or update destination marker
+                        const destinationMarker: ExtendedMapMarker = {
+                          id: "destination",
+                          coordinate: location,
+                          title:
+                            data.structured_formatting?.main_text ||
+                            "Destination",
+                          description: data.description || "",
+                          type: "custom", // Changed from "general" to a valid type
+                          color: "#EA4335", // Red
+                        };
+
+                        // Filter out any existing destination marker
+                        setMarkers((prevMarkers) => [
+                          ...prevMarkers.filter(
+                            (marker) => marker.id !== "destination"
+                          ),
+                          destinationMarker,
+                          ...(origin &&
+                          !prevMarkers.some((marker) => marker.id === "origin")
+                            ? [
+                                {
+                                  id: "origin",
+                                  coordinate: origin,
+                                  title: "Origin",
+                                  description: "",
+                                  type: "custom", // Changed from "general" to a valid type
+                                  color: "#EA4335", // Blue
+                                } as ExtendedMapMarker,
+                              ]
+                            : []),
+                        ]);
+                      }
+                    }}
+                    query={{
+                      key:
+                        process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || "",
+                      language: "en",
+                      components: "country:bd",
+                    }}
+                    styles={{
+                      container: {
+                        flex: 1,
+                        zIndex: 15000,
+                      },
+                      textInputContainer: {
+                        backgroundColor: "rgba(0,0,0,0)",
+                        borderTopWidth: 0,
+                        borderBottomWidth: 0,
+                      },
+                      textInput: {
+                        marginLeft: 0,
+                        marginRight: 0,
+                        height: 40,
+                        color: "#5d5d5d",
+                        fontSize: 14,
+                        borderWidth: 1,
+                        borderColor: "#ddd",
+                        borderRadius: 8,
+                      },
+                      predefinedPlacesDescription: {
+                        color: "#1faadb",
+                      },
+                      listView: {
+                        position: "absolute",
+                        top: 40,
+                        left: 0,
+                        right: 0,
+                        backgroundColor: "white",
+                        borderRadius: 5,
+                        elevation: 3,
+                        zIndex: 15001,
+                      },
+                      row: {
+                        padding: 13,
+                        height: 50,
+                        flexDirection: "row",
+                      },
+                      separator: {
+                        height: 0.5,
+                        backgroundColor: "#c8c7cc",
+                      },
+                      description: {
+                        fontSize: 14,
+                      },
+                    }}
+                    enablePoweredByContainer={false}
+                  />
+                ) : (
+                  <WebPlacesInput
+                    placeholder="Enter destination"
+                    currentLocation={currentLocation || undefined}
+                    safePlaces={safePlaces}
+                    zIndexBase={15000} // High enough for proper suggestions display
+                    dropdownOffset={0} // No offset needed now since fields are properly separated
+                    value={destinationText}
+                    onValueChange={setDestinationText}
+                    onPlaceSelect={(place) => {
+                      console.log("=== DESTINATION PLACE SELECTED IN MAP ===");
+                      console.log("Place received:", place);
+                      console.log("Has geometry:", !!place.geometry);
+                      console.log("Has location:", !!place.geometry?.location);
+
+                      if (place.geometry?.location) {
+                        const location = {
+                          latitude: place.geometry.location.lat(),
+                          longitude: place.geometry.location.lng(),
+                        };
+                        console.log("Setting destination to:", location);
+                        setDestination(location);
+
+                        // Create or update destination marker with RED color
+                        const destinationMarker: ExtendedMapMarker = {
+                          id: "destination",
+                          coordinate: location,
+                          title: place.name || "Destination",
+                          description: place.formatted_address || "",
+                          type: "custom",
+                          color: "#EA4335", // RED for destination
+                        };
+
+                        console.log(
+                          "Creating destination marker:",
+                          destinationMarker
+                        );
+                        setMarkers((prevMarkers) => {
+                          const newMarkers = [
+                            ...prevMarkers.filter(
+                              (marker) => marker.id !== "destination"
+                            ),
+                            destinationMarker,
+                            ...(origin &&
+                            !prevMarkers.some(
+                              (marker) => marker.id === "origin"
+                            )
+                              ? [
+                                  {
+                                    id: "origin",
+                                    coordinate: origin,
+                                    title: "Origin",
+                                    description: "",
+                                    type: "custom",
+                                    color: "#4285F4", // BLUE for origin
+                                  } as ExtendedMapMarker,
+                                ]
+                              : []),
+                          ];
+                          console.log("Updated markers array:", newMarkers);
+                          return newMarkers;
+                        });
+                      }
+                    }}
+                  />
+                )}
+              </View>
+
+              {/* Navigation Button - shows beside destination field when destination is set */}
+              {destination && (
+                <TouchableOpacity
+                  onPress={() => {
+                    console.log("Navigation button pressed!");
+                    console.log("Origin:", origin);
+                    console.log("Destination:", destination);
+                    if (origin && destination) {
+                      setShowDirections(true);
+                      console.log(
+                        "Showing directions between origin and destination"
+                      );
+                    }
+                  }}
+                  className="bg-[#67082F] rounded-lg p-2"
+                  style={{ height: 40, justifyContent: "center" }}
+                >
+                  <MaterialIcons name="directions" size={24} color="white" />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+        </View>
+
+        {/* Map Controls Section */}
         <View className="bg-white mx-4 mb-2 p-3 rounded-lg shadow-sm">
           <View className="flex-row items-center justify-between mb-3">
             <Text className="text-sm font-semibold text-gray-700">
@@ -609,6 +1001,7 @@ export default function MapScreen() {
           ) : (
             <>
               <MapComponent
+                ref={mapRef}
                 initialRegion={currentLocation || undefined}
                 markers={markers}
                 heatmapPoints={createHeatmapPoints(reports)}
@@ -634,81 +1027,37 @@ export default function MapScreen() {
                 showsCompass={true} // Show compass control
                 // Scale can be cluttering
                 className="flex-1"
-              />
-
-              {/* Search Bar Overlay - Top of Map
-                <View className="absolute top-4 left-45 right-45 z-10">
-                <View className="bg-white rounded-xl shadow-lg border border-gray-200">
-                  <View className="flex-row items-center px-3 py-2.5">
-                  <Ionicons name="search" size={18} color="#6B7280" />
-                  <TextInput
-                    placeholder="Search places..."
-                    value={searchQuery}
-                    onChangeText={(text) => {
-                    setSearchQuery(text);
-                    handleSearch(text);
-                    }}
-                    className="flex-1 ml-2 text-gray-800 text-sm"
-                    placeholderTextColor="#9CA3AF"
-                  />
-                  {searchLoading && (
-                    <ActivityIndicator size="small" color="#6366F1" />
-                  )}
-                  {searchQuery.length > 0 && (
-                    <TouchableOpacity
-                    onPress={() => {
-                      setSearchQuery("");
-                      setSearchResults([]);
-                      setShowSearchResults(false);
-                    }}
-                    className="ml-2"
-                    >
-                    <Ionicons name="close" size={18} color="#6B7280" />
-                    </TouchableOpacity>
-                  )}
-                  </View>
-
-                  /* Search Results 
-                  {showSearchResults && searchResults.length > 0 && (
-                  <View className="border-t border-gray-200 max-h-40">
-                    <ScrollView className="bg-white rounded-b-xl">
-                    {searchResults.map((result) => (
-                      <TouchableOpacity
-                      key={result.id}
-                      onPress={() => selectSearchResult(result)}
-                      className="px-3 py-2.5 border-b border-gray-100 flex-row items-center justify-between"
-                      >
-                      <View className="flex-1">
-                        <Text className="font-medium text-gray-800 text-sm">
-                        {result.name}
-                              </Text>
-                              <Text className="text-gray-600 text-xs mt-1">
-                                {result.address}
-                              </Text>
-                            </View>
-                            <View className="items-end">
-                              <Text className="text-blue-600 text-xs">
-                                {result.distance}
-                              </Text>
-                              <TouchableOpacity
-                                onPress={() => getDirections(result)}
-                                className="mt-1"
-                              >
-                                <Ionicons
-                                  name="navigate"
-                                  size={16}
-                                  color="#6366F1"
-                                />
-                              </TouchableOpacity>
-                            </View>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )}
-                </View>
-              </View> */}
-
+              >
+                {showDirections && origin && destination && (
+                  <>
+                    {Platform.OS !== "web" && MapViewDirections ? (
+                      <MapViewDirections
+                        origin={origin}
+                        destination={destination}
+                        apikey={
+                          process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || ""
+                        }
+                        strokeWidth={4}
+                        strokeColor="#4285F4"
+                        mode={travelMode.toLowerCase() as any}
+                        onReady={handleDirectionsReady}
+                      />
+                    ) : Platform.OS === "web" ? (
+                      <MapViewDirectionsWeb
+                        origin={origin}
+                        destination={destination}
+                        apikey={
+                          process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || ""
+                        }
+                        strokeWidth={4}
+                        strokeColor="#4285F4"
+                        mode={travelMode}
+                        onReady={handleDirectionsReady}
+                      />
+                    ) : null}
+                  </>
+                )}
+              </MapComponent>
               {/* Map Controls - Right Side */}
               <View className="absolute top-20 right-4 z-10 space-y-2">
                 {/* Current Location Button */}
@@ -791,7 +1140,9 @@ export default function MapScreen() {
                           </View>
                           <View className="flex-row items-center mb-1">
                             <Text className="text-sm mr-2">🆘</Text>
-                            <Text className="text-xs text-gray-600">Emergency</Text>
+                            <Text className="text-xs text-gray-600">
+                              Emergency
+                            </Text>
                           </View>
                         </>
                       )}
@@ -1124,6 +1475,180 @@ export default function MapScreen() {
         visible={showNotifications}
         onClose={() => setShowNotifications(false)}
       />
+
+      {/* Directions Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showDirectionsModal}
+        onRequestClose={() => setShowDirectionsModal(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-center items-center">
+          <View className="bg-white rounded-lg p-6 m-4 w-11/12 max-w-md">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-lg font-bold text-[#67082F]">
+                Route Information
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowDirectionsModal(false)}
+                className="p-1 rounded-full"
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <MaterialIcons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <View className="mb-4">
+              <View className="mb-3">
+                <Text className="text-gray-500 text-sm mb-1">From</Text>
+                <Text className="text-gray-800 font-medium">
+                  {origin
+                    ? `${origin.latitude.toFixed(
+                        4
+                      )}, ${origin.longitude.toFixed(4)}`
+                    : "Current Location"}
+                </Text>
+              </View>
+
+              <View className="mb-4">
+                <Text className="text-gray-500 text-sm mb-1">To</Text>
+                <Text className="text-gray-800 font-medium">
+                  {destination
+                    ? `${destination.latitude.toFixed(
+                        4
+                      )}, ${destination.longitude.toFixed(4)}`
+                    : ""}
+                </Text>
+              </View>
+
+              <View className="flex-row items-center mb-2">
+                <MaterialIcons
+                  name="access-time"
+                  size={20}
+                  color="#67082F"
+                  style={{ marginRight: 8 }}
+                />
+                <Text className="text-gray-700 text-base font-medium">
+                  Estimated Time:
+                </Text>
+                <Text className="text-gray-800 text-base font-bold ml-2">
+                  {duration}
+                </Text>
+              </View>
+
+              <View className="flex-row items-center mb-4">
+                <MaterialIcons
+                  name="straighten"
+                  size={20}
+                  color="#67082F"
+                  style={{ marginRight: 8 }}
+                />
+                <Text className="text-gray-700 text-base font-medium">
+                  Distance:
+                </Text>
+                <Text className="text-gray-800 text-base font-bold ml-2">
+                  {distance}
+                </Text>
+              </View>
+
+              <View className="mb-4">
+                <Text className="text-gray-700 text-base mb-2">
+                  <MaterialIcons
+                    name="directions"
+                    size={20}
+                    color="#67082F"
+                    style={{ marginRight: 8 }}
+                  />
+                  Travel Mode:
+                </Text>
+                <View className="flex-row flex-wrap">
+                  {["DRIVING", "WALKING", "BICYCLING", "TRANSIT"].map(
+                    (mode) => (
+                      <TouchableOpacity
+                        key={mode}
+                        className={`mr-2 mb-2 py-2 px-3 rounded-full ${
+                          mode === travelMode ? "bg-[#67082F]" : "bg-gray-200"
+                        }`}
+                        onPress={() => {
+                          setTravelMode(
+                            mode as
+                              | "DRIVING"
+                              | "WALKING"
+                              | "BICYCLING"
+                              | "TRANSIT"
+                          );
+                          if (origin) {
+                            setOrigin({ ...origin, mode });
+                          }
+                        }}
+                      >
+                        <Text
+                          className={`${
+                            mode === travelMode ? "text-white" : "text-gray-800"
+                          } text-xs font-medium`}
+                        >
+                          {mode.charAt(0) + mode.slice(1).toLowerCase()}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  )}
+                </View>
+              </View>
+            </View>
+
+            <View className="flex-row space-x-2">
+              <TouchableOpacity
+                className="bg-gray-200 py-3 rounded-lg flex-1"
+                onPress={() => setShowDirectionsModal(false)}
+              >
+                <Text className="text-gray-800 text-center font-semibold">
+                  Close
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className="bg-[#67082F] py-3 rounded-lg flex-1"
+                onPress={() => {
+                  // Open in external maps app with the right travel mode
+                  const mode = origin?.mode?.toLowerCase() || "driving";
+                  const url = Platform.select({
+                    ios: `maps:0,0?saddr=${origin?.latitude},${
+                      origin?.longitude
+                    }&daddr=${destination?.latitude},${
+                      destination?.longitude
+                    }&dirflg=${
+                      mode === "driving"
+                        ? "d"
+                        : mode === "walking"
+                        ? "w"
+                        : mode === "bicycling"
+                        ? "b"
+                        : mode === "transit"
+                        ? "r"
+                        : "d"
+                    }`,
+                    android: `google.navigation:q=${destination?.latitude},${destination?.longitude}&mode=${mode}`,
+                  });
+
+                  if (url) {
+                    Linking.openURL(url).catch((err) =>
+                      showAlert(
+                        "Error",
+                        "Could not open navigation app",
+                        "error"
+                      )
+                    );
+                  }
+                }}
+              >
+                <Text className="text-white text-center font-semibold">
+                  Navigate
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }

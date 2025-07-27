@@ -71,3 +71,10 @@ Report can be updated by only owner and responder. responder can't delete owner'
 
 update frontend secureherai-app:
 Instead of create report after sos and in emergency alert page, Use update report use the new get /alert-report/alertId=? No more create report button anymore in emergency page.
+
+
+
+Places API, Places UI Kit, Places API (New), Routes API, Directions API, Navigation SDK
+I've enabled these API's. Now Implement search field (with place suggestion). Also drop down destination field (also wiith place suggestion).Then show direction between these places.
+Show all nearby police stations and medical center (using api) [add one option in Map's pages filter to show Police & medical].
+Do these with minimal code. @websearch for best approach.
