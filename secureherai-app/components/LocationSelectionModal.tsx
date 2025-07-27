@@ -4,8 +4,6 @@ import {
   Text,
   Modal,
   TouchableOpacity,
-  TextInput,
-  ScrollView,
   ActivityIndicator,
   Platform,
 } from "react-native";
@@ -17,24 +15,25 @@ import MapComponent, {
 } from "./MapComponent";
 import locationService from "../services/locationService";
 import { useAlert } from "../context/AlertContext";
+import WebPlacesInput from "./WebPlacesInput";
+
+// Conditional import for GooglePlacesAutocomplete (only on native platforms)
+let GooglePlacesAutocomplete: any = null;
+try {
+  if (Platform.OS !== "web") {
+    // eslint-disable-next-line import/no-dynamic-require
+    const GooglePlacesModule = require("react-native-google-places-autocomplete");
+    GooglePlacesAutocomplete = GooglePlacesModule.GooglePlacesAutocomplete;
+  }
+} catch {
+  console.log("GooglePlacesAutocomplete not available on this platform");
+}
 
 export interface SelectedLocation {
   latitude: number;
   longitude: number;
   address?: string;
   name?: string;
-}
-
-interface SearchResult {
-  id: string;
-  name: string;
-  address: string;
-  location: {
-    latitude: number;
-    longitude: number;
-  };
-  type?: string;
-  distance?: string;
 }
 
 interface LocationSelectionModalProps {
@@ -76,13 +75,9 @@ const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
   });
 
   // Search state
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [showSearchResults, setShowSearchResults] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchText, setSearchText] = useState(""); // For web compatibility
 
   // UI state
-  const [gettingCurrentLocation, setGettingCurrentLocation] = useState(false);
   const [loadingMap, setLoadingMap] = useState(true);
 
   // Initialize map when modal opens
@@ -90,6 +85,12 @@ const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
     const initializeMap = async () => {
       setLoadingMap(true);
       try {
+        // Always try to get current location for search suggestions
+        const location = await locationService.getCurrentLocation();
+        if (location) {
+          setCurrentLocation(location.coords);
+        }
+
         if (initialLocation) {
           setSelectedLocation(initialLocation);
           setMapRegion({
@@ -99,10 +100,8 @@ const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
             longitudeDelta: 0.01,
           });
         } else {
-          // Try to get current location
-          const location = await locationService.getCurrentLocation();
+          // Use current location as map center if no initial location
           if (location) {
-            setCurrentLocation(location.coords);
             setMapRegion({
               latitude: location.coords.latitude,
               longitude: location.coords.longitude,
@@ -122,120 +121,56 @@ const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
       initializeMap();
     } else {
       // Reset state when modal closes
-      setSearchQuery("");
-      setSearchResults([]);
-      setShowSearchResults(false);
+      setSearchText("");
     }
   }, [visible, initialLocation]);
 
-  const getCurrentLocation = async () => {
-    setGettingCurrentLocation(true);
-    try {
-      const location = await locationService.getCurrentLocation();
-      if (location) {
-        const newLocation: SelectedLocation = {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-          address: "Current Location",
-          name: "My Current Location",
+  // Removed getCurrentLocation function as it's not currently used
+  // Can be re-added if a "Get Current Location" button is needed
+
+  const selectLocationFromPlace = (place: any, details: any = null) => {
+    let location: SelectedLocation;
+
+    if (Platform.OS === "web") {
+      // Web version using Google Places API result
+      if (place.geometry?.location) {
+        location = {
+          latitude: place.geometry.location.lat(),
+          longitude: place.geometry.location.lng(),
+          address: place.formatted_address || place.name,
+          name: place.name || "Selected Location",
         };
-
-        setCurrentLocation(location.coords);
-        setSelectedLocation(newLocation);
-        setMapRegion({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        });
-
-        showAlert("Location", "Current location updated", "success");
+      } else {
+        return;
       }
-    } catch (error) {
-      console.error("Error getting current location:", error);
-      showAlert("Error", "Unable to get current location", "error");
-    } finally {
-      setGettingCurrentLocation(false);
+    } else {
+      // Native version using react-native-google-places-autocomplete
+      if (details?.geometry?.location) {
+        location = {
+          latitude: details.geometry.location.lat,
+          longitude: details.geometry.location.lng,
+          address: details.formatted_address || place.description,
+          name: place.structured_formatting?.main_text || "Selected Location",
+        };
+      } else {
+        return;
+      }
     }
-  };
 
-  const handleSearch = async (query: string) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      setShowSearchResults(false);
-      return;
-    }
-
-    setSearchLoading(true);
-    try {
-      // Simulate search API call - replace with actual search service
-      // This should integrate with Google Places API or similar service
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Mock search results - replace with actual API results
-      const mockResults: SearchResult[] = [
-        {
-          id: "1",
-          name: `${query} - Restaurant`,
-          address: `123 ${query} Street, Dhaka`,
-          location: {
-            latitude: mapRegion.latitude + (Math.random() - 0.5) * 0.01,
-            longitude: mapRegion.longitude + (Math.random() - 0.5) * 0.01,
-          },
-          type: "restaurant",
-          distance: "0.5 km",
-        },
-        {
-          id: "2",
-          name: `${query} - Shopping Center`,
-          address: `456 ${query} Avenue, Dhaka`,
-          location: {
-            latitude: mapRegion.latitude + (Math.random() - 0.5) * 0.01,
-            longitude: mapRegion.longitude + (Math.random() - 0.5) * 0.01,
-          },
-          type: "shopping",
-          distance: "1.2 km",
-        },
-        {
-          id: "3",
-          name: `${query} - Office Building`,
-          address: `789 ${query} Road, Dhaka`,
-          location: {
-            latitude: mapRegion.latitude + (Math.random() - 0.5) * 0.01,
-            longitude: mapRegion.longitude + (Math.random() - 0.5) * 0.01,
-          },
-          type: "office",
-          distance: "2.0 km",
-        },
-      ];
-
-      setSearchResults(mockResults);
-      setShowSearchResults(true);
-    } catch (error) {
-      console.error("Search error:", error);
-      showAlert("Error", "Failed to search locations", "error");
-    } finally {
-      setSearchLoading(false);
-    }
-  };
-
-  const selectSearchResult = (result: SearchResult) => {
-    const newLocation: SelectedLocation = {
-      latitude: result.location.latitude,
-      longitude: result.location.longitude,
-      address: result.address,
-      name: result.name,
-    };
-
-    setSelectedLocation(newLocation);
+    setSelectedLocation(location);
     setMapRegion({
-      latitude: result.location.latitude,
-      longitude: result.location.longitude,
+      latitude: location.latitude,
+      longitude: location.longitude,
       latitudeDelta: 0.01,
       longitudeDelta: 0.01,
     });
-    setShowSearchResults(false);
-    setSearchQuery(result.name);
+
+    // Clear search results and update search text
+    if (Platform.OS === "web") {
+      setSearchText(location.name || "");
+    } else {
+      // For native, the GooglePlacesAutocomplete will handle the text
+    }
   };
 
   const handleMapPress = (event: MapPressEvent) => {
@@ -261,23 +196,6 @@ const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
         "Please select a location on the map",
         "error"
       );
-    }
-  };
-
-  const getLocationIcon = (type?: string) => {
-    switch (type) {
-      case "restaurant":
-        return "🍽️";
-      case "shopping":
-        return "🛍️";
-      case "office":
-        return "🏢";
-      case "hospital":
-        return "🏥";
-      case "school":
-        return "🏫";
-      default:
-        return "📍";
     }
   };
 
@@ -349,85 +267,118 @@ const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
 
         {/* Search Section */}
         {enableSearch && (
-          <View className="bg-white mx-4 mt-4 p-3 rounded-lg shadow-sm">
-            <View className="flex-row items-center bg-gray-50 rounded-lg px-3 py-2">
-              <MaterialIcons name="search" size={20} color="#6B7280" />
-              <TextInput
-                className="flex-1 ml-2 text-gray-900"
-                placeholder={searchPlaceholder}
-                value={searchQuery}
-                onChangeText={(text) => {
-                  setSearchQuery(text);
-                  handleSearch(text);
-                }}
-                style={{ fontSize: 16 }}
-              />
-              {searchLoading && (
-                <ActivityIndicator size="small" color="#67082F" />
+          <View
+            className="bg-white mx-4 mt-4 p-3 rounded-lg shadow-sm"
+            style={{
+              zIndex: 200000,
+              position: "relative",
+              elevation: 200000, // For Android
+            }}
+          >
+            {/* Location Search Field */}
+            <View
+              style={{
+                zIndex: 300000,
+                position: "relative",
+                elevation: 300000, // For Android
+              }}
+            >
+              {GooglePlacesAutocomplete && Platform.OS !== "web" ? (
+                <GooglePlacesAutocomplete
+                  placeholder={searchPlaceholder}
+                  fetchDetails={true}
+                  onPress={(data: any, details: any = null) => {
+                    selectLocationFromPlace(data, details);
+                  }}
+                  query={{
+                    key: process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || "",
+                    language: "en",
+                    components: "country:bd",
+                  }}
+                  styles={{
+                    container: {
+                      flex: 1,
+                      zIndex: 20000,
+                    },
+                    textInputContainer: {
+                      backgroundColor: "rgba(0,0,0,0)",
+                      borderTopWidth: 0,
+                      borderBottomWidth: 0,
+                    },
+                    textInput: {
+                      marginLeft: 0,
+                      marginRight: 0,
+                      height: 40,
+                      color: "#5d5d5d",
+                      fontSize: 16,
+                      borderWidth: 1,
+                      borderColor: "#ddd",
+                      borderRadius: 8,
+                      backgroundColor: "#f9fafb",
+                      paddingHorizontal: 12,
+                    },
+                    predefinedPlacesDescription: {
+                      color: "#1faadb",
+                    },
+                    listView: {
+                      position: "absolute",
+                      top: 42,
+                      left: 0,
+                      right: 0,
+                      backgroundColor: "white",
+                      borderRadius: 8,
+                      elevation: 5,
+                      zIndex: 20001,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.15,
+                      shadowRadius: 8,
+                      borderWidth: 1,
+                      borderColor: "#e5e7eb",
+                    },
+                    row: {
+                      padding: 13,
+                      height: 50,
+                      flexDirection: "row",
+                    },
+                    separator: {
+                      height: 0.5,
+                      backgroundColor: "#c8c7cc",
+                    },
+                    description: {
+                      fontSize: 14,
+                    },
+                  }}
+                  currentLocation={true}
+                  currentLocationLabel="Current location"
+                  enablePoweredByContainer={false}
+                />
+              ) : (
+                <WebPlacesInput
+                  placeholder={searchPlaceholder}
+                  currentLocation={currentLocation || undefined}
+                  safePlaces={[]} // Empty array since this is for general location search
+                  zIndexBase={400000} // Very high z-index to appear above all modal content
+                  value={searchText}
+                  onValueChange={setSearchText}
+                  onPlaceSelect={(place) => {
+                    selectLocationFromPlace(place);
+                  }}
+                />
               )}
             </View>
-
-            {/* Current Location Button */}
-            {showCurrentLocationButton && (
-              <TouchableOpacity
-                onPress={getCurrentLocation}
-                disabled={gettingCurrentLocation}
-                className="flex-row items-center justify-center mt-3 py-2 px-4 bg-blue-50 rounded-lg border border-blue-200"
-              >
-                {gettingCurrentLocation ? (
-                  <ActivityIndicator size="small" color="#3B82F6" />
-                ) : (
-                  <MaterialIcons name="my-location" size={20} color="#3B82F6" />
-                )}
-                <Text className="ml-2 text-blue-600 font-medium">
-                  Use Current Location
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Search Results */}
-            {showSearchResults && searchResults.length > 0 && (
-              <ScrollView className="mt-3 max-h-40">
-                {searchResults.map((result) => (
-                  <TouchableOpacity
-                    key={result.id}
-                    onPress={() => selectSearchResult(result)}
-                    className="flex-row items-center py-3 px-2 border-b border-gray-100"
-                  >
-                    <Text className="text-lg mr-3">
-                      {getLocationIcon(result.type)}
-                    </Text>
-                    <View className="flex-1">
-                      <Text
-                        className="font-medium text-gray-900"
-                        numberOfLines={1}
-                      >
-                        {result.name}
-                      </Text>
-                      <Text className="text-sm text-gray-500" numberOfLines={1}>
-                        {result.address}
-                      </Text>
-                      {result.distance && (
-                        <Text className="text-xs text-blue-600">
-                          {result.distance}
-                        </Text>
-                      )}
-                    </View>
-                    <MaterialIcons
-                      name="chevron-right"
-                      size={20}
-                      color="#9CA3AF"
-                    />
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
           </View>
         )}
 
         {/* Selected Location Info */}
         {selectedLocation && (
-          <View className="bg-white mx-4 mt-4 p-3 rounded-lg shadow-sm">
+          <View
+            className="bg-white mx-4 mt-4 p-3 rounded-lg shadow-sm"
+            style={{
+              zIndex: 1,
+              position: "relative",
+            }}
+          >
             <View className="flex-row items-center">
               <MaterialIcons name="place" size={20} color="#10B981" />
               <View className="flex-1 ml-2">

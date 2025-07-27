@@ -339,6 +339,9 @@ const WebPlacesInput: React.FC<WebPlacesInputProps> = ({
   // Add web-specific styles
   if (Platform.OS === "web") {
     dropdownStyle.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.15)";
+    dropdownStyle.zIndex = Math.max(zIndexBase + 2, 2147483647); // Use maximum z-index for web
+    dropdownStyle.position = "absolute";
+    dropdownStyle.isolation = "auto";
   }
 
   return (
@@ -396,7 +399,7 @@ const WebPlacesInput: React.FC<WebPlacesInputProps> = ({
             borderWidth: 1,
             borderColor: "#ddd",
             padding: 12,
-            zIndex: 10001,
+            zIndex: zIndexBase + 10,
           }}
         >
           <Text style={{ fontSize: 12, color: "#666", textAlign: "center" }}>
@@ -410,10 +413,10 @@ const WebPlacesInput: React.FC<WebPlacesInputProps> = ({
           <ScrollView
             style={{
               maxHeight: 200,
-              zIndex: 999999,
+              zIndex: zIndexBase + 3,
             }}
             contentContainerStyle={{
-              zIndex: 999999,
+              zIndex: zIndexBase + 3,
             }}
           >
             {predictions.map((prediction, index) => {
@@ -490,7 +493,7 @@ const WebPlacesInput: React.FC<WebPlacesInputProps> = ({
               borderWidth: 1,
               borderColor: "#ddd",
               padding: 12,
-              zIndex: 10001,
+              zIndex: zIndexBase + 10,
             }}
           >
             <Text style={{ fontSize: 12, color: "#666", textAlign: "center" }}>
