@@ -30,6 +30,9 @@ import {
   getIncidentTypeIcon,
   getStatusColor,
 } from "../../utils/incidentHelpers";
+import LocationSelectionModal, {
+  SelectedLocation,
+} from "../../components/LocationSelectionModal";
 
 export default function ReportDetailsScreen() {
   const params = useLocalSearchParams<{ id: string }>();
@@ -48,6 +51,8 @@ export default function ReportDetailsScreen() {
   const [playbackDuration, setPlaybackDuration] = useState(0);
   const [hasMediaError, setHasMediaError] = useState(false);
   const [isDeletingEvidence, setIsDeletingEvidence] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showIncidentTypeModal, setShowIncidentTypeModal] = useState(false);
   const videoRef = useRef<Video>(null);
 
   // Extract ID from params, handle both single string and array cases
@@ -162,6 +167,86 @@ export default function ReportDetailsScreen() {
       setEditingField(field);
       setEditValue(currentValue);
       setShowEditModal(true);
+    }
+  };
+
+  const handleLocationEdit = () => {
+    if (!canEditReport()) return;
+    setShowLocationModal(true);
+  };
+
+  const handleIncidentTypeEdit = () => {
+    if (!canEditReport()) return;
+    setShowIncidentTypeModal(true);
+  };
+
+  const handleLocationSelect = async (location: SelectedLocation) => {
+    if (!report) return;
+
+    try {
+      const updateData: UpdateReportRequest = {
+        reportId: report.reportId,
+        location: {
+          latitude: location.latitude.toString(),
+          longitude: location.longitude.toString(),
+        },
+        address: location.address || location.name,
+      };
+
+      const response = await apiService.updateReport(updateData);
+      if (response.success) {
+        setReport({
+          ...report,
+          location: {
+            latitude: location.latitude,
+            longitude: location.longitude,
+          },
+          address: location.address || location.name || "",
+        });
+        setShowLocationModal(false);
+        showAlert("Success", "Location updated successfully", "success");
+      } else {
+        showAlert(
+          "Error",
+          response.error || "Failed to update location",
+          "error"
+        );
+      }
+    } catch (error) {
+      console.error("Update location error:", error);
+      showAlert("Error", "An unexpected error occurred", "error");
+    }
+  };
+
+  const handleIncidentTypeUpdate = async (
+    newIncidentType: "harassment" | "theft" | "assault" | "emergency" | "other"
+  ) => {
+    if (!report) return;
+
+    try {
+      const updateData: UpdateReportRequest = {
+        reportId: report.reportId,
+        incidentType: newIncidentType,
+      };
+
+      const response = await apiService.updateReport(updateData);
+      if (response.success) {
+        setReport({
+          ...report,
+          incidentType: newIncidentType,
+        });
+        setShowIncidentTypeModal(false);
+        showAlert("Success", "Incident type updated successfully", "success");
+      } else {
+        showAlert(
+          "Error",
+          response.error || "Failed to update incident type",
+          "error"
+        );
+      }
+    } catch (error) {
+      console.error("Update incident type error:", error);
+      showAlert("Error", "An unexpected error occurred", "error");
     }
   };
 
@@ -739,6 +824,14 @@ export default function ReportDetailsScreen() {
               <Text className="text-xl font-bold text-gray-800 capitalize flex-1">
                 {report.incidentType}
               </Text>
+              {canEditReport() && (
+                <TouchableOpacity
+                  onPress={handleIncidentTypeEdit}
+                  className="ml-2 p-2"
+                >
+                  <MaterialIcons name="edit" size={20} color="#67082F" />
+                </TouchableOpacity>
+              )}
             </View>
             <View
               className="px-3 py-1 rounded-full"
@@ -792,9 +885,16 @@ export default function ReportDetailsScreen() {
 
         {/* Location */}
         <View className="bg-white rounded-lg p-4 mb-4 shadow-sm">
-          <Text className="text-base font-semibold text-gray-800 mb-3">
-            Location
-          </Text>
+          <View className="flex-row justify-between items-center mb-3">
+            <Text className="text-base font-semibold text-gray-800">
+              Location
+            </Text>
+            {canEditReport() && (
+              <TouchableOpacity onPress={handleLocationEdit}>
+                <MaterialIcons name="edit" size={20} color="#67082F" />
+              </TouchableOpacity>
+            )}
+          </View>
           <View className="flex-row items-start">
             <MaterialIcons name="location-on" size={20} color="#67082F" />
             <View className="ml-2 flex-1">
@@ -1565,6 +1665,159 @@ export default function ReportDetailsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Incident Type Selection Modal */}
+      <Modal
+        visible={showIncidentTypeModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowIncidentTypeModal(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-center items-center">
+          <View className="bg-white rounded-lg p-6 m-4 w-11/12 max-w-md">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-lg font-bold text-[#67082F]">
+                Update Incident Type
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowIncidentTypeModal(false)}
+                className="p-1 rounded-full"
+              >
+                <MaterialIcons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <Text className="text-gray-600 text-sm mb-4">
+              Select the correct incident type for this report:
+            </Text>
+
+            <View className="space-y-3">
+              {[
+                {
+                  value: "harassment",
+                  label: "Harassment",
+                  icon: "person-off",
+                  color: "#DC2626",
+                },
+                {
+                  value: "theft",
+                  label: "Theft",
+                  icon: "money-off",
+                  color: "#7C2D12",
+                },
+                {
+                  value: "assault",
+                  label: "Assault",
+                  icon: "pan-tool",
+                  color: "#B91C1C",
+                },
+                {
+                  value: "emergency",
+                  label: "Emergency",
+                  icon: "emergency",
+                  color: "#EF4444",
+                },
+                {
+                  value: "other",
+                  label: "Other",
+                  icon: "category",
+                  color: "#6B7280",
+                },
+              ].map((type) => (
+                <TouchableOpacity
+                  key={type.value}
+                  className={`flex-row items-center p-3 rounded-lg border-2 ${
+                    report?.incidentType === type.value
+                      ? "border-2"
+                      : "bg-gray-50 border-gray-200"
+                  }`}
+                  style={
+                    report?.incidentType === type.value
+                      ? {
+                          backgroundColor: `${type.color}15`,
+                          borderColor: type.color,
+                        }
+                      : {}
+                  }
+                  onPress={() =>
+                    handleIncidentTypeUpdate(
+                      type.value as
+                        | "harassment"
+                        | "theft"
+                        | "assault"
+                        | "emergency"
+                        | "other"
+                    )
+                  }
+                >
+                  <View
+                    className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                    style={{
+                      backgroundColor:
+                        report?.incidentType === type.value
+                          ? type.color
+                          : `${type.color}20`,
+                    }}
+                  >
+                    <MaterialIcons
+                      name={type.icon as any}
+                      size={20}
+                      color={
+                        report?.incidentType === type.value
+                          ? "white"
+                          : type.color
+                      }
+                    />
+                  </View>
+                  <Text
+                    className={`text-base font-semibold ${
+                      report?.incidentType === type.value
+                        ? "text-gray-800"
+                        : "text-gray-600"
+                    }`}
+                    style={
+                      report?.incidentType === type.value
+                        ? { color: type.color }
+                        : {}
+                    }
+                  >
+                    {type.label}
+                  </Text>
+                  {report?.incidentType === type.value && (
+                    <View className="ml-auto">
+                      <MaterialIcons
+                        name="check-circle"
+                        size={20}
+                        color={type.color}
+                      />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Location Selection Modal */}
+      <LocationSelectionModal
+        visible={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        onLocationSelect={handleLocationSelect}
+        initialLocation={
+          report
+            ? {
+                latitude: report.location.latitude,
+                longitude: report.location.longitude,
+                address: report.address,
+              }
+            : undefined
+        }
+        title="Update Report Location"
+        confirmButtonText="Update Location"
+        showCurrentLocationButton={true}
+        enableSearch={true}
+      />
     </View>
   );
 }
