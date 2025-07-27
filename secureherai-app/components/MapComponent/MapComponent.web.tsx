@@ -624,60 +624,119 @@ const MapComponent = forwardRef<any, MapComponentPropsWithChildren>(
 
       const handleDirectionsFromChildren = () => {
         // Look for MapViewDirections-like children that have origin/destination props
+        console.log("=== HANDLE DIRECTIONS FROM CHILDREN ===");
+        console.log("children:", children);
+        console.log("directionsService.current:", !!directionsService.current);
+        console.log(
+          "directionsRenderer.current:",
+          !!directionsRenderer.current
+        );
+
         if (
           children &&
           directionsService.current &&
           directionsRenderer.current
         ) {
-          React.Children.forEach(children, (child) => {
-            if (React.isValidElement(child) && child.props) {
-              const props = child.props as any; // Type assertion for flexibility
-              const { origin, destination, mode = "DRIVING", onReady } = props;
+          const processChild = (child: any) => {
+            console.log("=== PROCESSING CHILD ===", child);
 
-              if (origin && destination) {
-                const request = {
-                  origin: new window.google.maps.LatLng(
-                    origin.latitude,
-                    origin.longitude
-                  ),
-                  destination: new window.google.maps.LatLng(
-                    destination.latitude,
-                    destination.longitude
-                  ),
-                  travelMode:
-                    window.google.maps.TravelMode[mode.toUpperCase()] ||
-                    window.google.maps.TravelMode.DRIVING,
-                };
+            if (React.isValidElement(child)) {
+              // Check if this is a Fragment with children
+              if (
+                child.type === React.Fragment &&
+                (child.props as any).children
+              ) {
+                console.log("=== FOUND FRAGMENT, PROCESSING CHILDREN ===");
+                const fragmentChildren = Array.isArray(
+                  (child.props as any).children
+                )
+                  ? (child.props as any).children
+                  : [(child.props as any).children];
 
-                directionsService.current.route(
-                  request,
-                  (result: any, status: any) => {
-                    if (status === window.google.maps.DirectionsStatus.OK) {
-                      directionsRenderer.current.setDirections(result);
+                fragmentChildren.forEach(processChild);
+                return;
+              }
 
-                      // Call onReady callback with route information
-                      if (onReady && result.routes[0]) {
-                        const route = result.routes[0];
-                        const leg = route.legs[0];
-                        onReady({
-                          distance: leg.distance.value / 1000, // Convert to km
-                          duration: leg.duration.value / 60, // Convert to minutes
-                          coordinates: route.overview_path.map(
-                            (point: any) => ({
-                              latitude: point.lat(),
-                              longitude: point.lng(),
-                            })
-                          ),
-                        });
+              // Check if this child has directions props
+              if (child.props) {
+                const props = child.props as any;
+                const {
+                  origin,
+                  destination,
+                  mode = "DRIVING",
+                  onReady,
+                  onError,
+                } = props;
+
+                console.log("Child props:", {
+                  origin,
+                  destination,
+                  mode,
+                  onReady: !!onReady,
+                  onError: !!onError,
+                });
+
+                if (origin && destination) {
+                  console.log("=== MAKING DIRECTIONS REQUEST ===");
+                  const request = {
+                    origin: new window.google.maps.LatLng(
+                      origin.latitude,
+                      origin.longitude
+                    ),
+                    destination: new window.google.maps.LatLng(
+                      destination.latitude,
+                      destination.longitude
+                    ),
+                    travelMode:
+                      window.google.maps.TravelMode[mode.toUpperCase()] ||
+                      window.google.maps.TravelMode.DRIVING,
+                  };
+
+                  directionsService.current.route(
+                    request,
+                    (result: any, status: any) => {
+                      console.log("=== DIRECTIONS RESPONSE ===", {
+                        status,
+                        result,
+                      });
+                      if (status === window.google.maps.DirectionsStatus.OK) {
+                        console.log("=== DIRECTIONS SUCCESS ===");
+                        directionsRenderer.current.setDirections(result);
+
+                        // Call onReady callback with route information
+                        if (onReady && result.routes[0]) {
+                          const route = result.routes[0];
+                          const leg = route.legs[0];
+                          const routeInfo = {
+                            distance: leg.distance.value / 1000, // Convert to km
+                            duration: leg.duration.value / 60, // Convert to minutes
+                            coordinates: route.overview_path.map(
+                              (point: any) => ({
+                                latitude: point.lat(),
+                                longitude: point.lng(),
+                              })
+                            ),
+                          };
+                          console.log("=== CALLING onReady ===", routeInfo);
+                          onReady(routeInfo);
+                        }
+                      } else {
+                        console.error(
+                          "=== DIRECTIONS REQUEST FAILED ===",
+                          status
+                        );
+                        if (onError) {
+                          onError(status);
+                        }
                       }
-                    } else {
-                      console.error("Directions request failed:", status);
                     }
-                  }
-                );
+                  );
+                }
               }
             }
-          });
+          };
+
+          React.Children.forEach(children, processChild);
         }
       };
 
@@ -744,14 +803,14 @@ const MapComponent = forwardRef<any, MapComponentPropsWithChildren>(
 
         // Add new markers
         offsetMarkers.forEach((marker, index) => {
-          console.log(`Processing marker ${index}:`, {
-            id: marker.id,
-            type: marker.type,
-            coordinate: marker.coordinate,
-            title: marker.title,
-            hasReportData: !!marker.reportData,
-            reportId: marker.reportData?.reportId,
-          });
+          // console.log(`Processing marker ${index}:`, {
+          //   id: marker.id,
+          //   type: marker.type,
+          //   coordinate: marker.coordinate,
+          //   title: marker.title,
+          //   hasReportData: !!marker.reportData,
+          //   reportId: marker.reportData?.reportId,
+          // });
 
           // Validate coordinates
           const lat = marker.coordinate.latitude;
@@ -791,10 +850,10 @@ const MapComponent = forwardRef<any, MapComponentPropsWithChildren>(
             marker.img_url,
             marker.isOwnReport
           );
-          console.log(
-            `Custom icon config for marker ${index}:`,
-            customIconConfig
-          );
+          // console.log(
+          //   `Custom icon config for marker ${index}:`,
+          //   customIconConfig
+          // );
 
           if (customIconConfig) {
             try {
@@ -832,7 +891,7 @@ const MapComponent = forwardRef<any, MapComponentPropsWithChildren>(
 
           try {
             const googleMarker = new window.google.maps.Marker(markerOptions);
-            console.log(`Created Google marker ${index}:`, googleMarker);
+            // console.log(`Created Google marker ${index}:`, googleMarker);
 
             if (marker.title || marker.description) {
               // Format content based on marker type

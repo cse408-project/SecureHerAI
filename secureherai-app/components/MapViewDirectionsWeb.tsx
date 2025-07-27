@@ -17,8 +17,9 @@ interface MapViewDirectionsProps {
   onReady?: (result: {
     distance: number;
     duration: number;
-    coordinates: Array<{ latitude: number; longitude: number }>;
+    coordinates: { latitude: number; longitude: number }[];
   }) => void;
+  onError?: (error: any) => void;
 }
 
 const MapViewDirectionsWeb: React.FC<MapViewDirectionsProps> = (props) => {
@@ -27,9 +28,23 @@ const MapViewDirectionsWeb: React.FC<MapViewDirectionsProps> = (props) => {
   // when it processes its children
 
   if (Platform.OS === "web") {
-    // On web, this component doesn't render anything visible
-    // The MapComponent.web.tsx will read the props and handle directions
-    return null;
+    // On web, we need to return a valid React element with the props
+    // so that MapComponent.web.tsx can read them via React.Children.forEach
+    console.log("=== MapViewDirectionsWeb rendering with props ===", props);
+
+    // Create a proper React component that preserves props
+    const DirectionsBridge: React.FC<MapViewDirectionsProps> = (
+      bridgeProps
+    ) => {
+      // This component doesn't render anything visible but preserves the props
+      return (
+        <span style={{ display: "none" }} data-component="MapViewDirections" />
+      );
+    };
+
+    // Return the bridge component with our props
+    // React will preserve these props for React.Children.forEach to access
+    return <DirectionsBridge {...props} />;
   }
 
   // On native platforms, this should not be used

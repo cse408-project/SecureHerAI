@@ -32,7 +32,7 @@ try {
   if (Platform.OS !== "web") {
     MapViewDirections = require("react-native-maps-directions").default;
   }
-} catch (error) {
+} catch {
   console.log("MapViewDirections not available on this platform");
 }
 
@@ -43,7 +43,7 @@ try {
     const GooglePlacesModule = require("react-native-google-places-autocomplete");
     GooglePlacesAutocomplete = GooglePlacesModule.GooglePlacesAutocomplete;
   }
-} catch (error) {
+} catch {
   console.log("GooglePlacesAutocomplete not available on this platform");
 }
 
@@ -444,13 +444,8 @@ export default function MapScreen() {
     }
   });
 
-  // Update route when travel mode changes
-  useEffect(() => {
-    if (showDirections && origin && destination) {
-      // Re-render directions with the new travel mode
-      setOrigin({ ...origin, mode: travelMode.toLowerCase() });
-    }
-  }, [travelMode, origin, destination, showDirections]);
+  // No need for useEffect to update route - MapViewDirections will handle this automatically
+  // The travelMode prop passed to MapViewDirections will trigger re-rendering when it changes
 
   const handleMarkerPress = (marker: ExtendedMapMarker) => {
     // This function is now mainly for the current location marker
@@ -488,6 +483,51 @@ export default function MapScreen() {
           onNotificationPress={() => setShowNotifications(true)}
           showNotificationDot={false}
         />
+
+        {/* Map Controls Section */}
+        <View className="bg-white mx-4 mb-2 p-3 rounded-lg shadow-sm">
+          <View className="flex-row items-center justify-between mb-3">
+            <Text className="text-sm font-semibold text-gray-700">
+              Map Display Options
+            </Text>
+            <Text className="text-xs text-gray-500">
+              {reports.length} report{reports.length !== 1 ? "s" : ""} •{" "}
+              {safePlaces.length} safe places
+            </Text>
+          </View>
+
+          <View className="flex-row justify-between items-start space-x-3">
+            {/* Filter Button */}
+            <TouchableOpacity
+              className="flex-1 flex-row items-center justify-center py-2.5 px-3 bg-[#67082F] rounded-lg"
+              onPress={() => setShowFilterModal(true)}
+            >
+              <MaterialIcons name="filter-list" size={16} color="white" />
+              <Text className="text-white text-sm font-medium ml-1">
+                Filters
+              </Text>
+              <View className="ml-2 bg-white/20 px-1.5 py-0.5 rounded-full">
+                <Text className="text-white text-xs font-medium">
+                  {(showReports ? 1 : 0) +
+                    (showSafePlaces ? 1 : 0) +
+                    (showHeatmap ? 1 : 0) +
+                    (showPOIs ? 1 : 0)}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Manage Button */}
+            <TouchableOpacity
+              className="flex-1 flex-row items-center justify-center py-2.5 px-3 bg-[#67082F] rounded-lg"
+              onPress={() => router.push("/places/manage" as any)}
+            >
+              <MaterialIcons name="edit-location" size={16} color="white" />
+              <Text className="text-white text-sm font-medium ml-1">
+                Manage Safe Places
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
         {/* Map Controls */}
         {/* Directions Section */}
@@ -687,7 +727,7 @@ export default function MapScreen() {
                         title: place.name || "Origin",
                         description: place.formatted_address || "",
                         type: "custom",
-                        color: "#00EE55",
+                        color: "#4285F4", // BLUE for origin
                       };
 
                       console.log("Creating origin marker:", originMarker);
@@ -795,7 +835,7 @@ export default function MapScreen() {
                                   title: "Origin",
                                   description: "",
                                   type: "custom", // Changed from "general" to a valid type
-                                  color: "#EA4335", // Blue
+                                  color: "#4285F4", // BLUE for origin
                                 } as ExtendedMapMarker,
                               ]
                             : []),
@@ -948,51 +988,6 @@ export default function MapScreen() {
           )}
         </View>
 
-        {/* Map Controls Section */}
-        <View className="bg-white mx-4 mb-2 p-3 rounded-lg shadow-sm">
-          <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-sm font-semibold text-gray-700">
-              Map Display Options
-            </Text>
-            <Text className="text-xs text-gray-500">
-              {reports.length} report{reports.length !== 1 ? "s" : ""} •{" "}
-              {safePlaces.length} safe places
-            </Text>
-          </View>
-
-          <View className="flex-row justify-between items-start space-x-3">
-            {/* Filter Button */}
-            <TouchableOpacity
-              className="flex-1 flex-row items-center justify-center py-2.5 px-3 bg-[#67082F] rounded-lg"
-              onPress={() => setShowFilterModal(true)}
-            >
-              <MaterialIcons name="filter-list" size={16} color="white" />
-              <Text className="text-white text-sm font-medium ml-1">
-                Filters
-              </Text>
-              <View className="ml-2 bg-white/20 px-1.5 py-0.5 rounded-full">
-                <Text className="text-white text-xs font-medium">
-                  {(showReports ? 1 : 0) +
-                    (showSafePlaces ? 1 : 0) +
-                    (showHeatmap ? 1 : 0) +
-                    (showPOIs ? 1 : 0)}
-                </Text>
-              </View>
-            </TouchableOpacity>
-
-            {/* Manage Button */}
-            <TouchableOpacity
-              className="flex-1 flex-row items-center justify-center py-2.5 px-3 bg-[#67082F] rounded-lg"
-              onPress={() => router.push("/places/manage" as any)}
-            >
-              <MaterialIcons name="edit-location" size={16} color="white" />
-              <Text className="text-white text-sm font-medium ml-1">
-                Manage Safe Places
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
         <View className="flex-1 pb-20 relative">
           {loading ? (
             <View className="flex-1 items-center justify-center">
@@ -1030,6 +1025,23 @@ export default function MapScreen() {
               >
                 {showDirections && origin && destination && (
                   <>
+                    {(() => {
+                      console.log("=== MAPVIEW DIRECTIONS DEBUG ===");
+                      console.log("Platform:", Platform.OS);
+                      console.log("showDirections:", showDirections);
+                      console.log("origin:", origin);
+                      console.log("destination:", destination);
+                      console.log("travelMode:", travelMode);
+                      console.log(
+                        "API Key present:",
+                        !!process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY
+                      );
+                      console.log(
+                        "MapViewDirections available:",
+                        !!MapViewDirections
+                      );
+                      return null;
+                    })()}
                     {Platform.OS !== "web" && MapViewDirections ? (
                       <MapViewDirections
                         origin={origin}
@@ -1040,7 +1052,19 @@ export default function MapScreen() {
                         strokeWidth={4}
                         strokeColor="#4285F4"
                         mode={travelMode.toLowerCase() as any}
-                        onReady={handleDirectionsReady}
+                        onReady={(result: any) => {
+                          console.log(
+                            "=== NATIVE DIRECTIONS READY ===",
+                            result
+                          );
+                          handleDirectionsReady(result);
+                        }}
+                        onError={(errorMessage: any) => {
+                          console.error(
+                            "=== NATIVE DIRECTIONS ERROR ===",
+                            errorMessage
+                          );
+                        }}
                       />
                     ) : Platform.OS === "web" ? (
                       <MapViewDirectionsWeb
@@ -1052,7 +1076,16 @@ export default function MapScreen() {
                         strokeWidth={4}
                         strokeColor="#4285F4"
                         mode={travelMode}
-                        onReady={handleDirectionsReady}
+                        onReady={(result: any) => {
+                          console.log("=== WEB DIRECTIONS READY ===", result);
+                          handleDirectionsReady(result);
+                        }}
+                        onError={(errorMessage: any) => {
+                          console.error(
+                            "=== WEB DIRECTIONS ERROR ===",
+                            errorMessage
+                          );
+                        }}
                       />
                     ) : null}
                   </>
