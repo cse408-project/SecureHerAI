@@ -639,24 +639,19 @@ const MapComponent = forwardRef<any, MapComponentPropsWithChildren>(
         ) {
           const processChild = (child: any) => {
             console.log("=== PROCESSING CHILD ===", child);
-
+            
             if (React.isValidElement(child)) {
               // Check if this is a Fragment with children
-              if (
-                child.type === React.Fragment &&
-                (child.props as any).children
-              ) {
+              if (child.type === React.Fragment && (child.props as any).children) {
                 console.log("=== FOUND FRAGMENT, PROCESSING CHILDREN ===");
-                const fragmentChildren = Array.isArray(
-                  (child.props as any).children
-                )
-                  ? (child.props as any).children
+                const fragmentChildren = Array.isArray((child.props as any).children) 
+                  ? (child.props as any).children 
                   : [(child.props as any).children];
-
+                
                 fragmentChildren.forEach(processChild);
                 return;
               }
-
+              
               // Check if this child has directions props
               if (child.props) {
                 const props = child.props as any;
@@ -667,7 +662,7 @@ const MapComponent = forwardRef<any, MapComponentPropsWithChildren>(
                   onReady,
                   onError,
                 } = props;
-
+                
                 console.log("Child props:", {
                   origin,
                   destination,

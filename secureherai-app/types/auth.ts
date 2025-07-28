@@ -6,6 +6,10 @@ export interface User {
   profilePicture?: string;
   dateOfBirth?: string;
   role: "USER" | "RESPONDER";
+  // Current location fields (now directly on User entity)
+  currentLatitude?: number;
+  currentLongitude?: number;
+  lastLocationUpdate?: string;
   notificationPreferences?: {
     emailAlerts: boolean;
     smsAlerts: boolean;
@@ -16,8 +20,7 @@ export interface User {
     badgeNumber: string;
     branchName?: string;
     address?: string;
-    currentLatitude?: number;
-    currentLongitude?: number;
+    // currentLatitude and currentLongitude removed from responderInfo
     status: "AVAILABLE" | "BUSY" | "OFF_DUTY";
     lastStatusUpdate: string;
     active: boolean;
@@ -56,8 +59,7 @@ export interface RegisterRequest {
   badgeNumber?: string;
   branchName?: string;
   address?: string;
-  currentLatitude?: number;
-  currentLongitude?: number;
+  // currentLatitude and currentLongitude removed - location will be handled separately
 }
 
 export interface AuthContextType {
@@ -89,6 +91,7 @@ export interface UpdateProfileRequest {
   badgeNumber?: string;
   branchName?: string;
   address?: string;
+  // Current location fields (now directly on User entity)
   currentLatitude?: number;
   currentLongitude?: number;
 }

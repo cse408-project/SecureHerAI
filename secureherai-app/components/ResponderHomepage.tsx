@@ -1,5 +1,5 @@
-import { View, Text, TouchableOpacity, ScrollView, RefreshControl, Modal, TextInput, Alert } from "react-native";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { View, Text, TouchableOpacity, ScrollView, RefreshControl, Modal, TextInput } from "react-native";
+import { useEffect, useState, useCallback } from "react";
 import { StatusBar } from "expo-status-bar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -9,7 +9,6 @@ import Header from "./Header";
 import NotificationModal from "./NotificationModal";
 import { Alert as AlertType } from "../types/sos";
 import apiService from "../services/api";
-import { AlertResponder } from "../types/alertResponder";
 
 // Interface for accepted alert response from backend
 interface AcceptedAlertResponder {
@@ -36,7 +35,7 @@ export default function ResponderHomepage() {
   const [alertDetailsData, setAlertDetailsData] = useState<any>(null);
   const [loadingUserDetails, setLoadingUserDetails] = useState(false);
   const { showAlert, showConfirmAlert } = useAlert();
-  const { refreshNotificationCount } = useNotifications();
+  useNotifications(); // For notification count in header
 
   const loadAlerts = useCallback(async () => {
     try {
@@ -217,6 +216,44 @@ export default function ResponderHomepage() {
       showAlert("Error", "Failed to load alert details", "error");
     } finally {
       setLoadingUserDetails(false);
+    }
+  };
+
+  const handleNavigateToUser = async (alertId: string) => {
+    try {
+      // Get alert details to extract location
+      const detailsResponse = await apiService.getAlertUserDetails(alertId);
+      if (detailsResponse.success && detailsResponse.data?.alert) {
+        const alert = detailsResponse.data.alert;
+        const user = detailsResponse.data.user;
+        
+        if (!alert.latitude || !alert.longitude) {
+          showAlert("Error", "Alert location is not available for navigation", "error");
+          return;
+        }
+
+        // Navigate to NavigationScreen with responder role
+        const targetLocation = {
+          latitude: alert.latitude,
+          longitude: alert.longitude,
+          address: alert.address || "Alert Location",
+        };
+
+        router.push({
+          pathname: "/navigation" as any,
+          params: {
+            alertId: alertId,
+            userRole: "RESPONDER",
+            targetLocation: JSON.stringify(targetLocation),
+            targetUserId: user?.userId || alert.userId || "user",
+          },
+        });
+      } else {
+        showAlert("Error", "Could not load alert details for navigation", "error");
+      }
+    } catch (error) {
+      console.error("Error starting navigation:", error);
+      showAlert("Error", "Failed to start navigation. Please try again.", "error");
     }
   };
 
@@ -425,7 +462,7 @@ export default function ResponderHomepage() {
                         <View className="flex-row items-start mb-2">
                           <MaterialIcons name="message" size={16} color="#6B7280" />
                           <Text className="text-gray-600 ml-1 flex-1">
-                            "{alert.alertMessage}"
+                            {alert.alertMessage}
                           </Text>
                         </View>
                       )}
@@ -495,7 +532,7 @@ export default function ResponderHomepage() {
               <MaterialIcons name="assignment-turned-in" size={48} color="#6B7280" />
               <Text className="text-gray-800 text-lg font-semibold mt-2">No Accepted Alerts</Text>
               <Text className="text-gray-500 text-center mt-1">
-                Alerts you've accepted will appear here
+                Alerts you&apos;ve accepted will appear here
               </Text>
             </View>
           ) : (
@@ -544,14 +581,24 @@ export default function ResponderHomepage() {
                   {/* Action Buttons */}
                   <View className="flex-row space-x-2">
                     <TouchableOpacity
-                      className="bg-blue-600 rounded-lg px-4 py-2 flex-1"
-                      onPress={() => handleUpdateStatus(alertResponder)}
+                      className="bg-green-600 rounded-lg px-4 py-2 flex-1"
+                      onPress={() => handleNavigateToUser(alertResponder.alertId)}
                     >
-                      <Text className="text-white font-semibold text-center">Update Status</Text>
+                      <View className="flex-row items-center justify-center">
+                        <MaterialIcons name="navigation" size={16} color="white" />
+                        <Text className="text-white font-semibold ml-1">Navigate</Text>
+                      </View>
                     </TouchableOpacity>
                     
                     <TouchableOpacity
-                      className="bg-gray-100 rounded-lg px-4 py-2"
+                      className="bg-blue-600 rounded-lg px-3 py-2"
+                      onPress={() => handleUpdateStatus(alertResponder)}
+                    >
+                      <Text className="text-white font-semibold text-center">Status</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      className="bg-gray-100 rounded-lg px-3 py-2"
                       onPress={() => handleViewAlertDetails(alertResponder.alertId)}
                     >
                       <MaterialIcons name="info" size={20} color="#374151" />
@@ -734,7 +781,7 @@ export default function ResponderHomepage() {
                         </Text>
                         {alertDetailsData.alert.alertMessage && (
                           <Text className="text-gray-600 mb-1">
-                            Message: "{alertDetailsData.alert.alertMessage}"
+                            Message: {alertDetailsData.alert.alertMessage}
                           </Text>
                         )}
                       </>

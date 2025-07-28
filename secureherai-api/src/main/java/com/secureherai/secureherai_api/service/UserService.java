@@ -72,8 +72,8 @@ public class UserService {
                         responder.getBadgeNumber(),
                         responder.getBranchName(),
                         responder.getAddress(),
-                        responder.getCurrentLatitude(),
-                        responder.getCurrentLongitude(),
+                        user.getCurrentLatitude(), // Get location from User entity
+                        user.getCurrentLongitude(), // Get location from User entity
                         responder.getStatus().toString(),
                         responder.getIsActive(),
                         responder.getLastStatusUpdate()
@@ -193,17 +193,36 @@ public class UserService {
                 responder.setAddress(request.getAddress().trim());
             }
             
-            // Update current location if provided
-            if (request.getCurrentLatitude() != null && request.getCurrentLongitude() != null) {
-                responder.setCurrentLatitude(java.math.BigDecimal.valueOf(request.getCurrentLatitude()));
-                responder.setCurrentLongitude(java.math.BigDecimal.valueOf(request.getCurrentLongitude()));
-            }
-            
             responderRepository.save(responder);
+        }
+        
+        // Update current location if provided (for both regular users and responders)
+        if (request.getCurrentLatitude() != null && request.getCurrentLongitude() != null) {
+            user.setCurrentLatitude(java.math.BigDecimal.valueOf(request.getCurrentLatitude()));
+            user.setCurrentLongitude(java.math.BigDecimal.valueOf(request.getCurrentLongitude()));
+            user.setLastLocationUpdate(java.time.LocalDateTime.now());
         }
         
         userRepository.save(user);
         
         return new AuthResponse.Success("Profile updated successfully");
+    }
+
+    public Object updateLocation(UUID userId, Double latitude, Double longitude) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            return new AuthResponse.Error("User not found");
+        }
+        
+        User user = userOpt.get();
+        
+        // Update location
+        user.setCurrentLatitude(java.math.BigDecimal.valueOf(latitude));
+        user.setCurrentLongitude(java.math.BigDecimal.valueOf(longitude));
+        user.setLastLocationUpdate(java.time.LocalDateTime.now());
+        
+        userRepository.save(user);
+        
+        return new AuthResponse.Success("Location updated successfully");
     }
 }

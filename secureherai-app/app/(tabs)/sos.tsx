@@ -14,8 +14,7 @@ import { useAlert } from "../../context/AlertContext";
 import { useAuth } from "../../context/AuthContext";
 import Header from "../../components/Header";
 import apiService from "../../services/api";
-import { Alert as AlertType, AlertResponse } from "../../types/sos";
-import ReportModal from "../../components/ReportModal";
+import { Alert as AlertType } from "../../types/sos";
 import { router } from "expo-router";
 import NotificationModal from "../../components/NotificationModal";
 
@@ -31,7 +30,7 @@ export default function SOSScreen() {
   const { user } = useAuth(); // Get user from auth context
 
   // Check if user is a responder
-  const checkUserRole = async () => {
+  const checkUserRole = useCallback(async () => {
     try {
       // First try to get role from auth context user
       if (user?.role) {
@@ -59,7 +58,7 @@ export default function SOSScreen() {
       console.error("Error checking user role:", error);
       setIsResponder(false);
     }
-  };
+  }, [user?.role]);
 
   // Load alerts based on user role
   const loadAlerts = useCallback(async () => {
@@ -97,13 +96,13 @@ export default function SOSScreen() {
   useEffect(() => {
     // Check user role first, then load alerts
     checkUserRole().then(() => loadAlerts());
-  }, [loadAlerts, user]); // Re-run when user changes
+  }, [loadAlerts, user, checkUserRole]); // Re-run when user changes
 
   // Re-check user role when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       checkUserRole().then(() => loadAlerts());
-    }, [loadAlerts, user])
+    }, [loadAlerts, checkUserRole])
   );
 
   const onRefresh = async () => {
@@ -188,15 +187,58 @@ export default function SOSScreen() {
     }
   };
 
+  const handleNavigateToResponder = async (alert: AlertType) => {
+    try {
+      if (!alert.latitude || !alert.longitude) {
+        showAlert("Error", "Alert location is not available for navigation", "error");
+        return;
+      }
+
+      // For users, navigate to responder location
+      // For responders, navigate to user location
+      const targetLocation = {
+        latitude: alert.latitude,
+        longitude: alert.longitude,
+        address: alert.address || "Alert Location",
+      };
+
+      router.push({
+        pathname: "/navigation" as any,
+        params: {
+          alertId: alert.id,
+          userRole: isResponder ? "RESPONDER" : "USER",
+          targetLocation: JSON.stringify(targetLocation),
+          targetUserId: isResponder ? alert.userId : "responder", // This should come from alert details
+        },
+      });
+    } catch (error) {
+      console.error("Error navigating to responder:", error);
+      showAlert("Error", "Failed to start navigation. Please try again.", "error");
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "ACTIVE":
+      case "active":
         return "text-red-600 bg-red-50 border-red-200";
+      case "RESPONDED":
+      case "responded":
+        return "text-blue-600 bg-blue-50 border-blue-200";
+      case "EN_ROUTE":
+      case "en_route":
+        return "text-yellow-600 bg-yellow-50 border-yellow-200";
+      case "ARRIVED":
+      case "arrived":
+        return "text-indigo-600 bg-indigo-50 border-indigo-200";
       case "CANCELED":
+      case "canceled":
         return "text-orange-600 bg-orange-50 border-orange-200";
       case "RESOLVED":
+      case "resolved":
         return "text-green-600 bg-green-50 border-green-200";
       case "VERIFIED":
+      case "verified":
         return "text-purple-600 bg-purple-50 border-purple-200";
       default:
         return "text-gray-600 bg-gray-50 border-gray-200";
@@ -411,6 +453,23 @@ export default function SOSScreen() {
                           Update Report
                         </Text>
                       </TouchableOpacity>
+
+                      {/* Navigation button - show for responded alerts */}
+                      {(alert.status === "RESPONDED" || alert.status === "responded") && (
+                        <TouchableOpacity
+                          className="bg-green-100 rounded-md py-2 px-3 mr-2 flex-row items-center"
+                          onPress={() => handleNavigateToResponder(alert)}
+                        >
+                          <MaterialIcons
+                            name="navigation"
+                            size={16}
+                            color="#059669"
+                          />
+                          <Text className="text-green-700 text-xs font-medium ml-1">
+                            Navigate
+                          </Text>
+                        </TouchableOpacity>
+                      )}
 
                       {/* Cancel button - only show for active alerts owned by user */}
                       {alert.status === "ACTIVE" && !isResponder && (

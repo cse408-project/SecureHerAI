@@ -2,8 +2,14 @@ package com.secureherai.secureherai_api.service;
 
 import com.secureherai.secureherai_api.dto.sos.LocationDto;
 import com.secureherai.secureherai_api.entity.Alert;
+import com.secureherai.secureherai_api.entity.AlertResponder;
 import com.secureherai.secureherai_api.entity.IncidentReport;
+import com.secureherai.secureherai_api.entity.User;
+import com.secureherai.secureherai_api.entity.Responder;
 import com.secureherai.secureherai_api.repository.AlertRepository;
+import com.secureherai.secureherai_api.repository.AlertResponderRepository;
+import com.secureherai.secureherai_api.repository.UserRepository;
+import com.secureherai.secureherai_api.repository.ResponderRepository;
 import com.secureherai.secureherai_api.service.AzureSpeechService.SpeechTranscriptionResult;
 
 import lombok.RequiredArgsConstructor;
@@ -20,7 +26,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -35,6 +43,9 @@ import java.time.LocalDateTime;
 public class SOSService {
     
     private final AlertRepository alertRepository;
+    private final AlertResponderRepository alertResponderRepository;
+    private final UserRepository userRepository;
+    private final ResponderRepository responderRepository;
     private final AzureSpeechService azureSpeechService;
     private final NotificationService notificationService;
     private final SettingsService settingsService;
@@ -429,5 +440,95 @@ public class SOSService {
         
         // Save and return the updated alert
         return alertRepository.save(alert);
+    }
+    
+    /**
+     * Get participant location for navigation
+     * For Users: returns responder's location  
+     * For Responders: returns user's location
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getAlertParticipantLocation(UUID alertId, UUID requesterId) {
+        log.info("Getting participant location for alert: {} by user: {}", alertId, requesterId);
+        
+        // Find the alert
+        Optional<Alert> alertOpt = alertRepository.findById(alertId);
+        if (!alertOpt.isPresent()) {
+            throw new RuntimeException("Alert not found with ID: " + alertId);
+        }
+        
+        Alert alert = alertOpt.get();
+        
+        // Get the user who created the alert
+        Optional<User> userOpt = userRepository.findById(alert.getUserId());
+        if (!userOpt.isPresent()) {
+            throw new RuntimeException("Alert user not found");
+        }
+        User alertUser = userOpt.get();
+        
+        // Check if requester is the alert user
+        boolean isUser = alert.getUserId().equals(requesterId);
+        
+        // Check if requester is a responder for this alert
+        Optional<AlertResponder> alertResponderOpt = alertResponderRepository.findByAlertIdAndResponderId(alertId, requesterId);
+        boolean isResponder = alertResponderOpt.isPresent();
+        
+        if (!isUser && !isResponder) {
+            throw new RuntimeException("User is not authorized to access this alert's participant location");
+        }
+        
+        Map<String, Object> result = new HashMap<>();
+        
+        if (isUser) {
+            // User is requesting responder's location
+            // Find ANY responder for this alert
+            List<AlertResponder> alertResponders = alertResponderRepository.findByAlertId(alertId);
+            if (alertResponders.isEmpty()) {
+                throw new RuntimeException("No responder assigned to this alert yet");
+            }
+            
+            // Get the first accepted responder
+            AlertResponder acceptedResponder = alertResponders.stream()
+                .filter(ar -> "accepted".equals(ar.getStatus()) || "en_route".equals(ar.getStatus()) || "arrived".equals(ar.getStatus()))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("No active responder found for this alert"));
+            
+            Optional<Responder> responderOpt = responderRepository.findById(acceptedResponder.getResponderId());
+            if (!responderOpt.isPresent()) {
+                throw new RuntimeException("Responder not found");
+            }
+            Responder responder = responderOpt.get();
+            
+            result.put("success", true);
+            
+            Map<String, Object> participantLocation = new HashMap<>();
+            participantLocation.put("latitude", responder.getUser().getCurrentLatitude());
+            participantLocation.put("longitude", responder.getUser().getCurrentLongitude());
+            participantLocation.put("lastUpdate", responder.getUser().getLastLocationUpdate());
+            result.put("participantLocation", participantLocation);
+            
+            Map<String, Object> participantInfo = new HashMap<>();
+            participantInfo.put("name", responder.getUser().getFullName());
+            participantInfo.put("role", "RESPONDER");
+            participantInfo.put("responderType", responder.getResponderType().toString());
+            participantInfo.put("badgeNumber", responder.getBadgeNumber());
+            result.put("participantInfo", participantInfo);
+        } else {
+            // Responder is requesting user's location
+            result.put("success", true);
+            
+            Map<String, Object> participantLocation = new HashMap<>();
+            participantLocation.put("latitude", alertUser.getCurrentLatitude());
+            participantLocation.put("longitude", alertUser.getCurrentLongitude());
+            participantLocation.put("lastUpdate", alertUser.getLastLocationUpdate());
+            result.put("participantLocation", participantLocation);
+            
+            Map<String, Object> participantInfo = new HashMap<>();
+            participantInfo.put("name", alertUser.getFullName());
+            participantInfo.put("role", "USER");
+            result.put("participantInfo", participantInfo);
+        }
+        
+        return result;
     }
 }

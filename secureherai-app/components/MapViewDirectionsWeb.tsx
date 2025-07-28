@@ -33,13 +33,9 @@ const MapViewDirectionsWeb: React.FC<MapViewDirectionsProps> = (props) => {
     console.log("=== MapViewDirectionsWeb rendering with props ===", props);
 
     // Create a proper React component that preserves props
-    const DirectionsBridge: React.FC<MapViewDirectionsProps> = (
-      bridgeProps
-    ) => {
+    const DirectionsBridge: React.FC<MapViewDirectionsProps> = (bridgeProps) => {
       // This component doesn't render anything visible but preserves the props
-      return (
-        <span style={{ display: "none" }} data-component="MapViewDirections" />
-      );
+      return <span style={{ display: 'none' }} data-component="MapViewDirections" />;
     };
 
     // Return the bridge component with our props

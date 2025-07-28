@@ -14,7 +14,6 @@ import { router, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
-import * as Location from "expo-location";
 import { useAlert } from "../context/AlertContext";
 import DatePicker from "../components/DatePicker";
 import ResponderFields from "../components/ResponderFields";
@@ -26,7 +25,6 @@ export default function CompleteRegisterScreen() {
   const { showAlert } = useAlert();
   const [loading, setLoading] = useState(false);
   const [googleInfo, setGoogleInfo] = useState<any>(null);
-  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
 
   const [formData, setFormData] = useState({
     phoneNumber: "",
@@ -36,8 +34,6 @@ export default function CompleteRegisterScreen() {
     badgeNumber: "",
     branchName: "",
     address: "",
-    currentLatitude: null as number | null,
-    currentLongitude: null as number | null,
   });
 
   const [errors, setErrors] = useState<any>({});
@@ -70,80 +66,6 @@ export default function CompleteRegisterScreen() {
       router.replace("/(auth)");
     }
   }, [token, showAlert]);
-
-  const detectCurrentLocation = async () => {
-    setIsDetectingLocation(true);
-    try {
-      // Request permission to access location
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        showAlert(
-          "Permission Required",
-          "Location permission is required to detect your current location.",
-          "error"
-        );
-        return;
-      }
-
-      // Get current position
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
-
-      // Update coordinates
-      setFormData((prev) => ({
-        ...prev,
-        currentLatitude: location.coords.latitude,
-        currentLongitude: location.coords.longitude,
-      }));
-
-      // Try to get address from coordinates
-      try {
-        const addressResponse = await Location.reverseGeocodeAsync({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        });
-
-        if (addressResponse.length > 0) {
-          const address = addressResponse[0];
-          const fullAddress = [
-            address.name,
-            address.street,
-            address.city,
-            address.region,
-            address.country,
-          ]
-            .filter(Boolean)
-            .join(", ");
-
-          if (fullAddress) {
-            setFormData((prev) => ({
-              ...prev,
-              address: fullAddress,
-            }));
-          }
-        }
-      } catch (reverseGeoError) {
-        console.log("Reverse geocoding failed:", reverseGeoError);
-        // Still update coordinates even if address lookup fails
-      }
-
-      showAlert(
-        "Location Detected",
-        "Your current location has been detected successfully.",
-        "success"
-      );
-    } catch (error) {
-      console.error("Location detection failed:", error);
-      showAlert(
-        "Location Error",
-        "Failed to detect your location. Please check your GPS settings and try again.",
-        "error"
-      );
-    } finally {
-      setIsDetectingLocation(false);
-    }
-  };
 
   const validateForm = () => {
     const newErrors: any = {};
@@ -192,11 +114,6 @@ export default function CompleteRegisterScreen() {
           badgeNumber: formData.badgeNumber.trim(),
           branchName: formData.branchName.trim(),
           address: formData.address.trim(),
-          ...(formData.currentLatitude !== null &&
-            formData.currentLongitude !== null && {
-              currentLatitude: formData.currentLatitude,
-              currentLongitude: formData.currentLongitude,
-            }),
         }),
       };
 
@@ -223,8 +140,6 @@ export default function CompleteRegisterScreen() {
           badgeNumber: "",
           branchName: "",
           address: "",
-          currentLatitude: null,
-          currentLongitude: null,
         });
 
         showAlert(
@@ -380,8 +295,6 @@ export default function CompleteRegisterScreen() {
                   onFieldChange={(field: string, value: string) => {
                     setFormData((prev) => ({ ...prev, [field]: value }));
                   }}
-                  onDetectLocation={detectCurrentLocation}
-                  isDetectingLocation={isDetectingLocation}
                   showTitle={true}
                 />
               )}

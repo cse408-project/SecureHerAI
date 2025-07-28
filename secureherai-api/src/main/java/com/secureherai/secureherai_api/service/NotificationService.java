@@ -122,7 +122,7 @@ public class NotificationService {
         List<ResponderWithDistance> sortedResponders = activeResponders.stream()
             .map(responder -> new ResponderWithDistance(responder, 
                 calculateDistance(alert.getLatitude(), alert.getLongitude(), 
-                                responder.getCurrentLatitude(), responder.getCurrentLongitude())))
+                                responder.getUser().getCurrentLatitude(), responder.getUser().getCurrentLongitude()))) // Get location from User entity
             .sorted(Comparator.comparingDouble(ResponderWithDistance::getDistance))
             .limit(MAX_RESPONDERS) // Limit to maximum 10 responders
             .collect(Collectors.toList());

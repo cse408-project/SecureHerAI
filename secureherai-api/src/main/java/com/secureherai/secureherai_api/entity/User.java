@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -93,6 +94,16 @@ public class User implements UserDetails {
     
     @Column(name = "is_verified", nullable = false)
     private Boolean isVerified = false;
+    
+    // Current location fields
+    @Column(name = "current_latitude", precision = 9, scale = 6)
+    private BigDecimal currentLatitude;
+    
+    @Column(name = "current_longitude", precision = 9, scale = 6)
+    private BigDecimal currentLongitude;
+    
+    @Column(name = "last_location_update")
+    private LocalDateTime lastLocationUpdate;
     
     public enum Role {
         USER, RESPONDER, ADMIN
@@ -235,4 +246,14 @@ public class User implements UserDetails {
     
     public LocalDateTime getLoginCodeExpiry() { return loginCodeExpiry; }
     public void setLoginCodeExpiry(LocalDateTime loginCodeExpiry) { this.loginCodeExpiry = loginCodeExpiry; }
+    
+    // Current location getters and setters
+    public BigDecimal getCurrentLatitude() { return currentLatitude; }
+    public void setCurrentLatitude(BigDecimal currentLatitude) { this.currentLatitude = currentLatitude; }
+    
+    public BigDecimal getCurrentLongitude() { return currentLongitude; }
+    public void setCurrentLongitude(BigDecimal currentLongitude) { this.currentLongitude = currentLongitude; }
+    
+    public LocalDateTime getLastLocationUpdate() { return lastLocationUpdate; }
+    public void setLastLocationUpdate(LocalDateTime lastLocationUpdate) { this.lastLocationUpdate = lastLocationUpdate; }
 }

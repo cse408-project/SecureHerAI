@@ -78,3 +78,13 @@ Places API, Places UI Kit, Places API (New), Routes API, Directions API, Navigat
 I've enabled these API's. Now Implement search field (with place suggestion). Also drop down destination field (also wiith place suggestion).Then show direction between these places.
 Show all nearby police stations and medical center (using api) [add one option in Map's pages filter to show Police & medical].
 Do these with minimal code. @websearch for best approach.
+
+
+
+
+Lets Make a flow.......
+When a responder accepts an alert, he will navigate to a page almost like map page, but it will show route responder current location to user's current location (alert location also visible). search option will be available too, but other map's options not needed. He can allso navigate to the page by a button in the accepted alert.
+User will see if an alert is accepted by its notification. also alert status in emergency page. By clicking a button if in accepted alert... he will also go the same page showing route his location to responder location. 
+Both locations should be stream to each other.
+For this page no tab button will be added. like submit.tsx, details.tsx pages.
+@websearch for best way to stream locations... (in web and android)

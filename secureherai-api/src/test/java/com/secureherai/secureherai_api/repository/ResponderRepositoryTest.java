@@ -55,9 +55,12 @@ class ResponderRepositoryTest {
         testResponder.setResponderType(Responder.ResponderType.POLICE);
         testResponder.setBadgeNumber("P" + uniqueId);
         testResponder.setStatus(Responder.Status.AVAILABLE);
-        testResponder.setCurrentLatitude(new BigDecimal("40.7128"));
-        testResponder.setCurrentLongitude(new BigDecimal("-74.0060"));
         testResponder.setIsActive(true);
+        
+        // Set location in the User entity instead of Responder
+        testUser.setCurrentLatitude(new BigDecimal("40.7128"));
+        testUser.setCurrentLongitude(new BigDecimal("-74.0060"));
+        testUser.setLastLocationUpdate(java.time.LocalDateTime.now());
         
         // Not persisting the responder here as different tests will need to persist it differently
     }

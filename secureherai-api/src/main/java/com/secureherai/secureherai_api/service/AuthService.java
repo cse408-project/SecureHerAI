@@ -182,10 +182,6 @@ public class AuthService {    @Autowired
                 if (request.getAddress() != null && !request.getAddress().trim().isEmpty()) {
                     responder.setAddress(request.getAddress().trim());
                 }
-                if (request.getCurrentLatitude() != null && request.getCurrentLongitude() != null) {
-                    responder.setCurrentLatitude(java.math.BigDecimal.valueOf(request.getCurrentLatitude()));
-                    responder.setCurrentLongitude(java.math.BigDecimal.valueOf(request.getCurrentLongitude()));
-                }
                 
                 responderRepository.save(responder);
             } catch (Exception e) {
@@ -193,8 +189,15 @@ public class AuthService {    @Autowired
                 System.err.println("Error creating responder: " + e.getMessage());
                 e.printStackTrace();
                 // Return error response
-                return new AuthResponse.Error("Error creating responder profile: " + e.getMessage());
+                return new AuthResponse.Error("Failed to create responder profile: " + e.getMessage());
             }
+        }
+        
+        // Set location in User entity (for both regular users and responders)
+        if (request.getCurrentLatitude() != null && request.getCurrentLongitude() != null) {
+            user.setCurrentLatitude(java.math.BigDecimal.valueOf(request.getCurrentLatitude()));
+            user.setCurrentLongitude(java.math.BigDecimal.valueOf(request.getCurrentLongitude()));
+            user.setLastLocationUpdate(java.time.LocalDateTime.now());
         }
         
         // Send welcome email with verification instructions
@@ -316,14 +319,17 @@ public class AuthService {    @Autowired
                 if (request.getAddress() != null && !request.getAddress().trim().isEmpty()) {
                     responder.setAddress(request.getAddress().trim());
                 }
-                if (request.getCurrentLatitude() != null && request.getCurrentLongitude() != null) {
-                    responder.setCurrentLatitude(java.math.BigDecimal.valueOf(request.getCurrentLatitude()));
-                    responder.setCurrentLongitude(java.math.BigDecimal.valueOf(request.getCurrentLongitude()));
-                }
                 
                 responder.setIsActive(true);
                 
                 responderRepository.save(responder);
+            }
+            
+            // Set location in User entity (for both regular users and responders)
+            if (request.getCurrentLatitude() != null && request.getCurrentLongitude() != null) {
+                user.setCurrentLatitude(java.math.BigDecimal.valueOf(request.getCurrentLatitude()));
+                user.setCurrentLongitude(java.math.BigDecimal.valueOf(request.getCurrentLongitude()));
+                user.setLastLocationUpdate(java.time.LocalDateTime.now());
             }
             
             // Send welcome email

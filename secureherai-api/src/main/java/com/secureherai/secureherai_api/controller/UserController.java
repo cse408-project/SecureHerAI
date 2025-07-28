@@ -73,4 +73,35 @@ public class UserController {
                     .body(new AuthResponse.Error("An error occurred: " + e.getMessage()));
         }
     }
+
+    @PutMapping("/location")
+    public ResponseEntity<Object> updateLocation(@RequestHeader("Authorization") String authHeader,
+                                                @Valid @RequestBody AuthRequest.UpdateProfile request) {
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            if (!jwtService.isTokenValid(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new AuthResponse.Error("Invalid or expired token"));
+            }
+            
+            UUID userId = UUID.fromString(jwtService.extractSubject(token));
+            
+            // Validate location data
+            if (request.getCurrentLatitude() == null || request.getCurrentLongitude() == null) {
+                return ResponseEntity.badRequest()
+                        .body(new AuthResponse.Error("Latitude and longitude are required"));
+            }
+            
+            Object response = userService.updateLocation(userId, request.getCurrentLatitude(), request.getCurrentLongitude());
+            
+            if (response instanceof AuthResponse.Error) {
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new AuthResponse.Error("An error occurred: " + e.getMessage()));
+        }
+    }
 }

@@ -4,9 +4,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
 
 interface ResponderFieldsProps {
   formData: {
@@ -14,8 +12,6 @@ interface ResponderFieldsProps {
     badgeNumber?: string;
     branchName?: string;
     address?: string;
-    currentLatitude?: number | null;
-    currentLongitude?: number | null;
   };
   errors?: {
     responderType?: string;
@@ -24,8 +20,6 @@ interface ResponderFieldsProps {
     address?: string;
   };
   onFieldChange: (field: string, value: string) => void;
-  onDetectLocation: () => void;
-  isDetectingLocation: boolean;
   showTitle?: boolean;
 }
 
@@ -33,8 +27,6 @@ const ResponderFields: React.FC<ResponderFieldsProps> = ({
   formData,
   errors = {},
   onFieldChange,
-  onDetectLocation,
-  isDetectingLocation,
   showTitle = true,
 }) => {
   return (
@@ -211,79 +203,6 @@ const ResponderFields: React.FC<ResponderFieldsProps> = ({
         {errors.address && (
           <Text className="text-red-500 text-sm mt-1">{errors.address}</Text>
         )}
-      </View>
-
-      {/* Current Location Detection */}
-      <View className="mb-4">
-        <Text className="text-sm font-medium text-gray-700 mb-2">
-          Current Location (Optional)
-        </Text>
-
-        {/* GPS Detection Button */}
-        <TouchableOpacity
-          className="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200 flex-row items-center justify-center"
-          onPress={onDetectLocation}
-          disabled={isDetectingLocation}
-        >
-          {isDetectingLocation ? (
-            <ActivityIndicator size="small" color="#67082F" />
-          ) : (
-            <MaterialIcons name="my-location" size={20} color="#67082F" />
-          )}
-          <Text
-            className={`ml-2 font-medium ${
-              isDetectingLocation ? "text-gray-500" : "text-[#67082F]"
-            }`}
-          >
-            {isDetectingLocation ? "Detecting..." : "Detect Current Location"}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Show coordinates if detected */}
-        {formData.currentLatitude && formData.currentLongitude && (
-          <View className="mt-2 p-3 bg-green-50 rounded-lg border border-green-200">
-            <Text className="text-green-800 text-sm font-medium">
-              Location Detected:
-            </Text>
-            <Text className="text-green-700 text-xs mt-1">
-              Lat: {formData.currentLatitude.toFixed(6)}, Lng:{" "}
-              {formData.currentLongitude.toFixed(6)}
-            </Text>
-          </View>
-        )}
-
-        {/* Manual Coordinate Input */}
-        <View className="flex-row space-x-2 mt-3">
-          <View className="flex-1">
-            <Text className="text-xs text-gray-500 mb-1">
-              Latitude (Optional)
-            </Text>
-            <TextInput
-              className="border border-gray-300 rounded-lg p-3 bg-white text-gray-900"
-              placeholder="23.8103"
-              value={formData.currentLatitude?.toString() || ""}
-              onChangeText={(value) => onFieldChange("currentLatitude", value)}
-              keyboardType="numeric"
-            />
-          </View>
-          <View className="flex-1">
-            <Text className="text-xs text-gray-500 mb-1">
-              Longitude (Optional)
-            </Text>
-            <TextInput
-              className="border border-gray-300 rounded-lg p-3 bg-white text-gray-900"
-              placeholder="90.4125"
-              value={formData.currentLongitude?.toString() || ""}
-              onChangeText={(value) => onFieldChange("currentLongitude", value)}
-              keyboardType="numeric"
-            />
-          </View>
-        </View>
-
-        <Text className="text-xs text-gray-500 mt-1">
-          This helps us assign nearby incidents to you. Use the button above to
-          detect automatically or enter coordinates manually.
-        </Text>
       </View>
     </View>
   );

@@ -298,4 +298,52 @@ public class SOSController {
                 ));
         }
     }
+    
+    /**
+     * Get other participant's location for navigation
+     * For Users: returns responder's location
+     * For Responders: returns user's location
+     * 
+     * GET /api/sos/alerts/{alertId}/participant-location
+     */
+    @GetMapping("/alerts/{alertId}/participant-location")
+    public ResponseEntity<Map<String, Object>> getParticipantLocation(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String alertId) {
+        
+        try {
+            // Extract token and validate
+            String token = authHeader.replace("Bearer ", "");
+            if (!jwtService.isTokenValid(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of(
+                        "success", false,
+                        "error", "Authentication token is invalid or expired"
+                    ));
+            }
+            
+            // Get user ID from token
+            UUID userId = jwtService.extractUserId(token);
+            
+            // Get participant location from service
+            Map<String, Object> result = sosService.getAlertParticipantLocation(UUID.fromString(alertId), userId);
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid alert ID format: {}", alertId, e);
+            return ResponseEntity.badRequest()
+                .body(Map.of(
+                    "success", false,
+                    "error", "Invalid alert ID format"
+                ));
+        } catch (Exception e) {
+            log.error("Error getting participant location for alert: {}", alertId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of(
+                    "success", false,
+                    "error", "Error getting participant location: " + e.getMessage()
+                ));
+        }
+    }
 }

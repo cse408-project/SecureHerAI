@@ -287,158 +287,154 @@ const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
                     elevation: 300000, // For Android
                   }}
                 >
-                  {GooglePlacesAutocomplete && Platform.OS !== "web" ? (
-                    <GooglePlacesAutocomplete
-                      placeholder={searchPlaceholder}
-                      fetchDetails={true}
-                      onPress={(data: any, details: any = null) => {
-                        selectLocationFromPlace(data, details);
-                      }}
-                      query={{
-                        key:
-                          process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || "",
-                        language: "en",
-                        components: "country:bd",
-                      }}
-                      styles={{
-                        container: {
-                          flex: 1,
-                          zIndex: 20000,
-                        },
-                        textInputContainer: {
-                          backgroundColor: "rgba(0,0,0,0)",
-                          borderTopWidth: 0,
-                          borderBottomWidth: 0,
-                        },
-                        textInput: {
-                          marginLeft: 0,
-                          marginRight: 0,
-                          height: 40,
-                          color: "#5d5d5d",
-                          fontSize: 16,
-                          borderWidth: 1,
-                          borderColor: "#ddd",
-                          borderRadius: 8,
-                          backgroundColor: "#f9fafb",
-                          paddingHorizontal: 12,
-                        },
-                        predefinedPlacesDescription: {
-                          color: "#1faadb",
-                        },
-                        listView: {
-                          position: "absolute",
-                          top: 42,
-                          left: 0,
-                          right: 0,
-                          backgroundColor: "white",
-                          borderRadius: 8,
-                          elevation: 5,
-                          zIndex: 20001,
-                          shadowColor: "#000",
-                          shadowOffset: { width: 0, height: 4 },
-                          shadowOpacity: 0.15,
-                          shadowRadius: 8,
-                          borderWidth: 1,
-                          borderColor: "#e5e7eb",
-                        },
-                        row: {
-                          padding: 13,
-                          height: 50,
-                          flexDirection: "row",
-                        },
-                        separator: {
-                          height: 0.5,
-                          backgroundColor: "#c8c7cc",
-                        },
-                        description: {
-                          fontSize: 14,
-                        },
-                      }}
-                      currentLocation={true}
-                      currentLocationLabel="Current location"
-                      enablePoweredByContainer={false}
-                    />
-                  ) : (
-                    <WebPlacesInput
-                      placeholder={searchPlaceholder}
-                      currentLocation={currentLocation || undefined}
-                      safePlaces={[]} // Empty array since this is for general location search
-                      zIndexBase={400000} // Very high z-index to appear above all modal content
-                      value={searchText}
-                      onValueChange={setSearchText}
-                      onPlaceSelect={(place) => {
-                        selectLocationFromPlace(place);
-                      }}
-                    />
-                  )}
-                </View>
-              </View>
-            )}
-
-            {/* Selected Location Info */}
-            {selectedLocation && (
-              <View
-                className="bg-gray-50 mx-4 mt-4 p-3 rounded-lg border border-gray-200"
-                style={{
-                  zIndex: 1,
-                  position: "relative",
-                }}
-              >
-                <View className="flex-row items-center">
-                  <MaterialIcons name="place" size={20} color="#10B981" />
-                  <View className="flex-1 ml-2">
-                    <Text
-                      className="font-medium text-gray-900"
-                      numberOfLines={1}
-                    >
-                      {selectedLocation.name || "Selected Location"}
-                    </Text>
-                    <Text className="text-sm text-gray-500" numberOfLines={2}>
-                      {selectedLocation.address ||
-                        `${selectedLocation.latitude.toFixed(
-                          6
-                        )}, ${selectedLocation.longitude.toFixed(6)}`}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {/* Map */}
-            <View className="h-64 mt-4 mx-4 mb-4 rounded-lg overflow-hidden border border-gray-200">
-              {loadingMap ? (
-                <View className="flex-1 bg-gray-100 items-center justify-center">
-                  <ActivityIndicator size="large" color="#67082F" />
-                  <Text className="mt-2 text-gray-600">Loading map...</Text>
-                </View>
+              {GooglePlacesAutocomplete && Platform.OS !== "web" ? (
+                <GooglePlacesAutocomplete
+                  placeholder={searchPlaceholder}
+                  fetchDetails={true}
+                  onPress={(data: any, details: any = null) => {
+                    selectLocationFromPlace(data, details);
+                  }}
+                  query={{
+                    key: process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || "",
+                    language: "en",
+                    components: "country:bd",
+                  }}
+                  styles={{
+                    container: {
+                      flex: 1,
+                      zIndex: 20000,
+                    },
+                    textInputContainer: {
+                      backgroundColor: "rgba(0,0,0,0)",
+                      borderTopWidth: 0,
+                      borderBottomWidth: 0,
+                    },
+                    textInput: {
+                      marginLeft: 0,
+                      marginRight: 0,
+                      height: 40,
+                      color: "#5d5d5d",
+                      fontSize: 16,
+                      borderWidth: 1,
+                      borderColor: "#ddd",
+                      borderRadius: 8,
+                      backgroundColor: "#f9fafb",
+                      paddingHorizontal: 12,
+                    },
+                    predefinedPlacesDescription: {
+                      color: "#1faadb",
+                    },
+                    listView: {
+                      position: "absolute",
+                      top: 42,
+                      left: 0,
+                      right: 0,
+                      backgroundColor: "white",
+                      borderRadius: 8,
+                      elevation: 5,
+                      zIndex: 20001,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.15,
+                      shadowRadius: 8,
+                      borderWidth: 1,
+                      borderColor: "#e5e7eb",
+                    },
+                    row: {
+                      padding: 13,
+                      height: 50,
+                      flexDirection: "row",
+                    },
+                    separator: {
+                      height: 0.5,
+                      backgroundColor: "#c8c7cc",
+                    },
+                    description: {
+                      fontSize: 14,
+                    },
+                  }}
+                  currentLocation={true}
+                  currentLocationLabel="Current location"
+                  enablePoweredByContainer={false}
+                />
               ) : (
-                <MapComponent
-                  initialRegion={mapRegion}
-                  markers={mapMarkers}
-                  onPress={handleMapPress}
-                  style={{ flex: 1 }}
-                  showsUserLocation={false}
-                  followsUserLocation={false}
-                  showsPointsOfInterest={true}
-                  showsBuildings={true}
-                  mapType="standard"
-                  showsCompass={true}
-                  showsMyLocationButton={Platform.OS === "android"}
+                <WebPlacesInput
+                  placeholder={searchPlaceholder}
+                  currentLocation={currentLocation || undefined}
+                  safePlaces={[]} // Empty array since this is for general location search
+                  zIndexBase={400000} // Very high z-index to appear above all modal content
+                  value={searchText}
+                  onValueChange={setSearchText}
+                  onPlaceSelect={(place) => {
+                    selectLocationFromPlace(place);
+                  }}
                 />
               )}
             </View>
+          </View>
+        )}
 
-            {/* Instructions */}
-            <View className="bg-amber-50 mx-4 mb-4 p-3 rounded-lg border border-amber-200">
-              <View className="flex-row items-center">
-                <MaterialIcons name="info" size={16} color="#D97706" />
-                <Text className="ml-2 text-amber-700 text-sm flex-1">
-                  {enableSearch
-                    ? "Search for a location above or tap anywhere on the map to select"
-                    : "Tap anywhere on the map to select a location"}
+        {/* Selected Location Info */}
+        {selectedLocation && (
+          <View
+            className="bg-gray-50 mx-4 mt-4 p-3 rounded-lg border border-gray-200"
+            style={{
+              zIndex: 1,
+              position: "relative",
+            }}
+          >
+            <View className="flex-row items-center">
+              <MaterialIcons name="place" size={20} color="#10B981" />
+              <View className="flex-1 ml-2">
+                <Text className="font-medium text-gray-900" numberOfLines={1}>
+                  {selectedLocation.name || "Selected Location"}
+                </Text>
+                <Text className="text-sm text-gray-500" numberOfLines={2}>
+                  {selectedLocation.address ||
+                    `${selectedLocation.latitude.toFixed(
+                      6
+                    )}, ${selectedLocation.longitude.toFixed(6)}`}
                 </Text>
               </View>
             </View>
+          </View>
+        )}
+
+        {/* Map */}
+        <View className="h-64 mt-4 mx-4 mb-4 rounded-lg overflow-hidden border border-gray-200">
+          {loadingMap ? (
+            <View className="flex-1 bg-gray-100 items-center justify-center">
+              <ActivityIndicator size="large" color="#67082F" />
+              <Text className="mt-2 text-gray-600">Loading map...</Text>
+            </View>
+          ) : (
+            <MapComponent
+              initialRegion={mapRegion}
+              markers={mapMarkers}
+              onPress={handleMapPress}
+              style={{ flex: 1 }}
+              showsUserLocation={false}
+              followsUserLocation={false}
+              showsPointsOfInterest={true}
+              showsBuildings={true}
+              mapType="standard"
+              showsCompass={true}
+              showsMyLocationButton={Platform.OS === "android"}
+            />
+          )}
+        </View>
+
+        {/* Instructions */}
+        <View className="bg-amber-50 mx-4 mb-4 p-3 rounded-lg border border-amber-200">
+          <View className="flex-row items-center">
+            <MaterialIcons name="info" size={16} color="#D97706" />
+            <Text className="ml-2 text-amber-700 text-sm flex-1">
+              {enableSearch
+                ? "Search for a location above or tap anywhere on the map to select"
+                : "Tap anywhere on the map to select a location"}
+            </Text>
+          </View>
+        </View>
           </View>
         </View>
       </View>

@@ -12,7 +12,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
-import * as Location from "expo-location";
 // @ts-ignore
 import { router } from "expo-router";
 import { useAuth } from "../../context/AuthContext";
@@ -33,13 +32,10 @@ export default function RegisterScreen() {
     badgeNumber: "",
     branchName: "",
     address: "",
-    currentLatitude: undefined,
-    currentLongitude: undefined,
   });
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
-  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [errors, setErrors] = useState<any>({});
 
   const { register, initiateGoogleLogin } = useAuth();
@@ -47,80 +43,6 @@ export default function RegisterScreen() {
 
   const updateFormData = (field: keyof RegisterRequest, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const detectCurrentLocation = async () => {
-    setIsDetectingLocation(true);
-    try {
-      // Request permission to access location
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        showAlert(
-          "Permission Denied",
-          "Location permission is required to detect your current location.",
-          "error"
-        );
-        return;
-      }
-
-      // Get current position
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
-
-      // Update coordinates
-      setFormData((prev) => ({
-        ...prev,
-        currentLatitude: location.coords.latitude,
-        currentLongitude: location.coords.longitude,
-      }));
-
-      // Try to get address from coordinates
-      try {
-        const addressResponse = await Location.reverseGeocodeAsync({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        });
-
-        if (addressResponse.length > 0) {
-          const address = addressResponse[0];
-          const fullAddress = [
-            address.name,
-            address.street,
-            address.city,
-            address.region,
-            address.country,
-          ]
-            .filter(Boolean)
-            .join(", ");
-
-          if (fullAddress) {
-            setFormData((prev) => ({
-              ...prev,
-              address: fullAddress,
-            }));
-          }
-        }
-      } catch (reverseGeoError) {
-        console.log("Reverse geocoding failed:", reverseGeoError);
-        // Still update coordinates even if address lookup fails
-      }
-
-      showAlert(
-        "Location Detected",
-        "Your current location has been detected successfully.",
-        "success"
-      );
-    } catch (error) {
-      console.error("Location detection error:", error);
-      showAlert(
-        "Location Error",
-        "Failed to detect your location. Please check your GPS settings and try again.",
-        "error"
-      );
-    } finally {
-      setIsDetectingLocation(false);
-    }
   };
 
   const validateForm = (): string | null => {
@@ -202,8 +124,6 @@ export default function RegisterScreen() {
         delete cleanFormData.badgeNumber;
         delete cleanFormData.branchName;
         delete cleanFormData.address;
-        delete cleanFormData.currentLatitude;
-        delete cleanFormData.currentLongitude;
       }
 
       const response = await register(cleanFormData);
@@ -419,8 +339,6 @@ export default function RegisterScreen() {
                   onFieldChange={(field: string, value: string) =>
                     updateFormData(field as keyof RegisterRequest, value)
                   }
-                  onDetectLocation={detectCurrentLocation}
-                  isDetectingLocation={isDetectingLocation}
                   showTitle={true}
                 />
               )}

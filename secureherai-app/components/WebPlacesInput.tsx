@@ -45,6 +45,7 @@ interface WebPlacesInputProps {
   dropdownOffset?: number; // Add offset for dropdown positioning
   value?: string; // Add value prop for external control
   onValueChange?: (value: string) => void; // Add callback for value changes
+  showCurrentLocationByDefault?: boolean; // Show current location in initial suggestions
 }
 
 const WebPlacesInput: React.FC<WebPlacesInputProps> = ({
@@ -56,6 +57,7 @@ const WebPlacesInput: React.FC<WebPlacesInputProps> = ({
   dropdownOffset = 0,
   value,
   onValueChange,
+  showCurrentLocationByDefault = false,
 }) => {
   const [query, setQuery] = useState(value || "");
   const [predictions, setPredictions] = useState<any[]>([]);

@@ -46,12 +46,6 @@ public class Responder {
     @Column(nullable = false)
     private Status status = Status.AVAILABLE;
     
-    @Column(name = "current_latitude", precision = 9, scale = 6)
-    private BigDecimal currentLatitude;
-    
-    @Column(name = "current_longitude", precision = 9, scale = 6)
-    private BigDecimal currentLongitude;
-    
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
     
@@ -119,12 +113,6 @@ public class Responder {
     
     public Status getStatus() { return status; }
     public void setStatus(Status status) { this.status = status; }
-    
-    public BigDecimal getCurrentLatitude() { return currentLatitude; }
-    public void setCurrentLatitude(BigDecimal currentLatitude) { this.currentLatitude = currentLatitude; }
-    
-    public BigDecimal getCurrentLongitude() { return currentLongitude; }
-    public void setCurrentLongitude(BigDecimal currentLongitude) { this.currentLongitude = currentLongitude; }
     
     public Boolean getIsActive() { return isActive; }
     public void setIsActive(Boolean isActive) { this.isActive = isActive; }

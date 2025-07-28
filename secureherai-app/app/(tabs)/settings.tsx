@@ -19,7 +19,6 @@ import DatePicker from "../../components/DatePicker";
 import ResponderFields from "../../components/ResponderFields";
 import NotificationModal from "../../components/NotificationModal";
 import cloudinaryService from "../../services/cloudinary";
-import * as Location from "expo-location";
 
 interface UserProfile {
   userId: string;
@@ -28,6 +27,10 @@ interface UserProfile {
   phoneNumber?: string;
   profilePicture?: string;
   dateOfBirth?: string;
+  // Current location fields (now directly on User entity)
+  currentLatitude?: number;
+  currentLongitude?: number;
+  lastLocationUpdate?: string;
   settings?: {
     emailAlerts: boolean;
     smsAlerts: boolean;
@@ -45,8 +48,7 @@ interface UserProfile {
     badgeNumber: string;
     branchName?: string;
     address?: string;
-    currentLatitude?: number;
-    currentLongitude?: number;
+    // currentLatitude and currentLongitude removed from responderInfo
     status: string;
     active: boolean;
   };
@@ -70,7 +72,6 @@ export default function SettingsScreen() {
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [showImagePickerModal, setShowImagePickerModal] = useState(false);
-  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
 
   // Full profile edit state
   const [editProfile, setEditProfile] = useState({
@@ -357,8 +358,8 @@ export default function SettingsScreen() {
         badgeNumber: profile.responderInfo?.badgeNumber || "",
         branchName: profile.responderInfo?.branchName || "",
         address: profile.responderInfo?.address || "",
-        currentLatitude: profile.responderInfo?.currentLatitude || null,
-        currentLongitude: profile.responderInfo?.currentLongitude || null,
+        currentLatitude: profile.currentLatitude || null,
+        currentLongitude: profile.currentLongitude || null,
       });
       setErrors({
         responderType: "",
@@ -563,70 +564,6 @@ export default function SettingsScreen() {
     }
   };
 
-  const detectCurrentLocation = async () => {
-    try {
-      setIsDetectingLocation(true);
-
-      // Request location permissions
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        showAlert(
-          "Error",
-          "Location permission is required to detect your current location.",
-          "error"
-        );
-        return;
-      }
-
-      // Get current position
-      const userLocation = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
-
-      // Get address from coordinates
-      let address = "Unknown location";
-      try {
-        const reverseGeocode = await Location.reverseGeocodeAsync({
-          latitude: userLocation.coords.latitude,
-          longitude: userLocation.coords.longitude,
-        });
-
-        if (reverseGeocode.length > 0) {
-          const addr = reverseGeocode[0];
-          const addressParts = [
-            addr.name,
-            addr.street,
-            addr.district,
-            addr.city,
-            addr.region,
-          ].filter(Boolean);
-          address = addressParts.join(", ");
-        }
-      } catch (geocodeError) {
-        console.warn("Failed to reverse geocode location:", geocodeError);
-      }
-
-      // Update form with detected location
-      setEditProfile((prev) => ({
-        ...prev,
-        currentLatitude: userLocation.coords.latitude,
-        currentLongitude: userLocation.coords.longitude,
-        address: address !== "Unknown location" ? address : prev.address,
-      }));
-
-      showAlert("Success", "Location detected successfully!", "success");
-    } catch (error) {
-      console.error("Failed to detect location:", error);
-      showAlert(
-        "Error",
-        "Failed to detect current location. Please check your GPS settings.",
-        "error"
-      );
-    } finally {
-      setIsDetectingLocation(false);
-    }
-  };
-
   const updateSosKeyword = async () => {
     if (!newSosKeyword.trim()) {
       showAlert("Error", "SOS keyword cannot be empty", "error");
@@ -753,14 +690,14 @@ export default function SettingsScreen() {
                     </Text>
                   )}
                   {(profile.responderInfo.address ||
-                    (profile.responderInfo.currentLatitude &&
-                      profile.responderInfo.currentLongitude)) && (
+                    (profile.currentLatitude &&
+                      profile.currentLongitude)) && (
                     <Text className="text-[#67082F] text-xs mt-1">
                       📍 Location:{" "}
                       {profile.responderInfo.address ||
-                        `${profile.responderInfo.currentLatitude?.toFixed(
+                        `${profile.currentLatitude?.toFixed(
                           6
-                        )}, ${profile.responderInfo.currentLongitude?.toFixed(
+                        )}, ${profile.currentLongitude?.toFixed(
                           6
                         )}`}
                     </Text>
@@ -1315,13 +1252,7 @@ export default function SettingsScreen() {
                       onFieldChange={(field, value) => {
                         setEditProfile((prev) => ({
                           ...prev,
-                          [field]:
-                            field === "currentLatitude" ||
-                            field === "currentLongitude"
-                              ? value
-                                ? parseFloat(value)
-                                : null
-                              : value,
+                          [field]: value,
                         }));
                         // Clear error when user starts typing
                         if (errors[field as keyof typeof errors]) {
@@ -1332,8 +1263,6 @@ export default function SettingsScreen() {
                         }
                       }}
                       errors={errors}
-                      onDetectLocation={detectCurrentLocation}
-                      isDetectingLocation={isDetectingLocation}
                     />
                   </View>
                 </>

@@ -17,6 +17,19 @@ interface UserProfile {
   email: string;
   phoneNumber: string;
   profilePicture?: string;
+  // Current location fields (now directly on User entity)
+  currentLatitude?: number;
+  currentLongitude?: number;
+  lastLocationUpdate?: string;
+  responderInfo?: {
+    responderType: string;
+    badgeNumber: string;
+    branchName?: string;
+    address?: string;
+    // currentLatitude and currentLongitude removed from responderInfo
+    status: string;
+    active: boolean;
+  };
 }
 
 interface MockStorage {

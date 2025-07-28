@@ -264,6 +264,58 @@ class ApiService {
     return response.json();
   }
 
+  async updateLocation(data: { latitude: number; longitude: number }) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/location`, {
+        method: "PUT",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+      
+      if (response.ok) {
+        return { success: true, ...result };
+      } else {
+        return { success: false, error: result.error || 'Failed to update location' };
+      }
+    } catch (error) {
+      console.error('Location update API error:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Network error' 
+      };
+    }
+  }
+
+  // 🎯 Get other participant's location for navigation (User gets Responder location, Responder gets User location)
+  async getAlertParticipantLocation(alertId: string) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/sos/alerts/${alertId}/participant-location`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      const result = await response.json();
+      
+      if (response.ok) {
+        return { 
+          success: true, 
+          participantLocation: result.participantLocation,
+          participantInfo: result.participantInfo // name, role, etc.
+        };
+      } else {
+        return { success: false, error: result.error || 'Failed to get participant location' };
+      }
+    } catch (error) {
+      console.error('Get participant location API error:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Network error' 
+      };
+    }
+  }
+
   async forgotPassword(email: string) {
     const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
       method: "POST",
