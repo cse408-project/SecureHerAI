@@ -5,6 +5,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useAlert } from "../context/AlertContext";
 import { useNotifications } from "../context/NotificationContext";
+import { usePushNotification } from "../context/PushNotificationContext";
 import Header from "./Header";
 import NotificationModal from "./NotificationModal";
 import { Alert as AlertType } from "../types/sos";
@@ -37,6 +38,13 @@ export default function ResponderHomepage() {
   const [loadingUserDetails, setLoadingUserDetails] = useState(false);
   const { showAlert, showConfirmAlert } = useAlert();
   const { refreshNotificationCount } = useNotifications();
+  const { 
+    isSupported: isPushSupported, 
+    isEnabled: isPushEnabled, 
+    permissionStatus, 
+    enablePushNotifications,
+    fcmToken 
+  } = usePushNotification();
 
   const loadAlerts = useCallback(async () => {
     try {
@@ -81,6 +89,31 @@ export default function ResponderHomepage() {
     
     return () => clearInterval(interval);
   }, [loadAlerts]);
+
+  // Auto-enable push notifications for responders
+  useEffect(() => {
+    const setupPushNotifications = async () => {
+      if (isPushSupported && !isPushEnabled && permissionStatus !== 'denied') {
+        try {
+          console.log('ResponderHomepage: Attempting to enable push notifications...');
+          const success = await enablePushNotifications();
+          if (success) {
+            console.log('ResponderHomepage: Push notifications enabled successfully');
+            // Register FCM token with backend if needed
+            if (fcmToken) {
+              console.log('ResponderHomepage: FCM token available:', fcmToken.substring(0, 20) + '...');
+            }
+          } else {
+            console.log('ResponderHomepage: Failed to enable push notifications');
+          }
+        } catch (error) {
+          console.error('ResponderHomepage: Error setting up push notifications:', error);
+        }
+      }
+    };
+
+    setupPushNotifications();
+  }, [isPushSupported, isPushEnabled, permissionStatus, enablePushNotifications, fcmToken]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -307,6 +340,46 @@ export default function ResponderHomepage() {
                 </Text>
                 <Text className="text-sm text-gray-600">Accepted</Text>
               </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Push Notification Status */}
+        <View className="mb-6">
+          <View className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center">
+                <MaterialIcons 
+                  name={isPushEnabled ? "notifications-active" : "notifications-off"} 
+                  size={24} 
+                  color={isPushEnabled ? "#10B981" : "#F59E0B"} 
+                />
+                <View className="ml-3">
+                  <Text className="text-gray-800 font-semibold">Push Notifications</Text>
+                  <Text className="text-gray-500 text-sm">
+                    {isPushEnabled ? "Active - You'll receive SOS alerts" : "Inactive - Enable to receive alerts"}
+                  </Text>
+                </View>
+              </View>
+              {!isPushEnabled && isPushSupported && (
+                <TouchableOpacity
+                  className="bg-blue-600 rounded-lg px-3 py-2"
+                  onPress={async () => {
+                    try {
+                      const success = await enablePushNotifications();
+                      if (success) {
+                        showAlert("Success", "Push notifications enabled! You'll now receive SOS alerts.", "success");
+                      } else {
+                        showAlert("Error", "Failed to enable push notifications. Please check your browser settings.", "error");
+                      }
+                    } catch (error) {
+                      showAlert("Error", "Failed to enable push notifications.", "error");
+                    }
+                  }}
+                >
+                  <Text className="text-white font-semibold text-sm">Enable</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>

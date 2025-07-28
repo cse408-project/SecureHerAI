@@ -139,6 +139,13 @@
 			<version>1.44.0</version>
 		</dependency>
 		
+		<!-- Google Auth Library for FCM HTTP v1 API -->
+		<dependency>
+			<groupId>com.google.auth</groupId>
+			<artifactId>google-auth-library-oauth2-http</artifactId>
+			<version>1.19.0</version>
+		</dependency>
+		
 		<!-- JAVE2 for audio format conversion -->
 		<dependency>
 			<groupId>ws.schild</groupId>

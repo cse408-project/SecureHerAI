@@ -65,14 +65,20 @@ MAIL_USERNAME=your_email@gmail.com
 MAIL_PASSWORD=your_app_password
 OAUTH2_CLIENT_ID=your_google_client_id
 OAUTH2_CLIENT_SECRET=your_google_client_secret
+AZURE_SPEECH_KEY=your_azure_speech_key
+AZURE_SPEECH_REGION=your_azure_region
 ```
 
 **secureherai-api/.env.production** (Production):
 ```env
 JWT_SECRET=your_production_jwt_secret
 MAIL_HOST=your_production_mail_host
+AZURE_SPEECH_KEY=your_production_azure_speech_key
+AZURE_SPEECH_REGION=your_production_azure_region
 # ... other production variables
 ```
+
+> **Note**: Firebase configuration is not needed for web push notifications. The app uses Firebase Web SDK directly from the frontend with the VAPID key.
 
 ### GitHub Secrets
 

@@ -2,6 +2,7 @@ import { Stack } from "expo-router";
 import { AuthProvider, useAuth } from "../context/AuthContext";
 import { AlertProvider } from "../context/AlertContext";
 import { NotificationProvider } from "../context/NotificationContext";
+import { PushNotificationProvider } from "../context/PushNotificationContext";
 import "./global.css";
 import React, { useEffect, useState } from "react";
 import { Platform } from "react-native";
@@ -86,7 +87,9 @@ export default function RootLayout() {
     <AuthProvider>
       <AlertProvider>
         <NotificationProvider>
-          <RootLayoutComponent />
+          <PushNotificationProvider>
+            <RootLayoutComponent />
+          </PushNotificationProvider>
         </NotificationProvider>
       </AlertProvider>
     </AuthProvider>

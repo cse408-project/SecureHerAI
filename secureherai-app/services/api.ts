@@ -1959,6 +1959,48 @@ class ApiService {
       };
     }
   }
+
+  // Note: For web push notifications, FCM token registration is handled
+  // directly by the frontend Firebase SDK - no backend API needed!
+
+  /**
+   * Send SOS alert push notification to responders
+   */
+  async sendSOSPushNotification(alertData: {
+    responderTokens: string[];
+    alertId: string;
+    userLocation: string;
+    userName: string;
+    alertMessage?: string;
+    latitude?: number;
+    longitude?: number;
+  }) {
+    try {
+      console.log("API: Sending SOS push notification to responders");
+      const response = await fetch(`${API_BASE_URL}/alerts/send-push-notification`, {
+        method: "POST",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify(alertData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to send push notification",
+        };
+      }
+
+      return { success: true, data: data };
+    } catch (error) {
+      console.error("API: Error sending SOS push notification:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
 }
 
 export default new ApiService();

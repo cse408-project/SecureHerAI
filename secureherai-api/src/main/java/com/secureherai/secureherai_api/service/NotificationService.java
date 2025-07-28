@@ -7,6 +7,7 @@ import com.secureherai.secureherai_api.entity.AlertResponder;
 import com.secureherai.secureherai_api.entity.Notification;
 import com.secureherai.secureherai_api.entity.Responder;
 import com.secureherai.secureherai_api.entity.TrustedContact;
+import com.secureherai.secureherai_api.entity.User;
 import com.secureherai.secureherai_api.repository.AlertResponderRepository;
 import com.secureherai.secureherai_api.repository.NotificationRepository;
 import com.secureherai.secureherai_api.repository.ResponderRepository;
@@ -14,6 +15,7 @@ import com.secureherai.secureherai_api.repository.TrustedContactRepository;
 import com.secureherai.secureherai_api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -40,6 +42,9 @@ public class NotificationService {
     private final UserRepository userRepository;
     private final EmailService emailService;
     private final AlertResponderRepository alertResponderRepository;
+    
+    @Value("${firebase.project.id:}")
+    private String firebaseProjectId;
     
     // TTL Configuration
     private static final Duration EMERGENCY_TTL = Duration.ofHours(1); // 1 hour TTL
@@ -430,6 +435,9 @@ public class NotificationService {
                 batchNumber
             );
             
+            // Send push notification to the responder
+            sendPushNotificationToResponder(responder, alert, title, message);
+            
             log.info("Emergency notification sent to responder: {} for alert: {}", 
                 responder.getUserId(), alert.getId());
         }
@@ -587,9 +595,9 @@ public class NotificationService {
                 notification.getChannel() == Notification.NotificationChannel.BOTH) {
                 
                 // In-app notifications are saved to database (already done by createNotification)
-                // But we can also send real-time push notifications to user's devices
-                
-                sendPushNotificationToUser(notification);
+                // For web push notifications, you can integrate with your Firebase Web SDK
+                // from the frontend - no backend FCM needed for web-only push notifications
+                log.info("In-app notification created for notification: {}", notification.getId());
             }
             
             // Mark as sent
@@ -622,6 +630,42 @@ public class NotificationService {
             
         } catch (Exception e) {
             log.error("Failed to send emergency email to trusted contact: {} ({})", contact.getName(), contact.getEmail(), e);
+        }
+    }
+    
+    /**
+     * Send push notification to a responder for emergency alert
+     */
+    private void sendPushNotificationToResponder(Responder responder, Alert alert, String title, String message) {
+        try {
+            // Check if Firebase project ID is configured
+            if (firebaseProjectId == null || firebaseProjectId.trim().isEmpty()) {
+                log.debug("Firebase project ID not configured, skipping push notification for responder: {}", responder.getUserId());
+                return;
+            }
+            
+            // Get user information to find the user's name
+            Optional<User> userOpt = userRepository.findById(alert.getUserId());
+            String userName = userOpt.map(user -> user.getFullName() != null ? user.getFullName() : "User").orElse("User");
+            
+            // Prepare push notification data
+            Map<String, Object> pushData = new HashMap<>();
+            pushData.put("responderTokens", Arrays.asList("placeholder_token")); // Will be handled by frontend
+            pushData.put("alertId", alert.getId().toString());
+            pushData.put("userLocation", alert.getAddress() != null ? alert.getAddress() : "Location not available");
+            pushData.put("userName", userName);
+            pushData.put("alertMessage", alert.getAlertMessage());
+            pushData.put("latitude", alert.getLatitude());
+            pushData.put("longitude", alert.getLongitude());
+            
+            // Here we would call our push notification endpoint internally
+            // For now, we log that push notification would be sent
+            log.info("Push notification prepared for responder: {} for alert: {} from user: {}", 
+                responder.getUserId(), alert.getId(), userName);
+            
+        } catch (Exception e) {
+            log.error("Failed to send push notification to responder: {} for alert: {}", 
+                responder.getUserId(), alert.getId(), e);
         }
     }
     
@@ -680,59 +724,6 @@ public class NotificationService {
         
         public double getDistance() {
             return distance;
-        }
-    }
-    
-    /**
-     * Send push notification to user's devices
-     * 
-     * EXPLANATION: Push notifications are real-time alerts sent to user's devices
-     * even when the app is closed. This is different from database notifications.
-     * 
-     * How it works:
-     * 1. User's device registers with a push service (FCM, APNs, etc.)
-     * 2. Device gets a unique "push token" 
-     * 3. We store this token in our database
-     * 4. When we want to notify the user, we send to the push service
-     * 5. Push service delivers to the user's device
-     * 
-     * For your SecureHerAI app, this would need:
-     * - Firebase/FCM setup for Android
-     * - APNs setup for iOS  
-     * - Web Push for browsers
-     * - User device tokens stored in database
-     */
-    private void sendPushNotificationToUser(Notification notification) {
-        try {
-            // STEP 1: Get user's device tokens from database
-            // You would need a UserDevice entity to store push tokens
-            // List<String> pushTokens = userDeviceRepository.findPushTokensByUserId(notification.getUserId());
-            
-            // STEP 2: Send to each device using push service
-            // For now, we just log what would happen
-            log.info("🔔 PUSH NOTIFICATION EXPLANATION for notification {}", notification.getId());
-            log.info("   📱 Would send to user's mobile devices (if FCM/APNs configured)");
-            log.info("   💻 Would send to user's web browsers (if Web Push configured)");
-            log.info("   📊 Database notification already saved by createNotification()");
-            
-            // STEP 3: Actual implementation would look like:
-            /*
-            for (String pushToken : pushTokens) {
-                // For Firebase Cloud Messaging:
-                Message message = Message.builder()
-                    .setToken(pushToken)
-                    .setNotification(NotificationDto.builder()
-                        .setTitle(notification.getTitle())
-                        .setBody(notification.getMessage())
-                        .build())
-                    .build();
-                
-                FirebaseMessaging.getInstance().send(message);
-            }
-            */
-            
-        } catch (Exception e) {
-            log.error("Failed to send push notification for notification: {}", notification.getId(), e);
         }
     }
 }
