@@ -216,6 +216,9 @@ public class UserService {
         
         User user = userOpt.get();
         
+        System.out.println("Updating location for user: " + user.getFullName() + 
+            " (ID: " + user.getId() + ") to lat: " + latitude + ", lon: " + longitude);
+
         // Update location
         user.setCurrentLatitude(java.math.BigDecimal.valueOf(latitude));
         user.setCurrentLongitude(java.math.BigDecimal.valueOf(longitude));

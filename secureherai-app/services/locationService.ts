@@ -1,6 +1,6 @@
 import * as Location from "expo-location";
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import ApiService from './api';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import ApiService from "./api";
 
 export interface LocationCoords {
   latitude: number;
@@ -19,7 +19,7 @@ class LocationService {
   private updateInterval: NodeJS.Timeout | null = null;
   private isTracking = false;
   private readonly UPDATE_INTERVAL = 30000; // 30 seconds
-  private readonly LOCATION_STORAGE_KEY = 'last_location_update';
+  private readonly LOCATION_STORAGE_KEY = "last_location_update";
 
   public static getInstance(): LocationService {
     if (!LocationService.instance) {
@@ -169,20 +169,20 @@ class LocationService {
    */
   async startLocationTracking(): Promise<void> {
     if (this.isTracking) {
-      console.log('Location tracking already started');
+      console.log("Location tracking already started");
       return;
     }
 
     try {
       // Request location permissions
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        console.warn('Location permission not granted');
+      if (status !== "granted") {
+        console.warn("Location permission not granted");
         return;
       }
 
       this.isTracking = true;
-      console.log('Starting automatic location tracking...');
+      console.log("Starting automatic location tracking...");
 
       // Update location immediately
       await this.updateLocationToServer();
@@ -191,9 +191,8 @@ class LocationService {
       this.updateInterval = setInterval(async () => {
         await this.updateLocationToServer();
       }, this.UPDATE_INTERVAL) as any;
-
     } catch (error) {
-      console.error('Failed to start location tracking:', error);
+      console.error("Failed to start location tracking:", error);
       this.isTracking = false;
     }
   }
@@ -207,7 +206,7 @@ class LocationService {
       this.updateInterval = null;
     }
     this.isTracking = false;
-    console.log('Location tracking stopped');
+    console.log("Location tracking stopped");
   }
 
   /**
@@ -216,10 +215,10 @@ class LocationService {
   async manualLocationUpdate(): Promise<{ success: boolean; message: string }> {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
+      if (status !== "granted") {
         return {
           success: false,
-          message: 'Location permission is required to update your location.'
+          message: "Location permission is required to update your location.",
         };
       }
 
@@ -227,19 +226,20 @@ class LocationService {
       if (result.success) {
         return {
           success: true,
-          message: 'Location updated successfully!'
+          message: "Location updated successfully!",
         };
       } else {
         return {
           success: false,
-          message: result.error || 'Failed to update location'
+          message: result.error || "Failed to update location",
         };
       }
     } catch (error) {
-      console.error('Manual location update failed:', error);
+      console.error("Manual location update failed:", error);
       return {
         success: false,
-        message: 'Failed to get current location. Please check your GPS settings.'
+        message:
+          "Failed to get current location. Please check your GPS settings.",
       };
     }
   }
@@ -247,7 +247,10 @@ class LocationService {
   /**
    * Core location update function that sends to server
    */
-  private async updateLocationToServer(): Promise<{ success: boolean; error?: string }> {
+  private async updateLocationToServer(): Promise<{
+    success: boolean;
+    error?: string;
+  }> {
     try {
       // Get current position
       const location = await Location.getCurrentPositionAsync({
@@ -260,10 +263,15 @@ class LocationService {
         timestamp: Date.now(),
       };
 
+      console.log("📍 Attempting to update location to server:", {
+        lat: locationData.latitude.toFixed(6),
+        lng: locationData.longitude.toFixed(6),
+      });
+
       // Check if we should skip this update (location hasn't changed much)
       const shouldUpdate = await this.shouldUpdateLocation(locationData);
       if (!shouldUpdate) {
-        console.log('Location update skipped - minimal change detected');
+        console.log("Location update skipped - minimal change detected");
         return { success: true };
       }
 
@@ -276,26 +284,25 @@ class LocationService {
       if (response.success) {
         // Store last successful update
         await AsyncStorage.setItem(
-          this.LOCATION_STORAGE_KEY, 
+          this.LOCATION_STORAGE_KEY,
           JSON.stringify(locationData)
         );
-        
-        console.log('Location updated successfully:', {
+
+        console.log("📍 Location updated successfully on server:", {
           lat: locationData.latitude.toFixed(6),
           lng: locationData.longitude.toFixed(6),
         });
-        
+
         return { success: true };
       } else {
-        console.warn('API location update failed:', response.error);
+        console.warn("📍 API location update failed:", response.error);
         return { success: false, error: response.error };
       }
-
     } catch (error) {
-      console.error('Location update error:', error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      console.error("📍 Location update error:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -303,15 +310,21 @@ class LocationService {
   /**
    * Check if location has changed significantly to warrant an update
    */
-  private async shouldUpdateLocation(newLocation: { latitude: number; longitude: number; timestamp: number }): Promise<boolean> {
+  private async shouldUpdateLocation(newLocation: {
+    latitude: number;
+    longitude: number;
+    timestamp: number;
+  }): Promise<boolean> {
     try {
-      const lastLocationStr = await AsyncStorage.getItem(this.LOCATION_STORAGE_KEY);
+      const lastLocationStr = await AsyncStorage.getItem(
+        this.LOCATION_STORAGE_KEY
+      );
       if (!lastLocationStr) {
         return true; // First time, always update
       }
 
       const lastLocation = JSON.parse(lastLocationStr);
-      
+
       // Calculate distance between locations (simple distance check)
       const distance = this.calculateDistance(
         lastLocation.latitude,
@@ -322,12 +335,12 @@ class LocationService {
 
       // Update if moved more than 10 meters or if it's been more than 5 minutes
       const significantDistance = distance > 0.01; // ~10 meters
-      const significantTime = (newLocation.timestamp - lastLocation.timestamp) > 300000; // 5 minutes
+      const significantTime =
+        newLocation.timestamp - lastLocation.timestamp > 300000; // 5 minutes
 
       return significantDistance || significantTime;
-
     } catch (error) {
-      console.warn('Error checking location update necessity:', error);
+      console.warn("Error checking location update necessity:", error);
       return true; // When in doubt, update
     }
   }
@@ -335,15 +348,22 @@ class LocationService {
   /**
    * Calculate distance between two coordinates in kilometers
    */
-  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  private calculateDistance(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ): number {
     const R = 6371; // Earth's radius in kilometers
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   }
 
@@ -357,12 +377,18 @@ class LocationService {
   /**
    * Get last known location from storage
    */
-  async getLastKnownLocation(): Promise<{ latitude: number; longitude: number; timestamp: number } | null> {
+  async getLastKnownLocation(): Promise<{
+    latitude: number;
+    longitude: number;
+    timestamp: number;
+  } | null> {
     try {
-      const lastLocationStr = await AsyncStorage.getItem(this.LOCATION_STORAGE_KEY);
+      const lastLocationStr = await AsyncStorage.getItem(
+        this.LOCATION_STORAGE_KEY
+      );
       return lastLocationStr ? JSON.parse(lastLocationStr) : null;
     } catch (error) {
-      console.error('Error getting last known location:', error);
+      console.error("Error getting last known location:", error);
       return null;
     }
   }
