@@ -229,10 +229,13 @@ class ApiService {
   async getAlertUserDetails(alertId: string) {
     try {
       console.log("API: Getting alert details for alertId:", alertId);
-      const response = await fetch(`${API_BASE_URL}/responder/alert-details/${alertId}`, {
-        method: "GET",
-        headers: await this.getHeaders(true),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/responder/alert-details/${alertId}`,
+        {
+          method: "GET",
+          headers: await this.getHeaders(true),
+        }
+      );
 
       const data = await response.json();
       console.log("API: Alert details response:", data);
@@ -266,24 +269,62 @@ class ApiService {
 
   async updateLocation(data: { latitude: number; longitude: number }) {
     try {
+      // Additional validation before sending to server
+      if (data == null || typeof data !== "object") {
+        console.error("📍 Invalid location data format:", data);
+        return { success: false, error: "Invalid location data format" };
+      }
+
+      // Ensure both latitude and longitude are valid numbers
+      if (
+        typeof data.latitude !== "number" ||
+        isNaN(data.latitude) ||
+        typeof data.longitude !== "number" ||
+        isNaN(data.longitude)
+      ) {
+        console.error("📍 Invalid location coordinates:", data);
+        return {
+          success: false,
+          error: "Latitude and longitude are required as valid numbers",
+        };
+      }
+
+      // // Explicitly format the request body to match backend expectations
+      // const locationData = {
+      //   latitude: data.latitude,
+      //   longitude: data.longitude
+      // };
+
+      // console.log('📍 Sending location to server:', locationData);
+
       const response = await fetch(`${API_BASE_URL}/user/location`, {
         method: "PUT",
         headers: await this.getHeaders(true),
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          currentLatitude: data.latitude,
+          currentLongitude: data.longitude,
+        }),
       });
 
       const result = await response.json();
-      
+
       if (response.ok) {
         return { success: true, ...result };
       } else {
-        return { success: false, error: result.error || 'Failed to update location' };
+        console.warn(
+          "📍 Server rejected location update:",
+          result.error || "Unknown error"
+        );
+        return {
+          success: false,
+          error: result.error || "Failed to update location",
+        };
       }
     } catch (error) {
-      console.error('Location update API error:', error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Network error' 
+      console.error("📍 Location update API error:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Network error",
       };
     }
   }
@@ -291,27 +332,33 @@ class ApiService {
   // 🎯 Get other participant's location for navigation (User gets Responder location, Responder gets User location)
   async getAlertParticipantLocation(alertId: string) {
     try {
-      const response = await fetch(`${API_BASE_URL}/sos/alerts/${alertId}/participant-location`, {
-        method: "GET",
-        headers: await this.getHeaders(true),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/sos/alerts/${alertId}/participant-location`,
+        {
+          method: "GET",
+          headers: await this.getHeaders(true),
+        }
+      );
 
       const result = await response.json();
-      
+
       if (response.ok) {
-        return { 
-          success: true, 
+        return {
+          success: true,
           participantLocation: result.participantLocation,
-          participantInfo: result.participantInfo // name, role, etc.
+          participantInfo: result.participantInfo, // name, role, etc.
         };
       } else {
-        return { success: false, error: result.error || 'Failed to get participant location' };
+        return {
+          success: false,
+          error: result.error || "Failed to get participant location",
+        };
       }
     } catch (error) {
-      console.error('Get participant location API error:', error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Network error' 
+      console.error("Get participant location API error:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Network error",
       };
     }
   }
@@ -480,17 +527,23 @@ class ApiService {
   // Responder-specific contact methods
   async getAllUsersAndContacts() {
     try {
-      const response = await fetch(`${API_BASE_URL}/responder/all-users-contacts`, {
-        method: "GET",
-        headers: await this.getHeaders(true),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/responder/all-users-contacts`,
+        {
+          method: "GET",
+          headers: await this.getHeaders(true),
+        }
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
         return {
           success: false,
-          error: data.error || data.message || "Failed to fetch all users and contacts",
+          error:
+            data.error ||
+            data.message ||
+            "Failed to fetch all users and contacts",
         };
       }
 
@@ -1292,10 +1345,13 @@ class ApiService {
   async getAcceptedAlerts() {
     try {
       console.log("API: Getting accepted alerts (responder)");
-      const response = await fetch(`${API_BASE_URL}/responder/accepted-alerts`, {
-        method: "GET",
-        headers: await this.getHeaders(true),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/responder/accepted-alerts`,
+        {
+          method: "GET",
+          headers: await this.getHeaders(true),
+        }
+      );
 
       console.log("API: Accepted alerts response status:", response.status);
       const data = await response.json();
@@ -1700,14 +1756,17 @@ class ApiService {
   async updateAlertStatus(alertId: string, status: string) {
     try {
       console.log("API: Updating alert status:", alertId, "to status:", status);
-      const response = await fetch(`${API_BASE_URL}/responder/update-alert-status`, {
-        method: "PUT",
-        headers: await this.getHeaders(true),
-        body: JSON.stringify({
-          alertId,
-          status,
-        }),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/responder/update-alert-status`,
+        {
+          method: "PUT",
+          headers: await this.getHeaders(true),
+          body: JSON.stringify({
+            alertId,
+            status,
+          }),
+        }
+      );
 
       console.log("API: Update alert status response status:", response.status);
       const data = await response.json();
