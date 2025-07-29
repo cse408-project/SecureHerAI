@@ -484,7 +484,7 @@ const NavigationScreen: React.FC = () => {
 
       // Mark map as loaded again
       setMapLoaded(true);
-      showAlert("Map reloaded with fresh data", "success");
+      // showAlert("Map reloaded with fresh data", "success");
     } catch (error) {
       console.error("🗺️ Error during map reload:", error);
       showAlert("Failed to reload map", "error");
