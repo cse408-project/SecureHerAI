@@ -17,6 +17,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set up Docker Compose
+        uses: docker/setup-compose-action@v1
+
       - name: Start SSH agent
         uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -26,6 +32,28 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -H "${{ secrets.AZURE_VM_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Install Docker on Azure VM (if needed)
+        run: |
+          ssh -o StrictHostKeyChecking=no "${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}" << 'EOF'
+            # Check if Docker is already installed
+            if ! command -v docker &> /dev/null; then
+              echo "Docker not found. Installing Docker Engine..."
+              curl -fsSL https://get.docker.com | sh
+              # Allow running docker without sudo
+              sudo usermod -aG docker "$USER"
+              echo "Docker installation completed."
+            else
+              echo "Docker is already installed. Skipping installation."
+              docker --version
+            fi
+          EOF
+
+      - name: Create & use Docker context for Azure VM
+        run: |
+          docker context create azure-vm \
+            --docker "host=ssh://${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}"
+          docker context use azure-vm
 
       - name: Generate .env for API
         working-directory: secureherai-api
@@ -50,38 +78,85 @@ jobs:
           AZURE_SPEECH_REGION=${{ secrets.AZURE_SPEECH_REGION }}
           EOF
 
-      - name: Copy code & .env to Azure VM and deploy
+      - name: Deploy SecureHerAI API
+        working-directory: secureherai-api
         run: |
-          # Copy your API folder (including newly generated .env) up to the VM
-          scp -r -o StrictHostKeyChecking=no secureherai-api \
-            "${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}:~/"
+          # Copy .env file to Azure VM
+          scp -o StrictHostKeyChecking=no .env "${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}:/home/${{ secrets.AZURE_VM_USER }}/"
 
-          # SSH in and run docker-compose entirely on the VM
-          ssh -o StrictHostKeyChecking=no "${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}" << 'EOF'
-            set -e
+          # Stop existing containers gracefully
+          echo "Stopping existing containers..."
+          docker compose -f docker-compose-deploy.yml down --timeout 30 || true
 
-            cd ~/secureherai-api
+          # Clean up old images to save space
+          echo "Cleaning up old images..."
+          docker image prune -f || true
 
-            # (Re-)install Docker if missing
-            if ! command -v docker &> /dev/null; then
-              echo "Installing Docker on VM..."
-              curl -fsSL https://get.docker.com | sh
-              sudo usermod -aG docker "$USER"
+          # Build containers only (without starting)
+          echo "Building containers..."
+          docker compose -f docker-compose-deploy.yml build
+
+          # Start database first
+          echo "Starting database container..."
+          docker compose -f docker-compose-deploy.yml up -d db
+          
+          # Wait for database to be healthy
+          echo "Waiting for database to be healthy..."
+          timeout 120 bash -c 'until docker compose -f docker-compose-deploy.yml ps | grep db | grep "(healthy)" > /dev/null; do sleep 5; echo "Waiting for database health check..."; done' || echo "Timeout waiting for database"
+          
+          # Now start API
+          echo "Starting API container..."
+          docker compose -f docker-compose-deploy.yml up -d api
+          
+          # Finally start nginx once API is running (not necessarily fully healthy)
+          echo "Waiting for API to start running..."
+          timeout 120 bash -c 'until docker ps | grep secureherai_api > /dev/null; do sleep 5; echo "Waiting for API to start..."; done' || echo "Timeout waiting for API to start"
+          
+          echo "Starting NGINX container..."
+          docker compose -f docker-compose-deploy.yml up -d nginx
+          
+          # Wait for all services to be running
+          echo "Waiting for all services to be running..."
+          timeout 300 bash -c 'while [[ "$(docker compose -f docker-compose-deploy.yml ps --services --filter "status=running" | wc -l)" != "3" ]]; do sleep 5; echo "Waiting for all services to start..."; done' || echo "Timeout waiting for services"
+
+      - name: Verify API deployment
+        working-directory: secureherai-api
+        run: |
+          echo "Showing all containers status:"
+          docker compose -f docker-compose-deploy.yml ps
+          
+          echo "Checking API container health status:"
+          docker inspect --format='{{.State.Health.Status}}' secureherai_api || echo "Failed to get health status"
+          
+          echo "Waiting for API to be ready (2 minutes max)..."
+          for i in {1..12}; do
+            echo "Check attempt $i"
+            if curl --silent --max-time 10 --fail "${{ vars.EXPO_PUBLIC_API_BASE_URL }}/api/isOk" > /dev/null; then
+              echo "✅ API is responding correctly!"
+              break
+            elif [ $i -eq 12 ]; then
+              echo "❌ API health check failed after multiple attempts"
+            else
+              echo "API not ready yet, waiting 10 seconds..."
+              sleep 10
             fi
+          done
+          
+          echo "API container logs:"
+          docker compose -f docker-compose-deploy.yml logs --tail=100 api
+          
+          echo "Testing API health endpoints directly:"
+          echo "1. Testing /api/isOk endpoint:"
+          curl -v --max-time 10 "${{ vars.EXPO_PUBLIC_API_BASE_URL }}/api/isOk" || true
+          
+          echo "Testing internal container health:"
+          docker exec secureherai_api curl -v --max-time 10 http://localhost:8080/api/isOk || true
+          
+          echo "NGINX container logs:"
+          docker compose -f docker-compose-deploy.yml logs --tail=30 nginx
 
-            # Tear down any old stack
-            docker compose -f docker-compose-deploy.yml down --timeout 30 || true
-
-            # Clean up old images
-            docker image prune -f || true
-
-            # Build all services and bring them up
-            docker compose -f docker-compose-deploy.yml up -d --build
-
-            # Show status
-            docker compose -f docker-compose-deploy.yml ps
-
-            # Optional: inspect API health
-            echo "API health inside container:"
-            docker exec secureherai_api curl -sf http://localhost:8080/api/isOk || echo "Health check failed"
-          EOF
+      - name: Reset Docker context
+        if: always()
+        run: |
+          docker context use default
+          docker context rm azure-vm
