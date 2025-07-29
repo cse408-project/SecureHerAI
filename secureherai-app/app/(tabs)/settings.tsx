@@ -825,32 +825,36 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* SOS Keyword Setting */}
-        <Text className="text-lg font-semibold text-gray-800 mb-3 mt-6">
-          Emergency Settings
-        </Text>
-        <View className="bg-white rounded-lg shadow-sm">
-          <TouchableOpacity
-            className="p-4 flex-row items-center justify-between"
-            onPress={openSosKeywordModal}
-          >
-            <View className="flex-row items-center">
-              <MaterialIcons
-                name="crisis-alert"
-                size={24}
-                color="#67082F"
-                className="mr-3"
-              />
-              <View className="ml-3">
-                <Text className="text-gray-800 font-medium">SOS Keyword</Text>
-                <Text className="text-gray-500 text-sm">
-                  Current: &quot;{sosKeyword}&quot;
-                </Text>
-              </View>
+        {/* SOS Keyword Setting - Hidden for Responders */}
+        {!profile?.responderInfo && (
+          <>
+            <Text className="text-lg font-semibold text-gray-800 mb-3 mt-6">
+              Emergency Settings
+            </Text>
+            <View className="bg-white rounded-lg shadow-sm">
+              <TouchableOpacity
+                className="p-4 flex-row items-center justify-between"
+                onPress={openSosKeywordModal}
+              >
+                <View className="flex-row items-center">
+                  <MaterialIcons
+                    name="crisis-alert"
+                    size={24}
+                    color="#67082F"
+                    className="mr-3"
+                  />
+                  <View className="ml-3">
+                    <Text className="text-gray-800 font-medium">SOS Keyword</Text>
+                    <Text className="text-gray-500 text-sm">
+                      Current: &quot;{sosKeyword}&quot;
+                    </Text>
+                  </View>
+                </View>
+                <MaterialIcons name="chevron-right" size={24} color="#67082F" />
+              </TouchableOpacity>
             </View>
-            <MaterialIcons name="chevron-right" size={24} color="#67082F" />
-          </TouchableOpacity>
-        </View>
+          </>
+        )}
 
         {/* Additional Options */}
         <View className="bg-white rounded-lg shadow-sm">

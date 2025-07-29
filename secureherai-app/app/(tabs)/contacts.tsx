@@ -28,11 +28,16 @@ import NotificationModal from "../../components/NotificationModal";
 // Emergency contacts - these remain static
 const emergencyContacts = [
   { name: "Police", phone: "911", icon: "local-police" as const },
-  { name: "Ambulance", phone: "911", icon: "medical-services" as const },
+  { name: "Ambulance", phone: "111", icon: "medical-services" as const },
   {
     name: "Fire Department",
-    phone: "911",
+    phone: "999",
     icon: "local-fire-department" as const,
+  },
+  {
+    name: "Women's Helpline",
+    phone: "1-800-799-7233",
+    icon: "contact-support" as const,
   },
 ];
 
@@ -441,30 +446,35 @@ export default function ContactsScreen() {
         <ScrollView
           className="flex-1 p-4"
           contentContainerStyle={{ paddingBottom: 80 }}
+          showsVerticalScrollIndicator={false}
         >
           {/* Emergency Services */}
           <Text className="text-lg font-bold text-[#67082F] mb-4">
             Emergency Services
           </Text>
-          {emergencyContacts.map((contact, index) => (
-            <TouchableOpacity
-              key={index}
-              className="flex-row items-center bg-white p-4 rounded-lg mb-3 shadow-sm"
-              onPress={() => handleCall(contact.phone)}
-              activeOpacity={0.7}
-            >
-              <View className="w-10 h-10 bg-[#67082F]/10 rounded-full items-center justify-center mr-4">
-                <MaterialIcons name={contact.icon} size={24} color="#67082F" />
-              </View>
-              <View className="flex-1">
-                <Text className="font-semibold text-gray-800">
-                  {contact.name}
-                </Text>
-                <Text className="text-gray-600">{contact.phone}</Text>
-              </View>
-              <MaterialIcons name="phone" size={24} color="#67082F" />
-            </TouchableOpacity>
-          ))}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+            {emergencyContacts.map((contact, index) => (
+              <TouchableOpacity
+                key={index}
+                className="flex-row bg-white p-3 rounded-lg mr-3 shadow-sm min-w-[200px] items-center"
+                onPress={() => handleCall(contact.phone)}
+                activeOpacity={0.7}
+              >
+                <View className="w-10 h-10 bg-[#67082F]/10 rounded-full items-center justify-center mr-3">
+                  <MaterialIcons name={contact.icon} size={20} color="#67082F" />
+                </View>
+                <View className="flex-1">
+                  <Text className="font-semibold text-gray-800 text-sm">
+                    {contact.name}
+                  </Text>
+                  <Text className="text-gray-600 text-xs">{contact.phone}</Text>
+                </View>
+                <View className="ml-2">
+                  <MaterialIcons name="phone" size={18} color="#67082F" />
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
         {/* Action Buttons Section - Hidden for Responders */}
         {!isResponder && (
