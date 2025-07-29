@@ -2,6 +2,7 @@ package com.secureherai.secureherai_api.repository;
 
 import com.secureherai.secureherai_api.entity.AlertResponder;
 import com.secureherai.secureherai_api.entity.AlertResponderId;
+import com.secureherai.secureherai_api.enums.AlertStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,14 +27,14 @@ public interface AlertResponderRepository extends JpaRepository<AlertResponder, 
     @Query("SELECT ar FROM AlertResponder ar WHERE ar.alertId = :alertId AND ar.responderId = :responderId")
     Optional<AlertResponder> findByAlertIdAndResponderId(@Param("alertId") UUID alertId, @Param("responderId") UUID responderId);
     
-    // Check if a responder has accepted a specific alert
-    @Query("SELECT ar FROM AlertResponder ar WHERE ar.alertId = :alertId AND ar.responderId = :responderId AND ar.status = 'rejected'")
-    Optional<AlertResponder> findByAlertIdAndResponderIdRejected(@Param("alertId") UUID alertId, @Param("responderId") UUID responderId);
+    // Check if a responder has rejected a specific alert
+    @Query("SELECT ar FROM AlertResponder ar WHERE ar.alertId = :alertId AND ar.responderId = :responderId AND ar.status = :status")
+    Optional<AlertResponder> findByAlertIdAndResponderIdAndStatus(@Param("alertId") UUID alertId, @Param("responderId") UUID responderId, @Param("status") AlertStatus status);
     
 
-    // Find accepted alerts by responder with specific status
+    // Find alerts by responder with specific status
     @Query("SELECT ar FROM AlertResponder ar WHERE ar.responderId = :responderId AND ar.status = :status ORDER BY ar.acceptedAt DESC")
-    List<AlertResponder> findByResponderIdAndStatus(@Param("responderId") UUID responderId, @Param("status") String status);
+    List<AlertResponder> findByResponderIdAndStatus(@Param("responderId") UUID responderId, @Param("status") AlertStatus status);
     
     // Check if an alert has any accepted responders
     @Query("SELECT COUNT(ar) > 0 FROM AlertResponder ar WHERE ar.alertId = :alertId")
@@ -48,4 +49,8 @@ public interface AlertResponderRepository extends JpaRepository<AlertResponder, 
     
     // Delete all alert responder records for a specific alert
     void deleteByAlertId(UUID alertId);
+    
+    // Find alert responders by responder ID with specific alert statuses
+    @Query("SELECT ar FROM AlertResponder ar JOIN Alert a ON ar.alertId = a.id WHERE ar.responderId = :responderId AND a.status IN :statuses ORDER BY a.triggeredAt DESC")
+    List<AlertResponder> findByResponderIdWithAlertStatus(@Param("responderId") UUID responderId, @Param("statuses") List<AlertStatus> statuses);
 }

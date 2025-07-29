@@ -637,7 +637,9 @@ export default function SettingsScreen() {
         showNotificationDot={false}
       />
 
-      <ScrollView className="flex-1 p-4 pb-28">
+      <ScrollView className="flex-1 p-4 pb-28"
+          showsVerticalScrollIndicator={false}
+      >
         {/* Profile Section */}
         <View className="bg-white rounded-lg p-4 mb-4 shadow-sm">
           <Text className="text-lg font-bold text-[#67082F] mb-4">

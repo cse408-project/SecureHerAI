@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Platform,
   Alert,
+  Linking,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -37,12 +38,21 @@ const NavigationScreen: React.FC = () => {
   const userRole = params.userRole as "USER" | "RESPONDER";
   const targetLocation = JSON.parse(params.targetLocation as string);
 
-  // Location states
+  // Location and participant states
   const [currentLocation, setCurrentLocation] = useState<MapLocation | null>(
     null
   );
   const [targetCurrentLocation, setTargetCurrentLocation] =
     useState<MapLocation | null>(null);
+  const [participantInfo, setParticipantInfo] = useState<{
+    name?: string;
+    phone?: string;
+    email?: string;
+    profilePicture?: string;
+    role?: string;
+    responderType?: string;
+    badgeNumber?: string;
+  } | null>(null);
   const [route, setRoute] = useState<any>(null);
   const [routeMode, setRouteMode] = useState<
     "DRIVING" | "WALKING" | "BICYCLING" | "TRANSIT"
@@ -123,34 +133,49 @@ const NavigationScreen: React.FC = () => {
         result
       );
 
-      if (result.success && result.participantLocation) {
-        const { latitude, longitude, lastUpdate } = result.participantLocation;
+      if (result.success) {
+        // Handle participant location
+        if (result.participantLocation) {
+          const { latitude, longitude, lastUpdate } =
+            result.participantLocation;
 
-        if (latitude != null && longitude != null) {
-          const newLocation: MapLocation = {
-            latitude: latitude,
-            longitude: longitude,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          };
+          if (latitude != null && longitude != null) {
+            const newLocation: MapLocation = {
+              latitude: latitude,
+              longitude: longitude,
+              latitudeDelta: 0.01,
+              longitudeDelta: 0.01,
+            };
 
+            console.log(
+              `📍 Updated ${
+                userRole === "USER" ? "responder" : "user"
+              } location:`,
+              newLocation
+            );
+            setTargetCurrentLocation(newLocation);
+            setConnectionStatus("connected");
+          } else {
+            console.warn(
+              `📍 ${
+                userRole === "USER" ? "Responder" : "User"
+              } location is null - they may not have shared location yet`
+            );
+            console.log("Location data:", { latitude, longitude, lastUpdate });
+            setConnectionStatus("connecting");
+            // Don't clear existing location if we had one before
+          }
+        }
+
+        // Handle participant info
+        if (result.participantInfo) {
           console.log(
-            `📍 Updated ${
+            `📍 Got ${
               userRole === "USER" ? "responder" : "user"
-            } location:`,
-            newLocation
+            } contact info:`,
+            result.participantInfo
           );
-          setTargetCurrentLocation(newLocation);
-          setConnectionStatus("connected");
-        } else {
-          console.warn(
-            `📍 ${
-              userRole === "USER" ? "Responder" : "User"
-            } location is null - they may not have shared location yet`
-          );
-          console.log("Location data:", { latitude, longitude, lastUpdate });
-          setConnectionStatus("connecting");
-          // Don't clear existing location if we had one before
+          setParticipantInfo(result.participantInfo);
         }
       } else {
         console.warn(
@@ -482,6 +507,52 @@ const NavigationScreen: React.FC = () => {
     ]);
   }, [router]);
 
+  // Handle phone call
+  const handleCall = useCallback(() => {
+    if (participantInfo?.phone) {
+      const phoneNumber = `tel:${participantInfo.phone}`;
+      Linking.canOpenURL(phoneNumber)
+        .then((supported) => {
+          if (supported) {
+            Linking.openURL(phoneNumber);
+          } else {
+            showAlert("Phone calls not supported on this device", "error");
+          }
+        })
+        .catch((err) => {
+          console.error("Error attempting to make call:", err);
+          showAlert("Could not make phone call", "error");
+        });
+    } else {
+      showAlert("No phone number available", "error");
+    }
+  }, [participantInfo, showAlert]);
+
+  // Handle email
+  const handleEmail = useCallback(() => {
+    if (participantInfo?.email) {
+      const subject = "Emergency Alert Communication";
+      const emailUrl = `mailto:${
+        participantInfo.email
+      }?subject=${encodeURIComponent(subject)}`;
+
+      Linking.canOpenURL(emailUrl)
+        .then((supported) => {
+          if (supported) {
+            Linking.openURL(emailUrl);
+          } else {
+            showAlert("Email not supported on this device", "error");
+          }
+        })
+        .catch((err) => {
+          console.error("Error attempting to send email:", err);
+          showAlert("Could not open email client", "error");
+        });
+    } else {
+      showAlert("No email address available", "error");
+    }
+  }, [participantInfo, showAlert]);
+
   // Prepare markers for map - memoized to prevent constant re-renders
   const markers = useMemo(() => {
     const markerList: MapMarker[] = [];
@@ -541,9 +612,14 @@ const NavigationScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center bg-white max-w-screen-md mx-auto w-full">
+      <View className="flex-1 justify-center items-center bg-white max-w-screen-md mx-auto w-full px-4">
         <ActivityIndicator size="large" color="#FF6B8A" />
-        <Text className="mt-4 text-gray-600">Loading navigation...</Text>
+        <Text className="mt-4 text-gray-800 font-medium text-center">
+          Loading navigation to {userRole === "USER" ? "responder" : "user"}...
+        </Text>
+        <Text className="mt-2 text-gray-500 text-sm text-center">
+          Getting location and contact information
+        </Text>
       </View>
     );
   }
@@ -790,6 +866,63 @@ const NavigationScreen: React.FC = () => {
                     : route.duration.text
                   : "Calculating..."}
               </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Participant Contact Information */}
+        {participantInfo && (
+          <View className="mt-4 bg-gray-50 rounded-xl p-4">
+            <View className="flex-row justify-between items-center mb-3">
+              <View className="flex-row items-center">
+                <MaterialIcons name="person" size={18} color="#67082F" />
+                <Text className="ml-2 font-medium text-gray-900">
+                  Contact Information
+                </Text>
+              </View>
+              <View className="px-3 py-1 bg-blue-100 rounded-full">
+                <Text className="text-xs text-blue-700 font-medium">
+                  {participantInfo.role ||
+                    (userRole === "USER" ? "Responder" : "User")}
+                </Text>
+              </View>
+            </View>
+
+            <View className="mb-3">
+              <Text className="text-sm text-gray-500">Name</Text>
+              <Text className="text-base font-medium text-gray-900">
+                {participantInfo.name || "Not available"}
+              </Text>
+            </View>
+
+            <View className="flex-row space-x-3">
+              {/* Call Button */}
+              <TouchableOpacity
+                onPress={handleCall}
+                disabled={!participantInfo.phone}
+                className={`flex-1 flex-row items-center justify-center py-2 px-4 rounded-lg ${
+                  participantInfo.phone ? "bg-[#67082F]" : "bg-gray-300"
+                }`}
+              >
+                <MaterialIcons name="call" size={18} color="white" />
+                <Text className="text-white font-medium text-sm ml-2">
+                  Call
+                </Text>
+              </TouchableOpacity>
+
+              {/* Email Button */}
+              <TouchableOpacity
+                onPress={handleEmail}
+                disabled={!participantInfo.email}
+                className={`flex-1 flex-row items-center justify-center py-2 px-4 rounded-lg ${
+                  participantInfo.email ? "bg-[#67082F]" : "bg-gray-300"
+                }`}
+              >
+                <MaterialIcons name="email" size={18} color="white" />
+                <Text className="text-white font-medium text-sm ml-2">
+                  Email
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}

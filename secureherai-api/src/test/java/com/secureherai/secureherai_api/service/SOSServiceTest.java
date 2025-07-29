@@ -3,6 +3,7 @@ package com.secureherai.secureherai_api.service;
 import com.secureherai.secureherai_api.dto.sos.LocationDto;
 import com.secureherai.secureherai_api.entity.Alert;
 import com.secureherai.secureherai_api.repository.AlertRepository;
+import com.secureherai.secureherai_api.enums.AlertStatus;
 import com.secureherai.secureherai_api.service.AzureSpeechService.SpeechTranscriptionResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -111,7 +112,7 @@ class SOSServiceTest {
         savedAlert.setUserId(testUserId);
         savedAlert.setAlertMessage(transcribedText);
         savedAlert.setTriggerMethod("voice");
-        savedAlert.setStatus("active");
+        savedAlert.setStatus(AlertStatus.ACTIVE);
         
         when(azureSpeechService.transcribeAudioFile(any(File.class))).thenReturn(transcriptionResult);
         when(alertRepository.save(any(Alert.class))).thenReturn(savedAlert);
@@ -197,18 +198,18 @@ class SOSServiceTest {
         // Arrange
         Alert alert1 = new Alert();
         alert1.setId(UUID.randomUUID());
-        alert1.setStatus("active");
+        alert1.setStatus(AlertStatus.ACTIVE);
         
         Alert alert2 = new Alert();
         alert2.setId(UUID.randomUUID());
-        alert2.setStatus("active");
+        alert2.setStatus(AlertStatus.ACTIVE);
         
         List<Alert> expectedAlerts = Arrays.asList(alert1, alert2);
         
         when(alertRepository.findActiveAlerts()).thenReturn(expectedAlerts);
         
         // Act
-        List<Alert> result = sosService.getActiveAlerts();
+        List<Alert> result = sosService.getAllAlerts();
         
         // Assert
         assertEquals(2, result.size());
@@ -224,12 +225,12 @@ class SOSServiceTest {
         Alert alert = new Alert();
         alert.setId(alertId);
         alert.setUserId(testUserId);
-        alert.setStatus("active");
+        alert.setStatus(AlertStatus.ACTIVE);
         
         Alert updatedAlert = new Alert();
         updatedAlert.setId(alertId);
         updatedAlert.setUserId(testUserId);
-        updatedAlert.setStatus("canceled");
+        updatedAlert.setStatus(AlertStatus.CANCELED);
         
         when(alertRepository.findById(alertId)).thenReturn(java.util.Optional.of(alert));
         when(alertRepository.save(any(Alert.class))).thenReturn(updatedAlert);
@@ -239,7 +240,7 @@ class SOSServiceTest {
         
         // Assert
         assertNotNull(result);
-        assertEquals("canceled", result.getStatus());
+        assertEquals(AlertStatus.CANCELED, result.getStatus());
         verify(alertRepository).findById(alertId);
         verify(alertRepository).save(any(Alert.class));
     }
@@ -269,7 +270,7 @@ class SOSServiceTest {
         Alert alert = new Alert();
         alert.setId(alertId);
         alert.setUserId(otherUserId); // Different user
-        alert.setStatus("active");
+        alert.setStatus(AlertStatus.ACTIVE);
         
         when(alertRepository.findById(alertId)).thenReturn(java.util.Optional.of(alert));
         
@@ -290,7 +291,7 @@ class SOSServiceTest {
         Alert alert = new Alert();
         alert.setId(alertId);
         alert.setUserId(testUserId);
-        alert.setStatus("canceled"); // Already canceled
+        alert.setStatus(AlertStatus.CANCELED); // Already canceled
         
         when(alertRepository.findById(alertId)).thenReturn(java.util.Optional.of(alert));
         

@@ -605,28 +605,25 @@ public class ReportService {
     }
     
     /**
-     * Get reports for admin/officials (with appropriate visibility filtering)
+     * Get reports for all authenticated users (with appropriate visibility filtering)
      */
     public ReportResponse.UserReportsResponse getAllReports(String userRole) {
         try {
             logger.debug("Retrieving reports for user role: {}", userRole);
             List<IncidentReport> reports;
             
-            switch (userRole) {
-                case "ADMIN":
-                    // Admins can see all reports
-                    reports = reportRepository.findAll();
-                    logger.debug("Admin access: Retrieved {} total reports", reports.size());
-                    break;
-                case "RESPONDER":
-                    // Responders can see public and officials_only reports
-                    reports = reportRepository.findPublicReports();
-                    logger.debug("Responder access: Retrieved {} public/officials_only reports", reports.size());
-                    break;
-                default:
-                    // Regular users should not access this endpoint
-                    logger.warn("Access denied for user role: {}", userRole);
-                    return new ReportResponse.UserReportsResponse(false, null, "Access denied. Insufficient privileges.");
+            if ("ADMIN".equals(userRole)) {
+                // Admins can see all reports
+                reports = reportRepository.findAll();
+                logger.debug("Admin access: Retrieved {} total reports", reports.size());
+            } else if ("RESPONDER".equals(userRole)) {
+                // Responders can see public and officials_only reports
+                reports = reportRepository.findPublicReports();
+                logger.debug("Responder access: Retrieved {} public/officials_only reports", reports.size());
+            } else {
+                // Regular users can see only public reports
+                reports = reportRepository.findByVisibility("public");
+                logger.debug("User access: Retrieved {} public reports", reports.size());
             }
             
             List<ReportResponse.ReportSummary> reportSummaries = reports.stream()

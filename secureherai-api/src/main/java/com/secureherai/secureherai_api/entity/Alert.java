@@ -1,5 +1,6 @@
 package com.secureherai.secureherai_api.entity;
 
+import com.secureherai.secureherai_api.enums.AlertStatus;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -40,7 +41,8 @@ public class Alert {
     private LocalDateTime triggeredAt;
     
     @Column(nullable = false)
-    private String status = "active"; // active, canceled, resolved, expired
+    @Enumerated(EnumType.STRING)
+    private AlertStatus status = AlertStatus.ACTIVE; // active, canceled, resolved, expired
     
     @Column(name = "verification_status")
     private String verificationStatus = "pending"; // pending, verified, rejected
@@ -148,11 +150,11 @@ public class Alert {
         this.triggeredAt = triggeredAt;
     }
     
-    public String getStatus() {
+    public AlertStatus getStatus() {
         return status;
     }
     
-    public void setStatus(String status) {
+    public void setStatus(AlertStatus status) {
         this.status = status;
     }
     

@@ -88,3 +88,16 @@ User will see if an alert is accepted by its notification. also alert status in 
 Both locations should be stream to each other.
 For this page no tab button will be added. like submit.tsx, details.tsx pages.
 @websearch for best way to stream locations... (in web and android)
+
+
+When an user click on a alert it will see alert details. if it is responded or resolved, etc. he can see responder info. edit frontend and backend to implement it.
+With currentlocation of participant, get the phone number and email address, other necessary info in SOSService and Controller. Update NavigationScreen to show the call button and send email button for both end (responder and user). also show their necessary info...
+User can cancel an alert with canceled. responder can set alert resolved, critical, false status. update backend and frontend.
+Responder can filter the alerts in sos.tsx page. with their status and other info.
+setting page won't have the keyword setting for responder. Responders AllUser page should have a filter and user's contact should appear dropdown.
+
+
+
+Alert filter is not working correctly. I think there is some uppercase lowercase issue or incorrect status. see backend SOSService
+It is Because Alert status is incosistant. need to fix it everywhere. with enum class in backend and frontend.
+Search wherever alert status is. make them consistent.

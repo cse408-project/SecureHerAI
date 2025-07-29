@@ -25,6 +25,7 @@ import com.secureherai.secureherai_api.entity.AlertResponder;
 import com.secureherai.secureherai_api.entity.Responder;
 import com.secureherai.secureherai_api.entity.User;
 import com.secureherai.secureherai_api.entity.TrustedContact;
+import com.secureherai.secureherai_api.enums.AlertStatus;
 import com.secureherai.secureherai_api.repository.AlertRepository;
 import com.secureherai.secureherai_api.repository.AlertResponderRepository;
 import com.secureherai.secureherai_api.repository.ResponderRepository;
@@ -353,7 +354,7 @@ public class ResponderController {
             List<Map<String, Object>> pendingAlerts = activeAlerts.stream()
                 .filter(alert -> {
                     // Skip alerts that have been responded to (accepted by someone else)
-                    if ("responded".equals(alert.getStatus())) {
+                    if (AlertStatus.ACCEPTED.equals(alert.getStatus())) {
                         // System.out.println("  DEBUG - Skipping alert " + alert.getId() + " - already responded");
                         return false;
                     }
@@ -366,7 +367,7 @@ public class ResponderController {
                     }
                     
                     // Only include if status is "pending"
-                    boolean shouldInclude = "pending".equals(alertResponder.getStatus());
+                    boolean shouldInclude = AlertStatus.PENDING.equals(alertResponder.getStatus());
                     // System.out.println("  DEBUG - Alert " + alert.getId() + ": responder status=" + 
                     //                  alertResponder.getStatus() + ", shouldInclude=" + shouldInclude);
                     return shouldInclude;
@@ -379,7 +380,7 @@ public class ResponderController {
                     alertData.put("latitude", alert.getLatitude());
                     alertData.put("longitude", alert.getLongitude());
                     alertData.put("address", alert.getAddress());
-                    alertData.put("status", alert.getStatus());
+                    alertData.put("status", alert.getStatus().getValue());
                     alertData.put("alertMessage", alert.getAlertMessage());
                     alertData.put("triggerMethod", alert.getTriggerMethod());
                     alertData.put("triggeredAt", alert.getTriggeredAt());
@@ -435,14 +436,17 @@ public class ResponderController {
             
             // Get all alerts accepted by this responder
             List<AlertResponder> acceptedAlerts = alertResponderRepository.findByResponderIdAndStatus(
-                user.getId(), "accepted");
+                user.getId(), AlertStatus.ACCEPTED);
+            List<AlertResponder> criticalAlerts = alertResponderRepository.findByResponderIdAndStatus(
+                user.getId(), AlertStatus.CRITICAL);
+            acceptedAlerts.addAll(criticalAlerts);
                 
             // TODO: Need to join with Alert entity to get full alert details
             // For now, return the basic alert responder data
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("data", acceptedAlerts.stream().map(this::createAlertResponderSummary).toList());
-            response.put("message", "Accepted alerts retrieved successfully");
+            response.put("message", "Accepted and Critical alerts retrieved successfully");
             
             return ResponseEntity.ok(response);
             
@@ -507,7 +511,7 @@ public class ResponderController {
             alertDetails.put("alertMessage", alert.getAlertMessage());
             alertDetails.put("audioRecording", alert.getAudioRecording());
             alertDetails.put("triggeredAt", alert.getTriggeredAt());
-            alertDetails.put("status", alert.getStatus());
+            alertDetails.put("status", alert.getStatus().getValue());
             alertDetails.put("verificationStatus", alert.getVerificationStatus());
 
             // Add user information
@@ -521,7 +525,7 @@ public class ResponderController {
             
             // Add responder-specific information
             Map<String, Object> responderInfo = new HashMap<>();
-            responderInfo.put("status", alertResponder.getStatus());
+            responderInfo.put("status", alertResponder.getStatus().getValue());
             responderInfo.put("acceptedAt", alertResponder.getAcceptedAt());
             responderInfo.put("arrivalTime", alertResponder.getArrivalTime());
             responderInfo.put("eta", alertResponder.getEta());
@@ -558,7 +562,7 @@ public class ResponderController {
 
             // Verify the alert exists and is active
             Optional<Alert> alertOpt = alertRepository.findById(alertId);
-            if (alertOpt.isEmpty() || !alertOpt.get().getStatus().equals("active")) {
+            if (alertOpt.isEmpty() || !alertOpt.get().getStatus().equals(AlertStatus.ACTIVE)) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(createErrorResponse("Alert not found or not active"));
             }
 
@@ -570,18 +574,18 @@ public class ResponderController {
             if (alertResponderOpt.isPresent()) {
                 // Update existing record
                 AlertResponder alertResponder = alertResponderOpt.get();
-                alertResponder.setStatus("accepted");
+                alertResponder.setStatus(AlertStatus.ACCEPTED);
                 alertResponder.setAcceptedAt(java.time.LocalDateTime.now());
                 alertResponderRepository.save(alertResponder);
             } else {
                 // Create new AlertResponder record with accepted status
-                AlertResponder newAlertResponder = new AlertResponder(alertId, responderId, "accepted");
+                AlertResponder newAlertResponder = new AlertResponder(alertId, responderId, AlertStatus.ACCEPTED);
                 newAlertResponder.setAcceptedAt(java.time.LocalDateTime.now());
                 alertResponderRepository.save(newAlertResponder);
             }
 
             // Update the alert status to "responded" so other responders won't see it
-            alert.setStatus("responded");
+            alert.setStatus(AlertStatus.ACCEPTED);
             alertRepository.save(alert);
 
             return ResponseEntity.ok(Map.of("success", true, "message", "Alert accepted successfully"));
@@ -609,18 +613,23 @@ public class ResponderController {
             if (alertResponderOpt.isPresent()) {
                 // Update existing record
                 AlertResponder alertResponder = alertResponderOpt.get();
-                alertResponder.setStatus("rejected");
+                alertResponder.setStatus(AlertStatus.REJECTED);
                 alertResponderRepository.save(alertResponder);
             } else {
                 // Create new AlertResponder record with rejected status
                 // First verify the alert exists and is active
                 Optional<Alert> alertOpt = alertRepository.findById(alertId);
-                if (alertOpt.isEmpty() || !alertOpt.get().getStatus().equals("active")) {
+                if (alertOpt.isEmpty() || !alertOpt.get().getStatus().equals(AlertStatus.ACTIVE)) {
                     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(createErrorResponse("Alert not found or not active"));
                 }
                 
-                AlertResponder newAlertResponder = new AlertResponder(alertId, responderId, "rejected");
+                AlertResponder newAlertResponder = new AlertResponder(alertId, responderId, AlertStatus.REJECTED);
                 alertResponderRepository.save(newAlertResponder);
+
+                Alert alert = alertOpt.get();
+                alert.setStatus(AlertStatus.REJECTED);
+                alertRepository.save(alert);
+
             }
 
             return ResponseEntity.ok(Map.of("success", true, "message", "Alert rejected successfully"));
@@ -657,7 +666,7 @@ public class ResponderController {
 
             // Verify the alert exists and is active
             Optional<Alert> alertOpt = alertRepository.findById(alertId);
-            if (alertOpt.isEmpty() || !alertOpt.get().getStatus().equals("active")) {
+            if (alertOpt.isEmpty() || !alertOpt.get().getStatus().equals(AlertStatus.ACTIVE)) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(createErrorResponse("Alert not found or not active"));
             }
 
@@ -667,12 +676,12 @@ public class ResponderController {
             // Always update the current responder's record to "forwarded" status (or create one if it doesn't exist)
             if (currentAlertResponderOpt.isPresent()) {
                 AlertResponder currentAlertResponder = currentAlertResponderOpt.get();
-                currentAlertResponder.setStatus("forwarded");
+                currentAlertResponder.setStatus(AlertStatus.FORWARDED);
                 alertResponderRepository.save(currentAlertResponder);
                 // System.out.println("DEBUG - Forward: Updated existing AlertResponder record to forwarded for current responder " + currentResponderId);
             } else {
                 // Create new record for current responder with forwarded status
-                AlertResponder newCurrentAlertResponder = new AlertResponder(alertId, currentResponderId, "forwarded");
+                AlertResponder newCurrentAlertResponder = new AlertResponder(alertId, currentResponderId, AlertStatus.FORWARDED);
                 alertResponderRepository.save(newCurrentAlertResponder);
                 // System.out.println("DEBUG - Forward: Created new AlertResponder record with forwarded status for current responder " + currentResponderId);
             }
@@ -683,14 +692,14 @@ public class ResponderController {
             // For target responder: always create a pending record if none exists, or update to pending if exists
             if (targetAlertResponderOpt.isEmpty()) {
                 // No previous record, create new with forwarded=true flag
-                AlertResponder newTargetAlertResponder = new AlertResponder(alertId, targetResponderId, "pending");
+                AlertResponder newTargetAlertResponder = new AlertResponder(alertId, targetResponderId, AlertStatus.PENDING);
                 newTargetAlertResponder.setNotes("forwarded"); // Use notes field to indicate it was forwarded
                 alertResponderRepository.save(newTargetAlertResponder);
                 // System.out.println("DEBUG - Forward: Created new AlertResponder with pending status for target " + targetResponderId);
             } else {
                 // Already has record in any status, update to pending with forwarded flag
                 AlertResponder targetAlertResponder = targetAlertResponderOpt.get();
-                targetAlertResponder.setStatus("pending");
+                targetAlertResponder.setStatus(AlertStatus.PENDING);
                 targetAlertResponder.setNotes("forwarded"); // Use notes field to indicate it was forwarded
                 alertResponderRepository.save(targetAlertResponder);
                 // System.out.println("DEBUG - Forward: Updated existing AlertResponder to pending status for target " + targetResponderId);
@@ -718,63 +727,69 @@ public class ResponderController {
         }
     }
 
-    @PutMapping("/update-alert-status")
-    public ResponseEntity<Object> updateAlertStatus(
-            @RequestBody Map<String, String> request,
-            @RequestHeader("Authorization") String authHeader) {
-        try {
-            String token = authHeader.replace("Bearer ", "");
-            if (!jwtService.isTokenValid(token)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(createErrorResponse("Invalid token"));
-            }
+    // @PutMapping("/update-alert-status")
+    // public ResponseEntity<Object> updateAlertStatus(
+    //         @RequestBody Map<String, String> request,
+    //         @RequestHeader("Authorization") String authHeader) {
+    //     try {
+    //         String token = authHeader.replace("Bearer ", "");
+    //         if (!jwtService.isTokenValid(token)) {
+    //             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(createErrorResponse("Invalid token"));
+    //         }
 
-            UUID responderId = jwtService.extractUserId(token);
-            UUID alertId = UUID.fromString(request.get("alertId"));
-            String newStatus = request.get("status");
+    //         UUID responderId = jwtService.extractUserId(token);
+    //         UUID alertId = UUID.fromString(request.get("alertId"));
+    //         String newStatus = request.get("status");
 
-            if (newStatus == null || newStatus.trim().isEmpty()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(createErrorResponse("Status is required"));
-            }
+    //         if (newStatus == null || newStatus.trim().isEmpty()) {
+    //             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(createErrorResponse("Status is required"));
+    //         }
 
-            // Validate status values
-            if (!isValidAlertStatus(newStatus)) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(createErrorResponse("Invalid status. Must be one of: accepted, en_route, arrived, resolved"));
-            }
+    //         // Validate status values
+    //         // if (!isValidAlertStatus(newStatus)) {
+    //         //     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(createErrorResponse("Invalid status. Must be one of: ACCEPTED, EN_ROUTE, ARRIVED, RESOLVED"));
+    //         // }
 
-            // Find the AlertResponder record
-            Optional<AlertResponder> alertResponderOpt = alertResponderRepository.findByAlertIdAndResponderId(alertId, responderId);
+    //         // Find the AlertResponder record
+    //         Optional<AlertResponder> alertResponderOpt = alertResponderRepository.findByAlertIdAndResponderId(alertId, responderId);
             
-            if (alertResponderOpt.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(createErrorResponse("Alert not found or not assigned to you"));
-            }
+    //         if (alertResponderOpt.isEmpty()) {
+    //             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(createErrorResponse("Alert not found or not assigned to you"));
+    //         }
 
-            AlertResponder alertResponder = alertResponderOpt.get();
-            alertResponder.setStatus(newStatus);
+    //         AlertResponder alertResponder = alertResponderOpt.get();
+    //         AlertStatus statusEnum = AlertStatus.fromString(newStatus);
+    //         alertResponder.setStatus(statusEnum);
             
-            // Set arrival time if status is "arrived"
-            if ("arrived".equals(newStatus)) {
-                alertResponder.setArrivalTime(java.time.LocalDateTime.now());
-            }
-            
-            alertResponderRepository.save(alertResponder);
+    //         // Set arrival time if status is "arrived"
+    //         if (AlertStatus.RESOLVED.equals(statusEnum)) {
+    //             alertResponder.setArrivalTime(java.time.LocalDateTime.now());
+    //         }
 
-            return ResponseEntity.ok(Map.of("success", true, "message", "Alert status updated successfully"));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(createErrorResponse("Unexpected error occurred"));
-        }
-    }
+
+            
+    //         alertResponderRepository.save(alertResponder);
+
+    //         return ResponseEntity.ok(Map.of("success", true, "message", "Alert status updated successfully"));
+    //     } catch (Exception e) {
+    //         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(createErrorResponse("Unexpected error occurred"));
+    //     }
+    // }
     
-    private boolean isValidAlertStatus(String status) {
-        return status != null && 
-               ("accepted".equals(status) || "en_route".equals(status) || 
-                "arrived".equals(status) || "resolved".equals(status));
-    }
+    
+    // private boolean isValidAlertStatus(String status) {
+    //     return AlertStatus.isValid(status) && 
+    //            (AlertStatus.ACCEPTED.getValue().equals(status) || 
+    //             AlertStatus.EN_ROUTE.getValue().equals(status) || 
+    //             AlertStatus.ARRIVED.getValue().equals(status) || 
+    //             AlertStatus.RESOLVED.getValue().equals(status));
+    // }
     
     private Map<String, Object> createAlertResponderSummary(AlertResponder alertResponder) {
         Map<String, Object> data = new HashMap<>();
         data.put("alertId", alertResponder.getAlertId());
         data.put("responderId", alertResponder.getResponderId());
-        data.put("status", alertResponder.getStatus());
+        data.put("status", alertResponder.getStatus().getValue());
         data.put("acceptedAt", alertResponder.getAcceptedAt());
         return data;
     }
@@ -906,4 +921,102 @@ public class ResponderController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(createErrorResponse("Internal server error"));
         }
     }
+
+    /**
+     * Get all alerts for the current responder (excluding ACTIVE and CANCELED)
+     * GET /api/responder/my-alerts
+     */
+    @GetMapping("/my-alerts")
+    public ResponseEntity<Map<String, Object>> getResponderMyAlerts(@RequestHeader("Authorization") String authHeader) {
+        try {
+            // Extract token and validate
+            String token = authHeader.replace("Bearer ", "");
+            if (!jwtService.isTokenValid(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(createErrorResponse("Authentication token is invalid or expired"));
+            }
+            
+            // Get responder ID from token
+            UUID responderId = jwtService.extractUserId(token);
+            
+            // Get all alert responder entries for this responder
+            List<AlertResponder> alertResponders = alertResponderRepository.findByResponderId(responderId);
+            
+            // Filter out PENDING and REJECTED alerts and get alert details
+            List<Map<String, Object>> alertsData = alertResponders.stream()
+                .map(alertResponder -> {
+                    // Only include alerts where the responder has ACCEPTED, RESOLVED, etc.
+                    // Exclude PENDING (not yet acted upon) and REJECTED alerts
+                    if (alertResponder.getStatus() == AlertStatus.PENDING || alertResponder.getStatus() == AlertStatus.REJECTED) {
+                        return null;
+                    }
+                    // Get the full alert details
+                    Optional<Alert> alertOpt = alertRepository.findById(alertResponder.getAlertId());
+                    if (alertOpt.isPresent()) {
+                        Alert alert = alertOpt.get();
+                        
+                        // Get user details
+                        Optional<User> userOpt = userRepository.findById(alert.getUserId());
+                        
+                        Map<String, Object> alertData = new HashMap<>();
+                        
+                        // Alert information - using field names that match frontend expectations
+                        alertData.put("id", alert.getId().toString()); // Use "id" not "alertId"
+                        alertData.put("userId", alert.getUserId().toString());
+                        alertData.put("latitude", alert.getLatitude());
+                        alertData.put("longitude", alert.getLongitude());
+                        alertData.put("address", alert.getAddress());
+                        alertData.put("alertMessage", alert.getAlertMessage());
+                        alertData.put("triggerMethod", alert.getTriggerMethod());
+                        alertData.put("triggeredAt", alert.getTriggeredAt().toString());
+                        alertData.put("status", alert.getStatus().getValue());
+                        alertData.put("resolvedAt", alert.getResolvedAt() != null ? alert.getResolvedAt().toString() : null);
+                        alertData.put("canceledAt", alert.getCanceledAt() != null ? alert.getCanceledAt().toString() : null);
+                        
+                        // Responder information
+                        alertData.put("responderId", alertResponder.getResponderId().toString());
+                        alertData.put("responderStatus", alertResponder.getStatus().getValue());
+                        alertData.put("acceptedAt", alertResponder.getAcceptedAt() != null ? alertResponder.getAcceptedAt().toString() : null);
+                        // Note: No rejectedAt field in AlertResponder entity
+                        alertData.put("eta", alertResponder.getEta());
+                        alertData.put("arrivalTime", alertResponder.getArrivalTime() != null ? alertResponder.getArrivalTime().toString() : null);
+                        
+                        // User information (if available)
+                        if (userOpt.isPresent()) {
+                            User user = userOpt.get();
+                            alertData.put("userFullName", user.getFullName());
+                            alertData.put("userEmail", user.getEmail());
+                            alertData.put("userPhone", user.getPhone());
+                        }
+                        
+                        return alertData;
+                    }
+                    return null;
+                })
+                .filter(alertData -> alertData != null) // Remove null entries (PENDING/REJECTED alerts)
+                .sorted((a, b) -> {
+                    // Sort by triggered time, most recent first
+                    String timeA = (String) a.get("triggeredAt");
+                    String timeB = (String) b.get("triggeredAt");
+                    if (timeA == null && timeB == null) return 0;
+                    if (timeA == null) return 1;
+                    if (timeB == null) return -1;
+                    return timeB.compareTo(timeA);
+                })
+                .collect(Collectors.toList());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", alertsData);
+            response.put("count", alertsData.size());
+            response.put("message", "Responder's historical alerts retrieved successfully");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(createErrorResponse("Error retrieving responder's alerts: " + e.getMessage()));
+        }
+    }
+
 }

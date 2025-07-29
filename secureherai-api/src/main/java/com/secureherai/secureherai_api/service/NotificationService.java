@@ -7,6 +7,7 @@ import com.secureherai.secureherai_api.entity.AlertResponder;
 import com.secureherai.secureherai_api.entity.Notification;
 import com.secureherai.secureherai_api.entity.Responder;
 import com.secureherai.secureherai_api.entity.TrustedContact;
+import com.secureherai.secureherai_api.enums.AlertStatus;
 import com.secureherai.secureherai_api.repository.AlertResponderRepository;
 import com.secureherai.secureherai_api.repository.NotificationRepository;
 import com.secureherai.secureherai_api.repository.ResponderRepository;
@@ -528,7 +529,7 @@ public class NotificationService {
         AlertResponder alertResponder = new AlertResponder();
         alertResponder.setAlertId(alertId);
         alertResponder.setResponderId(responderId);
-        alertResponder.setStatus("accepted");
+        alertResponder.setStatus(AlertStatus.ACCEPTED);
         alertResponderRepository.save(alertResponder);
         
         // Mark all pending notifications for this alert as no longer needed
