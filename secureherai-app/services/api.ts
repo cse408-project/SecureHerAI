@@ -996,10 +996,10 @@ class ApiService {
   /**
    * Get all active alerts for responders (all users' active alerts)
    */
-  async getAllActiveAlerts() {
+  async getAllAlerts() {
     try {
       console.log("API: Getting all active alerts (responder)");
-      const response = await fetch(`${API_BASE_URL}/sos/active-alerts`, {
+      const response = await fetch(`${API_BASE_URL}/sos/all-alerts`, {
         method: "GET",
         headers: await this.getHeaders(true),
       });
@@ -1294,6 +1294,33 @@ class ApiService {
     }
   }
 
+  /**
+   * Get detailed information about a specific alert including responder info if available
+   */
+  async getAlertDetails(alertId: string) {
+    try {
+      console.log("API: Getting alert details for:", alertId);
+      const response = await fetch(
+        `${API_BASE_URL}/sos/alerts/${alertId}/details`,
+        {
+          method: "GET",
+          headers: await this.getHeaders(true),
+        }
+      );
+
+      console.log("API: Alert details response status:", response.status);
+      const data = await response.json();
+
+      return data;
+    } catch (error) {
+      console.error("API: Get alert details error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while getting alert details",
+      };
+    }
+  }
+
   async getActiveAlerts() {
     try {
       console.log("API: Getting active alerts (responder)");
@@ -1362,6 +1389,31 @@ class ApiService {
       return {
         success: false,
         error: "Network error occurred while getting accepted alerts",
+      };
+    }
+  }
+
+  /**
+   * Get responder's historical alerts (excluding ACTIVE and CANCELED)
+   */
+  async getMyAlerts() {
+    try {
+      console.log("API: Getting responder's historical alerts");
+
+      const response = await fetch(`${API_BASE_URL}/responder/my-alerts`, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+      });
+
+      console.log("API: My alerts response status:", response.status);
+      const data = await response.json();
+
+      return data;
+    } catch (error) {
+      console.error("API: Get my alerts error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while getting my alerts",
       };
     }
   }
@@ -1753,17 +1805,17 @@ class ApiService {
   /**
    * Update alert status (for responders)
    */
-  async updateAlertStatus(alertId: string, status: string) {
+  async updateAlertStatus(alertId: string, status: string, notes?: string) {
     try {
       console.log("API: Updating alert status:", alertId, "to status:", status);
       const response = await fetch(
-        `${API_BASE_URL}/responder/update-alert-status`,
+        `${API_BASE_URL}/sos/alerts/${alertId}/status`,
         {
           method: "PUT",
           headers: await this.getHeaders(true),
           body: JSON.stringify({
-            alertId,
             status,
+            notes: notes || "",
           }),
         }
       );

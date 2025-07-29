@@ -1,7 +1,9 @@
+import { AlertStatusString } from "./AlertStatus";
+
 export interface AlertResponder {
   alertId: string;
   responderId: string;
-  status: 'accepted' | 'en_route' | 'arrived' | 'resolved';
+  status: AlertStatusString;
   acceptedAt: string;
   eta?: string;
 }
@@ -13,14 +15,14 @@ export interface CreateResponderRequest {
 export interface UpdateResponderStatusRequest {
   alertId: string;
   responderId: string;
-  status: 'accepted' | 'en_route' | 'arrived' | 'resolved';
+  status: AlertStatusString;
   eta?: string;
 }
 export interface ResponderDetails {
   alertId: string;
   responderId: string;
   responderName: string;
-  status: 'accepted' | 'en_route' | 'arrived' | 'resolved';
+  status: AlertStatusString;
   acceptedAt: string;
   updatedAt: string;
   eta?: string;

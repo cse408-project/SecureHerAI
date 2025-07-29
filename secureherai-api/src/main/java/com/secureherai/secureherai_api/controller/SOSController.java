@@ -5,6 +5,7 @@ import com.secureherai.secureherai_api.dto.sos.SOSCancelAlertRequestDto;
 import com.secureherai.secureherai_api.dto.sos.SOSTextCommandRequestDto;
 import com.secureherai.secureherai_api.dto.sos.SOSVoiceUrlCommandRequestDto;
 import com.secureherai.secureherai_api.entity.Alert;
+import com.secureherai.secureherai_api.enums.AlertStatus;
 import com.secureherai.secureherai_api.service.JwtService;
 import com.secureherai.secureherai_api.service.SOSService;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.Valid;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -82,7 +84,7 @@ public class SOSController {
                 alert.getAlertMessage(),
                 alert.getAudioRecording(),
                 alert.getTriggeredAt(),
-                alert.getStatus(),
+                alert.getStatus().getValue(),
                 alert.getVerificationStatus(),
                 alert.getCanceledAt(),
                 alert.getResolvedAt()
@@ -149,7 +151,7 @@ public class SOSController {
                 alert.getAlertMessage(),
                 alert.getAudioRecording(),
                 alert.getTriggeredAt(),
-                alert.getStatus(),
+                alert.getStatus().getValue(),
                 alert.getVerificationStatus(),
                 alert.getCanceledAt(),
                 alert.getResolvedAt()
@@ -204,7 +206,7 @@ public class SOSController {
      * 
      * GET /api/sos/active-alerts
      */
-    @GetMapping("/active-alerts")
+    @GetMapping("/all-alerts")
     public ResponseEntity<?> getActiveAlerts(@RequestHeader("Authorization") String authHeader) {
         try {
             // Extract token and validate
@@ -226,7 +228,7 @@ public class SOSController {
             log.info("Responder {} requesting all active alerts", userId);
             
             // Get all active alerts
-            List<Alert> activeAlerts = sosService.getActiveAlerts();
+            List<Alert> activeAlerts = sosService.getAllAlerts();
             
             return ResponseEntity.ok(Map.of(
                 "success", true,
@@ -283,7 +285,7 @@ public class SOSController {
                 updatedAlert.getAlertMessage(),
                 updatedAlert.getAudioRecording(),
                 updatedAlert.getTriggeredAt(),
-                updatedAlert.getStatus(),
+                updatedAlert.getStatus().getValue(),
                 updatedAlert.getVerificationStatus(),
                 updatedAlert.getCanceledAt(),
                 updatedAlert.getResolvedAt()
@@ -343,6 +345,130 @@ public class SOSController {
                 .body(Map.of(
                     "success", false,
                     "error", "Error getting participant location: " + e.getMessage()
+                ));
+        }
+    }
+    
+    /**
+     * Update alert status (responders can mark as resolved, critical, false_alarm)
+     * 
+     * PUT /api/sos/alerts/{alertId}/status
+     */
+    @PutMapping("/alerts/{alertId}/status")
+    public ResponseEntity<Map<String, Object>> updateAlertStatus(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String alertId,
+            @RequestBody Map<String, String> requestBody) {
+        
+        try {
+            // Extract token and validate
+            String token = authHeader.replace("Bearer ", "");
+            if (!jwtService.isTokenValid(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of(
+                        "success", false,
+                        "error", "Authentication token is invalid or expired"
+                    ));
+            }
+            
+            // Get user ID from token
+            UUID userId = jwtService.extractUserId(token);
+            
+            // Extract new status and notes from request body
+            String newStatus = requestBody.get("status");
+            String notes = requestBody.get("notes");
+            
+            if (newStatus == null || newStatus.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of(
+                        "success", false,
+                        "error", "Status is required"
+                    ));
+            }
+            
+            // Update alert status
+            Alert updatedAlert = sosService.updateAlertStatus(UUID.fromString(alertId), userId, newStatus, notes);
+            
+            if (updatedAlert == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of(
+                        "success", false,
+                        "error", "Alert not found or you are not authorized to update it"
+                    ));
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Alert status updated successfully");
+            response.put("alertId", updatedAlert.getId().toString());
+            response.put("status", updatedAlert.getStatus().getValue());
+            response.put("resolvedAt", updatedAlert.getResolvedAt() != null ? updatedAlert.getResolvedAt().toString() : null);
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid input: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                .body(Map.of(
+                    "success", false,
+                    "error", e.getMessage()
+                ));
+        } catch (Exception e) {
+            log.error("Error updating alert status for alert: {}", alertId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of(
+                    "success", false,
+                    "error", "Error updating alert status: " + e.getMessage()
+                ));
+        }
+    }
+    
+    /**
+     * Get detailed information about an alert including responder info if available
+     * 
+     * GET /api/sos/alerts/{alertId}/details
+     */
+    @GetMapping("/alerts/{alertId}/details")
+    public ResponseEntity<Map<String, Object>> getAlertDetails(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String alertId) {
+        
+        try {
+            // Extract token and validate
+            String token = authHeader.replace("Bearer ", "");
+            if (!jwtService.isTokenValid(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of(
+                        "success", false,
+                        "error", "Authentication token is invalid or expired"
+                    ));
+            }
+            
+            // Get user ID from token
+            UUID userId = jwtService.extractUserId(token);
+            
+            // Get alert details from service
+            Map<String, Object> result = sosService.getAlertDetails(UUID.fromString(alertId), userId);
+            
+            if (!(boolean)result.get("success")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(result);
+            }
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid alert ID format: {}", alertId, e);
+            return ResponseEntity.badRequest()
+                .body(Map.of(
+                    "success", false,
+                    "error", "Invalid alert ID format"
+                ));
+        } catch (Exception e) {
+            log.error("Error getting alert details for alert: {}", alertId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of(
+                    "success", false,
+                    "error", "Error getting alert details: " + e.getMessage()
                 ));
         }
     }

@@ -6,6 +6,7 @@ import com.secureherai.secureherai_api.dto.sos.LocationDto;
 import com.secureherai.secureherai_api.dto.sos.SOSTextCommandRequestDto;
 import com.secureherai.secureherai_api.dto.sos.SOSVoiceUrlCommandRequestDto;
 import com.secureherai.secureherai_api.entity.Alert;
+import com.secureherai.secureherai_api.enums.AlertStatus;
 import com.secureherai.secureherai_api.service.JwtService;
 import com.secureherai.secureherai_api.service.SOSService;
 import org.junit.jupiter.api.BeforeEach;
@@ -70,7 +71,7 @@ class SOSControllerTest {
         testAlert.setTriggerMethod("text");
         testAlert.setAlertMessage("Help me, emergency!");
         testAlert.setTriggeredAt(LocalDateTime.now());
-        testAlert.setStatus("active");
+        testAlert.setStatus(AlertStatus.ACTIVE);
         
         // Setup JWT validation
         when(jwtService.isTokenValid(validToken)).thenReturn(true);
@@ -190,7 +191,7 @@ class SOSControllerTest {
     void getActiveAlerts_ValidResponder_ReturnsListOfActiveAlerts() throws Exception {
         // Arrange
         when(jwtService.extractRole(validToken)).thenReturn("RESPONDER");
-        when(sosService.getActiveAlerts()).thenReturn(java.util.Arrays.asList(testAlert));
+        when(sosService.getAllAlerts()).thenReturn(java.util.Arrays.asList(testAlert));
 
         // Act & Assert
         mockMvc.perform(get("/api/sos/active-alerts")
@@ -200,7 +201,7 @@ class SOSControllerTest {
                 .andExpect(jsonPath("$.alerts").isArray())
                 .andExpect(jsonPath("$.alerts.length()").value(1));
         
-        verify(sosService).getActiveAlerts();
+        verify(sosService).getAllAlerts();
     }
     
     @Test
@@ -213,6 +214,6 @@ class SOSControllerTest {
                 .header("Authorization", "Bearer " + validToken))
                 .andExpect(status().isForbidden());
         
-        verify(sosService, never()).getActiveAlerts();
+        verify(sosService, never()).getAllAlerts();
     }
 }

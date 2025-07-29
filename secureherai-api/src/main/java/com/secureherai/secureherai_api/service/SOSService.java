@@ -6,6 +6,7 @@ import com.secureherai.secureherai_api.entity.AlertResponder;
 import com.secureherai.secureherai_api.entity.IncidentReport;
 import com.secureherai.secureherai_api.entity.User;
 import com.secureherai.secureherai_api.entity.Responder;
+import com.secureherai.secureherai_api.enums.AlertStatus;
 import com.secureherai.secureherai_api.repository.AlertRepository;
 import com.secureherai.secureherai_api.repository.AlertResponderRepository;
 import com.secureherai.secureherai_api.repository.UserRepository;
@@ -396,9 +397,9 @@ public class SOSService {
      * 
      * @return List of all active alerts
      */
-    public List<Alert> getActiveAlerts() {
+    public List<Alert> getAllAlerts() {
         log.info("Getting all active alerts for responders");
-        return alertRepository.findActiveAlerts();
+        return alertRepository.findAllAlerts();
     }
     
     /**
@@ -429,13 +430,13 @@ public class SOSService {
         }
         
         // Check if the alert is already canceled or resolved
-        if (!alert.getStatus().equals("active")) {
+        if (!alert.getStatus().equals(AlertStatus.ACTIVE)) {
             log.warn("Alert {} is already {}, cannot cancel", alertId, alert.getStatus());
             return null;
         }
         
         // Update alert status and set canceled time
-        alert.setStatus("canceled");
+        alert.setStatus(AlertStatus.CANCELED);
         alert.setCanceledAt(LocalDateTime.now());
         
         // Save and return the updated alert
@@ -489,7 +490,9 @@ public class SOSService {
             
             // Get the first accepted responder
             AlertResponder acceptedResponder = alertResponders.stream()
-                .filter(ar -> "accepted".equals(ar.getStatus()) || "en_route".equals(ar.getStatus()) || "arrived".equals(ar.getStatus()))
+                .filter(ar -> AlertStatus.ACCEPTED.equals(ar.getStatus()) || 
+                             AlertStatus.EN_ROUTE.equals(ar.getStatus()) || 
+                             AlertStatus.ARRIVED.equals(ar.getStatus()))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("No active responder found for this alert"));
             
@@ -512,6 +515,12 @@ public class SOSService {
             participantInfo.put("role", "RESPONDER");
             participantInfo.put("responderType", responder.getResponderType().toString());
             participantInfo.put("badgeNumber", responder.getBadgeNumber());
+            
+            // Add contact information
+            participantInfo.put("phone", responder.getUser().getPhone());
+            participantInfo.put("email", responder.getUser().getEmail());
+            participantInfo.put("profilePicture", responder.getUser().getProfilePicture());
+            
             result.put("participantInfo", participantInfo);
         } else {
             // Responder is requesting user's location
@@ -526,7 +535,182 @@ public class SOSService {
             Map<String, Object> participantInfo = new HashMap<>();
             participantInfo.put("name", alertUser.getFullName());
             participantInfo.put("role", "USER");
+            
+            // Add contact information
+            participantInfo.put("phone", alertUser.getPhone());
+            participantInfo.put("email", alertUser.getEmail());
+            participantInfo.put("profilePicture", alertUser.getProfilePicture());
+            
             result.put("participantInfo", participantInfo);
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Update alert status by responder (resolved, critical, false)
+     * 
+     * @param alertId The alert ID to update
+     * @param responderId The responder ID making the update
+     * @param newStatus The new status for the alert
+     * @param notes Optional notes about the status update
+     * @return The updated alert or null if not found/unauthorized
+     */
+    @Transactional
+    public Alert updateAlertStatus(UUID alertId, UUID responderId, String newStatus, String notes) {
+        log.info("Updating alert {} to status {} by responder {}", alertId, newStatus, responderId);
+        
+        // Find the alert
+        Optional<Alert> alertOpt = alertRepository.findById(alertId);
+        if (alertOpt.isEmpty()) {
+            log.warn("Alert not found: {}", alertId);
+            return null;
+        }
+        
+        Alert alert = alertOpt.get();
+        
+        // Verify this responder is assigned to the alert
+        Optional<AlertResponder> alertResponderOpt = alertResponderRepository.findByAlertIdAndResponderId(alertId, responderId);
+        if (alertResponderOpt.isEmpty()) {
+            log.warn("Responder {} is not assigned to alert {}", responderId, alertId);
+            return null;
+        }
+        
+        // Valid status transitions for responders
+        List<AlertStatus> validStatuses = Arrays.asList(AlertStatus.RESOLVED, AlertStatus.CRITICAL, AlertStatus.FALSE_ALARM, AlertStatus.REJECTED);
+        AlertStatus statusEnum;
+        try {
+            statusEnum = AlertStatus.fromString(newStatus);
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid status: {}", newStatus);
+            throw new IllegalArgumentException("Invalid status: " + newStatus);
+        }
+        
+        if (!validStatuses.contains(statusEnum)) {
+            log.warn("Invalid status for responder update: {}", newStatus);
+            throw new IllegalArgumentException("Invalid status: " + newStatus);
+        }
+        
+        // Update alert status
+        alert.setStatus(statusEnum);
+        
+        // If resolving the alert, set resolved time
+        if (AlertStatus.RESOLVED.equals(statusEnum)) {
+            alert.setResolvedAt(LocalDateTime.now());
+        }
+        
+        // Add notes if provided
+        if (notes != null && !notes.trim().isEmpty()) {
+            AlertResponder alertResponder = alertResponderOpt.get();
+            alertResponder.setNotes(notes);
+            alertResponderRepository.save(alertResponder);
+        }
+        
+        // Save and return the updated alert
+        Alert updatedAlert = alertRepository.save(alert);
+
+         // Find the AlertResponder record
+        // Optional<AlertResponder> alertResponderOpt = alertResponderRepository.findByAlertIdAndResponderId(alertId, responderId);
+        
+        // if (alertResponderOpt.isEmpty()) {
+        //     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(createErrorResponse("Alert not found or not assigned to you"));
+        // }
+
+        AlertResponder alertResponder = alertResponderOpt.get();
+        // AlertStatus statusEnum = AlertStatus.fromString(newStatus);
+        alertResponder.setStatus(statusEnum);
+        
+        // Set arrival time if status is "arrived"
+        if (AlertStatus.RESOLVED.equals(statusEnum)) {
+            alertResponder.setArrivalTime(java.time.LocalDateTime.now());
+        }
+        
+        alertResponderRepository.save(alertResponder);
+        
+        // Notify the user about the status change
+        try {
+            // TODO: Implement sendAlertStatusUpdate method
+            // notificationService.sendAlertStatusUpdate(updatedAlert.getUserId(), alertId, statusEnum.getValue(), responderId);
+            log.info("Alert status updated to {} for alert {}", statusEnum.getValue(), alertId);
+        } catch (Exception e) {
+            log.error("Error sending notification for alert status update", e);
+        }
+        
+        return updatedAlert;
+    }
+    
+    /**
+     * Get alert details including responder information if available
+     * 
+     * @param alertId The alert ID to retrieve
+     * @param userId The user ID requesting the details (for authorization)
+     * @return Map containing alert details and responder info if available
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getAlertDetails(UUID alertId, UUID userId) {
+        log.info("Getting alert details for alertId: {} requested by userId: {}", alertId, userId);
+        
+        Map<String, Object> result = new HashMap<>();
+        
+        // Find the alert
+        Optional<Alert> alertOpt = alertRepository.findById(alertId);
+        if (alertOpt.isEmpty()) {
+            log.warn("Alert not found: {}", alertId);
+            result.put("success", false);
+            result.put("error", "Alert not found");
+            return result;
+        }
+        
+        Alert alert = alertOpt.get();
+        
+        // Check authorization - must be either the alert creator or an assigned responder
+        boolean isAuthorized = alert.getUserId().equals(userId);
+        
+        if (!isAuthorized) {
+            // Check if user is a responder for this alert
+            Optional<AlertResponder> alertResponderOpt = alertResponderRepository.findByAlertIdAndResponderId(alertId, userId);
+            isAuthorized = alertResponderOpt.isPresent();
+        }
+        
+        if (!isAuthorized) {
+            log.warn("User {} is not authorized to view alert {}", userId, alertId);
+            result.put("success", false);
+            result.put("error", "Not authorized to view this alert");
+            return result;
+        }
+        
+        // Basic alert details
+        result.put("success", true);
+        result.put("alert", alert);
+        
+        // If there are responders assigned, include their information
+        List<AlertResponder> alertResponders = alertResponderRepository.findByAlertId(alertId);
+        if (!alertResponders.isEmpty()) {
+            List<Map<String, Object>> responderInfoList = new java.util.ArrayList<>();
+            
+            for (AlertResponder alertResponder : alertResponders) {
+                Optional<Responder> responderOpt = responderRepository.findById(alertResponder.getResponderId());
+                if (responderOpt.isPresent()) {
+                    Responder responder = responderOpt.get();
+                    User responderUser = responder.getUser();
+                    
+                    Map<String, Object> responderInfo = new HashMap<>();
+                    responderInfo.put("responderId", responder.getUserId());
+                    responderInfo.put("name", responderUser.getFullName());
+                    responderInfo.put("phone", responderUser.getPhone());
+                    responderInfo.put("email", responderUser.getEmail());
+                    responderInfo.put("profilePicture", responderUser.getProfilePicture());
+                    responderInfo.put("responderType", responder.getResponderType().toString());
+                    responderInfo.put("badgeNumber", responder.getBadgeNumber());
+                    responderInfo.put("status", alertResponder.getStatus());
+                    responderInfo.put("acceptedAt", alertResponder.getAcceptedAt());
+                    responderInfo.put("notes", alertResponder.getNotes());
+                    
+                    responderInfoList.add(responderInfo);
+                }
+            }
+            
+            result.put("responders", responderInfoList);
         }
         
         return result;

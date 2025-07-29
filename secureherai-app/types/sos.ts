@@ -1,3 +1,5 @@
+import { AlertStatusString } from "./AlertStatus";
+
 export interface Alert {
   id: string;
   userId: string;
@@ -8,7 +10,7 @@ export interface Alert {
   alertMessage: string;
   audioRecording: string | null;
   triggeredAt: string;
-  status: string;
+  status: AlertStatusString;
   verificationStatus: string;
   canceledAt: string | null;
   resolvedAt: string | null;

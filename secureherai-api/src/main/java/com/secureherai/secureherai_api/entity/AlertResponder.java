@@ -1,5 +1,6 @@
 package com.secureherai.secureherai_api.entity;
 
+import com.secureherai.secureherai_api.enums.AlertStatus;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 
@@ -28,7 +29,8 @@ public class AlertResponder {
     private Responder responder;
     
     @Column(nullable = false)
-    private String status; // accepted, rejected, pending, forwarded, en_route, arrived, resolved
+    @Enumerated(EnumType.STRING)
+    private AlertStatus status; // accepted, rejected, pending, forwarded, en_route, arrived, resolved
     
     private String eta;
     
@@ -47,10 +49,10 @@ public class AlertResponder {
     public AlertResponder(UUID alertId, UUID responderId) {
         this.alertId = alertId;
         this.responderId = responderId;
-        this.status = "accepted"; // Default to accepted for backward compatibility
+        this.status = AlertStatus.ACCEPTED; // Default to accepted for backward compatibility
     }
     
-    public AlertResponder(UUID alertId, UUID responderId, String status) {
+    public AlertResponder(UUID alertId, UUID responderId, AlertStatus status) {
         this.alertId = alertId;
         this.responderId = responderId;
         this.status = status;
@@ -89,11 +91,11 @@ public class AlertResponder {
         this.responder = responder;
     }
     
-    public String getStatus() {
+    public AlertStatus getStatus() {
         return status;
     }
     
-    public void setStatus(String status) {
+    public void setStatus(AlertStatus status) {
         this.status = status;
     }
     
