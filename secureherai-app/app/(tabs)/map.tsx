@@ -24,6 +24,7 @@ import { SafePlace } from "../../types/emergencyServices";
 import { useAlert } from "../../context/AlertContext";
 import NotificationModal from "../../components/NotificationModal";
 import WebPlacesInput from "../../components/WebPlacesInput";
+import CustomPlacesAutocomplete from "../../components/CustomPlacesAutocomplete";
 import MapViewDirectionsWeb from "../../components/MapViewDirectionsWeb";
 
 // Conditional import for MapViewDirections (only on native platforms)
@@ -36,16 +37,6 @@ try {
   console.log("MapViewDirections not available on this platform");
 }
 
-// Conditional import for GooglePlacesAutocomplete (only on native platforms)
-let GooglePlacesAutocomplete: any = null;
-try {
-  if (Platform.OS !== "web") {
-    const GooglePlacesModule = require("react-native-google-places-autocomplete");
-    GooglePlacesAutocomplete = GooglePlacesModule.GooglePlacesAutocomplete;
-  }
-} catch {
-  console.log("GooglePlacesAutocomplete not available on this platform");
-}
 
 // Extended interface for map markers with report data
 interface ExtendedMapMarker extends MapMarker {
@@ -590,114 +581,7 @@ export default function MapScreen() {
           >
             {/* Input Field - Takes most of the space */}
             <View className="flex-1">
-              {GooglePlacesAutocomplete && Platform.OS !== "web" ? (
-                <GooglePlacesAutocomplete
-                  placeholder="Enter starting point"
-                  fetchDetails={true}
-                  onPress={(data: any, details: any = null) => {
-                    if (details?.geometry?.location) {
-                      const location = {
-                        latitude: details.geometry.location.lat,
-                        longitude: details.geometry.location.lng,
-                      };
-                      setOrigin(location);
-                      setOriginSelected(true);
-
-                      // Create or update origin marker
-                      const originMarker: ExtendedMapMarker = {
-                        id: "origin",
-                        coordinate: location,
-                        title:
-                          data.structured_formatting?.main_text || "Origin",
-                        description: data.description || "",
-                        type: "custom", // Changed from "general" to a valid type
-                        color: "#4285F4", // Blue
-                      };
-
-                      // Filter out any existing origin marker
-                      setMarkers((prevMarkers) => [
-                        ...prevMarkers.filter(
-                          (marker) =>
-                            marker.id !== "origin" &&
-                            marker.id !== "destination"
-                        ),
-                        originMarker,
-                        ...(destination
-                          ? [
-                              {
-                                id: "destination",
-                                coordinate: destination,
-                                title: "Destination",
-                                description: "",
-                                type: "custom", // Changed from "general" to a valid type
-                                color: "#EA4335", // Red
-                              } as ExtendedMapMarker,
-                            ]
-                          : []),
-                      ]);
-
-                      if (destination) {
-                        setShowDirections(true);
-                      }
-                    }
-                  }}
-                  query={{
-                    key: process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || "",
-                    language: "en",
-                    components: "country:bd",
-                  }}
-                  styles={{
-                    container: {
-                      flex: 1,
-                      marginBottom: 8,
-                      zIndex: 20000,
-                    },
-                    textInputContainer: {
-                      backgroundColor: "rgba(0,0,0,0)",
-                      borderTopWidth: 0,
-                      borderBottomWidth: 0,
-                    },
-                    textInput: {
-                      marginLeft: 0,
-                      marginRight: 0,
-                      height: 40,
-                      color: "#5d5d5d",
-                      fontSize: 14,
-                      borderWidth: 1,
-                      borderColor: "#ddd",
-                      borderRadius: 8,
-                    },
-                    predefinedPlacesDescription: {
-                      color: "#1faadb",
-                    },
-                    listView: {
-                      position: "absolute",
-                      top: 40,
-                      left: 0,
-                      right: 0,
-                      backgroundColor: "white",
-                      borderRadius: 5,
-                      elevation: 3,
-                      zIndex: 20001,
-                    },
-                    row: {
-                      padding: 13,
-                      height: 50,
-                      flexDirection: "row",
-                    },
-                    separator: {
-                      height: 0.5,
-                      backgroundColor: "#c8c7cc",
-                    },
-                    description: {
-                      fontSize: 14,
-                    },
-                  }}
-                  currentLocation={true}
-                  currentLocationLabel="Current location"
-                  enablePoweredByContainer={false}
-                />
-              ) : (
+              {Platform.OS === "web" ? (
                 <WebPlacesInput
                   placeholder="Enter starting point"
                   currentLocation={currentLocation || undefined}
@@ -762,6 +646,134 @@ export default function MapScreen() {
                     }
                   }}
                 />
+              ) : (
+                <CustomPlacesAutocomplete
+                  placeholder="Enter starting point"
+                  currentLocation={currentLocation || undefined}
+                  value={originText}
+                  onChangeText={setOriginText}
+                  onPress={(data: any, details: any = null) => {
+                    console.log("Origin selected - data:", data);
+                    console.log("Origin selected - details:", details);
+                    
+                    try {
+                      if (details?.geometry?.location) {
+                        const location = {
+                          latitude: details.geometry.location.lat,
+                          longitude: details.geometry.location.lng,
+                        };
+                        setOrigin(location);
+                        setOriginSelected(true);
+
+                        // Create or update origin marker
+                        const originMarker: ExtendedMapMarker = {
+                          id: "origin",
+                          coordinate: location,
+                          title:
+                            data.structured_formatting?.main_text || data.description || "Origin",
+                          description: data.description || "",
+                          type: "custom", // Changed from "general" to a valid type
+                          color: "#4285F4", // Blue
+                        };
+
+                        // Filter out any existing origin marker
+                        setMarkers((prevMarkers) => {
+                          const filteredMarkers = Array.isArray(prevMarkers) 
+                            ? prevMarkers.filter(
+                                (marker) =>
+                                  marker.id !== "origin" &&
+                                  marker.id !== "destination"
+                              )
+                            : [];
+                          
+                          return [
+                            ...filteredMarkers,
+                            originMarker,
+                            ...(destination
+                              ? [
+                                  {
+                                    id: "destination",
+                                    coordinate: destination,
+                                    title: "Destination",
+                                    description: "",
+                                    type: "custom", // Changed from "general" to a valid type
+                                    color: "#EA4335", // Red
+                                  } as ExtendedMapMarker,
+                                ]
+                              : []),
+                          ];
+                        });
+
+                        if (destination) {
+                          setShowDirections(true);
+                        }
+                      }
+                    } catch (error) {
+                      console.error("Error handling origin selection:", error);
+                    }
+                  }}
+                  query={{
+                    key: process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || "",
+                    language: "en",
+                    components: "country:bd",
+                    types: "establishment",
+                    radius: 30000,
+                  }}
+                  styles={{
+                    container: {
+                      flex: 1,
+                      marginBottom: 8,
+                      zIndex: 20000,
+                    },
+                    textInputContainer: {
+                      backgroundColor: "rgba(0,0,0,0)",
+                      borderTopWidth: 0,
+                      borderBottomWidth: 0,
+                    },
+                    textInput: {
+                      marginLeft: 0,
+                      marginRight: 0,
+                      height: 40,
+                      color: "#5d5d5d",
+                      fontSize: 14,
+                      borderWidth: 1,
+                      borderColor: "#ddd",
+                      borderRadius: 8,
+                      backgroundColor: "white",
+                    },
+                    listView: {
+                      position: "absolute",
+                      top: 42,
+                      left: 0,
+                      right: 0,
+                      backgroundColor: "white",
+                      borderRadius: 5,
+                      elevation: 5,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.25,
+                      shadowRadius: 3.84,
+                      zIndex: 20001,
+                      maxHeight: 200,
+                    },
+                    row: {
+                      padding: 13,
+                      height: 50,
+                      flexDirection: "row",
+                    },
+                    separator: {
+                      height: 0.5,
+                      backgroundColor: "#c8c7cc",
+                    },
+                    description: {
+                      fontSize: 14,
+                      color: "#333",
+                    },
+                  }}
+                  fetchDetails={true}
+                  currentLocationLabel="Current location"
+                  enablePoweredByContainer={false}
+                />
               )}
             </View>
 
@@ -796,10 +808,74 @@ export default function MapScreen() {
             >
               {/* Destination Input Field - Takes most of the space */}
               <View className="flex-1">
-                {GooglePlacesAutocomplete && Platform.OS !== "web" ? (
-                  <GooglePlacesAutocomplete
+                {Platform.OS === "web" ? (
+                  <WebPlacesInput
                     placeholder="Enter destination"
-                    fetchDetails={true}
+                    currentLocation={currentLocation || undefined}
+                    safePlaces={safePlaces}
+                    zIndexBase={15000} // High enough for proper suggestions display
+                    dropdownOffset={0} // No offset needed now since fields are properly separated
+                    value={destinationText}
+                    onValueChange={setDestinationText}
+                    onPlaceSelect={(place) => {
+                      console.log("=== DESTINATION PLACE SELECTED IN MAP ===");
+                      console.log("Place received:", place);
+                      console.log("Has geometry:", !!place.geometry);
+                      console.log("Has location:", !!place.geometry?.location);
+
+                      if (place.geometry?.location) {
+                        const location = {
+                          latitude: place.geometry.location.lat(),
+                          longitude: place.geometry.location.lng(),
+                        };
+                        console.log("Setting destination to:", location);
+                        setDestination(location);
+
+                        // Create or update destination marker with RED color
+                        const destinationMarker: ExtendedMapMarker = {
+                          id: "destination",
+                          coordinate: location,
+                          title: place.name || "Destination",
+                          description: place.formatted_address || "",
+                          type: "custom",
+                          color: "#EA4335", // RED for destination
+                        };
+
+                        console.log(
+                          "Creating destination marker:",
+                          destinationMarker
+                        );
+                        setMarkers((prevMarkers) => {
+                          const newMarkers = [
+                            ...prevMarkers.filter(
+                              (marker) => marker.id !== "destination"
+                            ),
+                            destinationMarker,
+                            ...(origin &&
+                            !prevMarkers.some(
+                              (marker) => marker.id === "origin"
+                            )
+                              ? [
+                                  {
+                                    id: "origin",
+                                    coordinate: origin,
+                                    title: "Origin",
+                                    description: "",
+                                    type: "custom",
+                                    color: "#4285F4", // BLUE for origin
+                                  } as ExtendedMapMarker,
+                                ]
+                              : []),
+                          ];
+                          console.log("Updated markers array:", newMarkers);
+                          return newMarkers;
+                        });
+                      }
+                    }}
+                  />
+                ) : (
+                  <CustomPlacesAutocomplete
+                    placeholder="Enter destination"
                     onPress={(data: any, details: any = null) => {
                       if (details?.geometry?.location) {
                         const location = {
@@ -867,19 +943,22 @@ export default function MapScreen() {
                         borderWidth: 1,
                         borderColor: "#ddd",
                         borderRadius: 8,
-                      },
-                      predefinedPlacesDescription: {
-                        color: "#1faadb",
+                        backgroundColor: "white",
                       },
                       listView: {
                         position: "absolute",
-                        top: 40,
+                        top: 42,
                         left: 0,
                         right: 0,
                         backgroundColor: "white",
                         borderRadius: 5,
-                        elevation: 3,
+                        elevation: 5,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.25,
+                        shadowRadius: 3.84,
                         zIndex: 15001,
+                        maxHeight: 200,
                       },
                       row: {
                         padding: 13,
@@ -892,74 +971,13 @@ export default function MapScreen() {
                       },
                       description: {
                         fontSize: 14,
+                        color: "#333",
                       },
                     }}
+                    fetchDetails={true}
                     enablePoweredByContainer={false}
-                  />
-                ) : (
-                  <WebPlacesInput
-                    placeholder="Enter destination"
-                    currentLocation={currentLocation || undefined}
-                    safePlaces={safePlaces}
-                    zIndexBase={15000} // High enough for proper suggestions display
-                    dropdownOffset={0} // No offset needed now since fields are properly separated
-                    value={destinationText}
-                    onValueChange={setDestinationText}
-                    onPlaceSelect={(place) => {
-                      console.log("=== DESTINATION PLACE SELECTED IN MAP ===");
-                      console.log("Place received:", place);
-                      console.log("Has geometry:", !!place.geometry);
-                      console.log("Has location:", !!place.geometry?.location);
-
-                      if (place.geometry?.location) {
-                        const location = {
-                          latitude: place.geometry.location.lat(),
-                          longitude: place.geometry.location.lng(),
-                        };
-                        console.log("Setting destination to:", location);
-                        setDestination(location);
-
-                        // Create or update destination marker with RED color
-                        const destinationMarker: ExtendedMapMarker = {
-                          id: "destination",
-                          coordinate: location,
-                          title: place.name || "Destination",
-                          description: place.formatted_address || "",
-                          type: "custom",
-                          color: "#EA4335", // RED for destination
-                        };
-
-                        console.log(
-                          "Creating destination marker:",
-                          destinationMarker
-                        );
-                        setMarkers((prevMarkers) => {
-                          const newMarkers = [
-                            ...prevMarkers.filter(
-                              (marker) => marker.id !== "destination"
-                            ),
-                            destinationMarker,
-                            ...(origin &&
-                            !prevMarkers.some(
-                              (marker) => marker.id === "origin"
-                            )
-                              ? [
-                                  {
-                                    id: "origin",
-                                    coordinate: origin,
-                                    title: "Origin",
-                                    description: "",
-                                    type: "custom",
-                                    color: "#4285F4", // BLUE for origin
-                                  } as ExtendedMapMarker,
-                                ]
-                              : []),
-                          ];
-                          console.log("Updated markers array:", newMarkers);
-                          return newMarkers;
-                        });
-                      }
-                    }}
+                    currentLocationLabel="Current location"
+                    predefinedPlaces={[]}
                   />
                 )}
               </View>
@@ -996,7 +1014,6 @@ export default function MapScreen() {
           ) : (
             <>
               <MapComponent
-                ref={mapRef}
                 initialRegion={currentLocation || undefined}
                 markers={markers}
                 heatmapPoints={createHeatmapPoints(reports)}
@@ -1023,6 +1040,7 @@ export default function MapScreen() {
                 // Scale can be cluttering
                 className="flex-1"
               >
+                {/* Render directions as children of MapComponent for proper Android support */}
                 {showDirections && origin && destination && (
                   <>
                     {(() => {
@@ -1304,8 +1322,9 @@ export default function MapScreen() {
           visible={showFilterModal}
           onRequestClose={() => setShowFilterModal(false)}
         >
+          
           <View className="flex-1 bg-black/50 justify-center items-center">
-            <View className="bg-white rounded-lg p-6 m-4 w-11/12 max-w-md max-h-4/5">
+            <View className="bg-white rounded-lg p-6 m-4 w-11/12 max-w-md h-3/5">
               <View className="flex-row justify-between items-center mb-4">
                 <Text className="text-lg font-bold text-[#67082F]">
                   Map Filters
@@ -1610,9 +1629,6 @@ export default function MapScreen() {
                               | "BICYCLING"
                               | "TRANSIT"
                           );
-                          if (origin) {
-                            setOrigin({ ...origin, mode });
-                          }
                         }}
                       >
                         <Text
@@ -1643,7 +1659,7 @@ export default function MapScreen() {
                 className="bg-[#67082F] py-3 rounded-lg flex-1"
                 onPress={() => {
                   // Open in external maps app with the right travel mode
-                  const mode = origin?.mode?.toLowerCase() || "driving";
+                  const mode = travelMode.toLowerCase();
                   const url = Platform.select({
                     ios: `maps:0,0?saddr=${origin?.latitude},${
                       origin?.longitude

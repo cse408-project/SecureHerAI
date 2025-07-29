@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - amin
   workflow_dispatch:
 
 jobs:

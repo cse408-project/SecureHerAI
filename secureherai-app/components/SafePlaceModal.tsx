@@ -541,7 +541,7 @@ export default function SafePlaceModal({
   const handleImageUpload = async () => {
     try {
       setIsUploadingImage(true);
-      const result = await cloudinaryService.pickMultipleImagesFromGallery();
+      const result = await cloudinaryService.pickMultipleFilesFromGallery();
 
       if (result && !result.canceled && result.assets && result.assets[0]) {
         const asset = result.assets[0];

@@ -190,7 +190,7 @@ export default function EvidenceUploadScreen() {
       setIsUploadingToCloud(true);
       showAlert("Info", "Opening gallery...", "info");
       
-      const result = await cloudinaryService.pickMultipleImagesFromGallery();
+      const result = await cloudinaryService.pickMultipleFilesFromGallery();
       
       if (result && !result.canceled && result.assets && result.assets.length > 0) {
         const newFiles: EvidenceFile[] = result.assets.map((asset, index) => ({

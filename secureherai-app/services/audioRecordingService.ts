@@ -1,4 +1,4 @@
-import { AudioModule, RecordingPresets, RecordingOptions } from "expo-audio";
+import { AudioModule, RecordingPresets, RecordingOptions, AndroidOutputFormat, AndroidAudioEncoder } from "expo-audio";
 import { Platform } from "react-native";
 import * as FileSystem from "expo-file-system";
 import cloudinaryService from "./cloudinary";
@@ -55,8 +55,22 @@ class AudioRecordingService {
    * Get the appropriate recording options based on platform
    */
   getRecordingOptions(): RecordingOptions {
-    // Use HIGH_QUALITY preset for best audio quality
-    return RecordingPresets.HIGH_QUALITY;
+    // Use HIGH_QUALITY preset as base and override with M4A extension for speech recognition
+    const options = {
+      ...RecordingPresets.HIGH_QUALITY,
+      android: {
+        extension: '.m4a', // Use M4A for Android (compatible with Azure Speech)
+        outputFormat: 'aac_adts' as AndroidOutputFormat, // AAC-LC format for true audio-only M4A container
+        audioEncoder: 'aac' as AndroidAudioEncoder, // AAC codec (supported by Azure Speech)
+        sampleRate: 16000, // 16kHz - optimal for speech recognition
+      },
+      ios: {
+        extension: '.m4a', // Use M4A for iOS for consistency
+        audioQuality: 96, // High quality for iOS (96 kbps)
+        sampleRate: 16000, // 16kHz - optimal for speech recognition
+      },
+    };
+    return options;
   }
 
   /**
@@ -77,9 +91,10 @@ class AudioRecordingService {
       }
 
       console.log("🎙️ Starting audio recording...");
+      console.log("📝 Recording options:", this.getRecordingOptions());
 
-      // Prepare the recorder
-      await recorder.prepareToRecordAsync();
+      // Prepare the recorder with explicit recording options
+      await recorder.prepareToRecordAsync(this.getRecordingOptions());
 
       // Start recording
       recorder.record();
@@ -275,7 +290,11 @@ class AudioRecordingService {
       platform: Platform.OS,
       supportsRecording: this.isRecordingSupported(),
       maxDuration: this.getMaxDuration(),
-      recordingFormat: Platform.OS === "web" ? "webm" : "wav",
+      recordingFormat: "m4a", // Now using M4A for all platforms (AAC codec)
+      audioCodec: "aac",
+      sampleRate: 16000,
+      channels: 1,
+      bitRate: 128000,
     };
   }
 }

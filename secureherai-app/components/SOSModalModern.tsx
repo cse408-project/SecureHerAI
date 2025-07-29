@@ -8,6 +8,9 @@ import {
   TextInput,
   ActivityIndicator,
   ScrollView,
+  Platform,
+  Dimensions,
+  StatusBar,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -32,6 +35,11 @@ const SOSModalModern: React.FC<SOSModalProps> = ({
   const [message, setMessage] = useState("");
   const [keyword, setKeyword] = useState("");
   const [recordingUri, setRecordingUri] = useState<string | null>(null);
+
+  // Get screen dimensions for responsive design
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+  const isAndroid = Platform.OS === 'android';
+  const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
 
   // Default location for Dhaka, Bangladesh
   const [location, setLocation] = useState<{
@@ -303,11 +311,6 @@ const SOSModalModern: React.FC<SOSModalProps> = ({
 
   const renderModeSelection = () => (
     <View style={styles.content}>
-      <Text style={styles.title}>Emergency Alert</Text>
-      <Text style={styles.subtitle}>
-        How would you like to send your emergency alert?
-      </Text>
-
       <View style={styles.modeContainer}>
         <TouchableOpacity
           style={styles.modeButton}
@@ -346,15 +349,11 @@ const SOSModalModern: React.FC<SOSModalProps> = ({
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => setMode("select")}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <MaterialIcons name="arrow-back" size={24} color="#007AFF" />
         <Text style={styles.backButtonText}>Back</Text>
       </TouchableOpacity>
-
-      <Text style={styles.title}>Voice Emergency Alert</Text>
-      <Text style={styles.subtitle}>
-        Record a clear message describing your emergency
-      </Text>
 
       <View style={styles.voiceContainer}>
         <AudioRecorder
@@ -378,10 +377,11 @@ const SOSModalModern: React.FC<SOSModalProps> = ({
       <View style={styles.instructionsContainer}>
         <Text style={styles.instructionsTitle}>Instructions:</Text>
         <Text style={styles.instructionsText}>
-          • Speak clearly and describe your emergency{"\n"}• Include your
+          • Speak clearly with keyword
+          {/* {"\n"}• Include your
           location if different from shown{"\n"}• Recording will automatically
           stop after 10 seconds{"\n"}• Keywords like &quot;help&quot;,
-          &quot;emergency&quot;, &quot;SOS&quot; will be detected
+          &quot;emergency&quot;, &quot;SOS&quot; will be detected */}
         </Text>
       </View>
 
@@ -417,19 +417,17 @@ const SOSModalModern: React.FC<SOSModalProps> = ({
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => setMode("select")}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <MaterialIcons name="arrow-back" size={24} color="#007AFF" />
         <Text style={styles.backButtonText}>Back</Text>
       </TouchableOpacity>
 
-      <Text style={styles.title}>Text Emergency Alert</Text>
-      <Text style={styles.subtitle}>Describe your emergency situation</Text>
-
       <View style={styles.formContainer}>
         <View style={styles.inputContainer}>
           <Text style={styles.inputLabel}>Emergency Keyword *</Text>
           <View style={styles.keywordContainer}>
-            {["Help", "Emergency", "SOS", "Fire", "Medical"].map((kw) => (
+            {["Help", "Emergency"].map((kw) => (
               <TouchableOpacity
                 key={kw}
                 style={[
@@ -514,12 +512,29 @@ const SOSModalModern: React.FC<SOSModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
-      <View style={styles.overlay}>
-        <View style={styles.modal}>
+    <Modal 
+      visible={visible} 
+      animationType="slide" 
+      transparent
+      statusBarTranslucent={isAndroid}
+    >
+      <View style={[styles.overlay, { paddingTop: statusBarHeight }]}>
+        <View style={[
+          styles.modal,
+          { 
+            maxWidth: Platform.OS === 'android' ? screenWidth * 0.95 : Math.min(400, screenWidth * 0.9),
+            minHeight: Platform.OS === 'android' ? 500 : 500,
+            maxHeight: screenHeight * 0.85
+          }
+        ]}>
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Emergency SOS</Text>
-            <TouchableOpacity onPress={handleCancel} disabled={isLoading}>
+            <TouchableOpacity 
+              onPress={handleCancel} 
+              disabled={isLoading}
+              style={styles.closeButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
               <MaterialIcons
                 name="close"
                 size={24}
@@ -529,8 +544,9 @@ const SOSModalModern: React.FC<SOSModalProps> = ({
           </View>
 
           <ScrollView
-            style={styles.scrollView}
+            style={styles.contentWrapper}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
             {renderContent()}
           </ScrollView>
@@ -593,10 +609,17 @@ const SOSModalModern: React.FC<SOSModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Platform.OS === 'android' ? 8 : 16,
+  },
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 16,
+    minHeight: "100%",
   },
   container: {
     flex: 1,
@@ -604,18 +627,20 @@ const styles = StyleSheet.create({
   },
   modal: {
     backgroundColor: "white",
-    borderRadius: 16,
-    padding: 24,
-    margin: 16,
-    maxHeight: "80%",
+    borderRadius: Platform.OS === 'android' ? 12 : 16,
+    padding: 0,
+    minHeight: Platform.OS === 'android' ? 500 : 500,
     width: "100%",
-    maxWidth: 360,
-    // shadow for modal
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 8,
+    maxWidth: Platform.OS === 'android' ? '95%' : 400,
+    // Enhanced shadow for Android
+    ...(Platform.OS === 'android' ? {
+      elevation: 16,
+    } : {
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+    }),
   },
   header: {
     flexDirection: "row",
@@ -624,17 +649,32 @@ const styles = StyleSheet.create({
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
+    // Add extra padding for Android to account for different text rendering
+    paddingVertical: Platform.OS === 'android' ? 22 : 20,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: "bold",
     color: "#333",
+    // Better text rendering on Android
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
+  closeButton: {
+    padding: 4,
+    borderRadius: 12,
+    backgroundColor: 'transparent',
+  },
+  contentWrapper: {
+    flex: 1,
+    maxHeight: Platform.OS === 'android' ? 350 : 300,
   },
   scrollView: {
     flex: 1,
   },
   content: {
-    padding: 20,
+    padding: Platform.OS === 'android' ? 16 : 20,
+    paddingBottom: Platform.OS === 'android' ? 24 : 20,
   },
   title: {
     fontSize: 24,
@@ -656,11 +696,15 @@ const styles = StyleSheet.create({
   },
   modeButton: {
     backgroundColor: "#f8f9fa",
-    borderRadius: 12,
+    borderRadius: Platform.OS === 'android' ? 8 : 12,
     padding: 20,
     alignItems: "center",
     borderWidth: 2,
     borderColor: "#e9ecef",
+    // Better touch feedback on Android
+    ...(Platform.OS === 'android' && {
+      elevation: 2,
+    }),
   },
   modeButtonTitle: {
     fontSize: 18,
@@ -668,41 +712,55 @@ const styles = StyleSheet.create({
     color: "#333",
     marginTop: 10,
     marginBottom: 5,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   modeButtonSubtitle: {
     fontSize: 14,
     color: "#666",
     textAlign: "center",
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   backButton: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 20,
     gap: 5,
+    paddingVertical: Platform.OS === 'android' ? 8 : 4,
+    paddingHorizontal: Platform.OS === 'android' ? 4 : 0,
   },
   backButtonText: {
     fontSize: 16,
     color: "#007AFF",
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   voiceContainer: {
     marginBottom: 30,
   },
   instructionsContainer: {
     backgroundColor: "#f8f9fa",
-    borderRadius: 12,
-    padding: 15,
+    borderRadius: Platform.OS === 'android' ? 8 : 12,
+    padding: Platform.OS === 'android' ? 16 : 15,
     marginBottom: 20,
+    ...(Platform.OS === 'android' && {
+      elevation: 1,
+    }),
   },
   instructionsTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: "#333",
     marginBottom: 8,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   instructionsText: {
     fontSize: 14,
     color: "#666",
-    lineHeight: 20,
+    lineHeight: Platform.OS === 'android' ? 22 : 20,
+    includeFontPadding: false,
   },
   formContainer: {
     marginBottom: 20,
@@ -723,40 +781,54 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   keywordChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: Platform.OS === 'android' ? 14 : 12,
+    paddingVertical: Platform.OS === 'android' ? 8 : 6,
     backgroundColor: "#f8f9fa",
-    borderRadius: 16,
+    borderRadius: Platform.OS === 'android' ? 12 : 16,
     borderWidth: 1,
     borderColor: "#dee2e6",
+    minHeight: Platform.OS === 'android' ? 36 : 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   keywordChipSelected: {
     backgroundColor: "#007AFF",
     borderColor: "#007AFF",
+    ...(Platform.OS === 'android' && {
+      elevation: 2,
+    }),
   },
   keywordChipText: {
     fontSize: 14,
     color: "#666",
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   keywordChipTextSelected: {
     color: "white",
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   keywordInput: {
     borderWidth: 1,
     borderColor: "#dee2e6",
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: Platform.OS === 'android' ? 6 : 8,
+    padding: Platform.OS === 'android' ? 14 : 12,
     fontSize: 16,
     backgroundColor: "#f8f9fa",
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   messageInput: {
     borderWidth: 1,
     borderColor: "#dee2e6",
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: Platform.OS === 'android' ? 6 : 8,
+    padding: Platform.OS === 'android' ? 14 : 12,
     fontSize: 16,
     backgroundColor: "#f8f9fa",
-    minHeight: 100,
+    minHeight: Platform.OS === 'android' ? 120 : 100,
+    includeFontPadding: false,
+    textAlignVertical: "top",
   },
   characterCount: {
     fontSize: 12,
@@ -768,32 +840,46 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#f8f9fa",
-    padding: 12,
-    borderRadius: 8,
+    padding: Platform.OS === 'android' ? 14 : 12,
+    borderRadius: Platform.OS === 'android' ? 6 : 8,
     marginBottom: 20,
     gap: 8,
+    ...(Platform.OS === 'android' && {
+      elevation: 1,
+    }),
   },
   locationText: {
     fontSize: 14,
     color: "#666",
     flex: 1,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   submitButton: {
     backgroundColor: "#FF6B6B",
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: Platform.OS === 'android' ? 8 : 12,
+    padding: Platform.OS === 'android' ? 18 : 16,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
+    // Better elevation on Android
+    ...(Platform.OS === 'android' && {
+      elevation: 4,
+    }),
   },
   submitButtonDisabled: {
     backgroundColor: "#ccc",
+    ...(Platform.OS === 'android' && {
+      elevation: 1,
+    }),
   },
   submitButtonText: {
     fontSize: 16,
     fontWeight: "600",
     color: "white",
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   cancelContainer: {
     padding: 20,

@@ -337,4 +337,4 @@ const styles = StyleSheet.create({
 });
 
 export { MapView, Marker, Callout, PROVIDER_GOOGLE };
-export type { Region, MapPressEvent, MapComponentRef };
+export type { Region, MapPressEvent, MapComponentRef, MapComponentProps };

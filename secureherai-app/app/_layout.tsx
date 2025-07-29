@@ -1,13 +1,15 @@
+import 'react-native-get-random-values'; // Add this at the very top to fix crypto.getRandomValues() issues
 import { Stack } from "expo-router";
 import { AuthProvider, useAuth } from "../context/AuthContext";
 import { AlertProvider } from "../context/AlertContext";
 import { NotificationProvider } from "../context/NotificationContext";
-import { LocationProvider } from "../context/LocationContext";
+import { NavigationContainer } from '@react-navigation/native'; // Import NavigationContainer
 import "./global.css";
 import React, { useEffect, useState } from "react";
 import { Platform } from "react-native";
 import * as Linking from "expo-linking";
 import SplashScreen from "../components/SplashScreen";
+import { LocationProvider } from '@/context/LocationContext';
 
 function RootLayoutComponent() {
   const { user, token, isLoading } = useAuth();
@@ -84,14 +86,16 @@ function RootLayoutComponent() {
 // Main Layout Component
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <AlertProvider>
-        <NotificationProvider>
-          <LocationProvider>
-            <RootLayoutComponent />
-          </LocationProvider>
-        </NotificationProvider>
-      </AlertProvider>
-    </AuthProvider>
+    // <NavigationContainer> {/* Wrap everything in NavigationContainer */}
+      <AuthProvider>
+        <AlertProvider>
+          <NotificationProvider>
+            <LocationProvider>
+              <RootLayoutComponent />
+            </LocationProvider>
+          </NotificationProvider>
+        </AlertProvider>
+      </AuthProvider>
+    // {/* </NavigationContainer> */}
   );
 }

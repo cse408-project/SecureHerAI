@@ -11,7 +11,7 @@ export default function TabsLayout() {
     return <Redirect href="/(auth)" />;
   }
   // Add extra margin for Android to avoid overlap with back button
-  const extraMargin = Platform.OS === "android" ? 24 : 0;
+  const extraMargin = Platform.OS === "android" ? 40 : 0;
   const isWeb = Platform.OS === "web";
 
   return (
@@ -29,7 +29,8 @@ export default function TabsLayout() {
           left: 0,
           right: 0,
           bottom: 0,
-          marginBottom: isWeb ? 0 : extraMargin,
+          //marginBottom: isWeb ? 0 : extraMargin,
+          marginBottom: 0,
           elevation: 20,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: -4 },

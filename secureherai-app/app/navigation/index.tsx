@@ -26,6 +26,16 @@ import apiService from "../../services/api";
 import { useAlert } from "../../context/AlertContext";
 import { useLocation } from "../../context/LocationContext";
 
+// Conditional import for MapViewDirections (only on native platforms)
+let MapViewDirections: any = null;
+try {
+  if (Platform.OS !== "web") {
+    MapViewDirections = require("react-native-maps-directions").default;
+  }
+} catch (error) {
+  console.log("MapViewDirections not available on this platform:", error);
+}
+
 const NavigationScreen: React.FC = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -654,29 +664,57 @@ const NavigationScreen: React.FC = () => {
           showsUserLocation={true}
           followsUserLocation={false}
         >
-          {/* Render directions inside MapComponent so it has access to Google Maps API */}
+          {/* Render directions as children of MapComponent for proper Android support */}
           {stableOrigin && stableDestination && mapLoaded && (
-            <MapViewDirectionsWeb
-              // Key including mapLoaded to force recreation when explicitly requested
-              // key={`map-directions-${mapLoaded}`}
-              origin={stableOrigin}
-              destination={stableDestination}
-              apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || ""}
-              strokeWidth={4}
-              strokeColor="#4285F4"
-              mode={routeMode}
-              onReady={(result: any) => {
-                console.log("🗺️ Navigation directions ready:", result);
-                // console.log("🗺️ Navigation directions ready route:", route);
-
-                if (route === null || !mapLoaded) {
-                  setRoute(result);
-                }
-              }}
-              onError={(errorMessage: any) => {
-                console.error("🗺️ Navigation directions error:", errorMessage);
-              }}
-            />
+            <>
+              {(() => {
+                console.log("=== NAVIGATION DIRECTIONS DEBUG ===");
+                console.log("Platform:", Platform.OS);
+                console.log("stableOrigin:", stableOrigin);
+                console.log("stableDestination:", stableDestination);
+                console.log("routeMode:", routeMode);
+                console.log("MapViewDirections available:", !!MapViewDirections);
+                console.log("API Key present:", !!process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY);
+                return null;
+              })()}
+              {Platform.OS !== "web" && MapViewDirections ? (
+                <MapViewDirections
+                  origin={stableOrigin}
+                  destination={stableDestination}
+                  apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || ""}
+                  strokeWidth={4}
+                  strokeColor="#4285F4"
+                  mode={routeMode.toLowerCase() as any}
+                  onReady={(result: any) => {
+                    console.log("🗺️ Native navigation directions ready:", result);
+                    if (route === null || !mapLoaded) {
+                      setRoute(result);
+                    }
+                  }}
+                  onError={(errorMessage: any) => {
+                    console.error("🗺️ Native navigation directions error:", errorMessage);
+                  }}
+                />
+              ) : Platform.OS === "web" ? (
+                <MapViewDirectionsWeb
+                  origin={stableOrigin}
+                  destination={stableDestination}
+                  apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || ""}
+                  strokeWidth={4}
+                  strokeColor="#4285F4"
+                  mode={routeMode}
+                  onReady={(result: any) => {
+                    console.log("🗺️ Web navigation directions ready:", result);
+                    if (route === null || !mapLoaded) {
+                      setRoute(result);
+                    }
+                  }}
+                  onError={(errorMessage: any) => {
+                    console.error("🗺️ Web navigation directions error:", errorMessage);
+                  }}
+                />
+              ) : null}
+            </>
           )}
         </MapComponent>
       </View>

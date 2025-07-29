@@ -9,6 +9,7 @@ import {
   Modal,
   ActivityIndicator,
   Image,
+  Platform,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -454,10 +455,18 @@ export default function SubmitReportScreen() {
 
         setEvidenceFiles((prev) => [...prev, newFile]);
 
+        console.log("📸 Starting camera evidence upload:", {
+          uri: asset.uri.substring(0, 100),
+          type: fileType,
+          platform: Platform.OS,
+          size: asset.fileSize || 'unknown'
+        });
+
         // Upload to Cloudinary
         const uploadResult = await cloudinaryService.uploadEvidence(asset.uri);
 
         if (uploadResult.success && uploadResult.url) {
+          console.log("✅ Camera evidence upload successful:", uploadResult.url);
           setEvidenceFiles((prev) =>
             prev.map((file) =>
               file.uri === asset.uri
@@ -471,6 +480,7 @@ export default function SubmitReportScreen() {
             "success"
           );
         } else {
+          console.error("❌ Camera evidence upload failed:", uploadResult.error);
           showAlert(
             "Error",
             uploadResult.error || "Failed to upload to cloud storage",
@@ -498,7 +508,7 @@ export default function SubmitReportScreen() {
       setIsUploadingToCloud(true);
       showAlert("Info", "Opening gallery...", "info");
 
-      const result = await cloudinaryService.pickMultipleImagesFromGallery();
+      const result = await cloudinaryService.pickMultipleFilesFromGallery();
 
       if (
         result &&
@@ -518,13 +528,23 @@ export default function SubmitReportScreen() {
         setEvidenceFiles((prev) => [...prev, ...newFiles]);
 
         // Upload all files to Cloudinary
-        const uploadPromises = result.assets.map(async (asset) => {
+        const uploadPromises = result.assets.map(async (asset, index) => {
           try {
+            console.log(`🖼️ Starting gallery evidence upload ${index + 1}/${result.assets.length}:`, {
+              uri: asset.uri.substring(0, 100),
+              type: determineFileType(asset.uri),
+              platform: Platform.OS,
+              width: asset.width || 'unknown',
+              height: asset.height || 'unknown',
+              size: asset.fileSize || 'unknown'
+            });
+
             const uploadResult = await cloudinaryService.uploadEvidence(
               asset.uri
             );
 
             if (uploadResult.success && uploadResult.url) {
+              console.log(`✅ Gallery evidence upload ${index + 1} successful:`, uploadResult.url);
               setEvidenceFiles((prev) =>
                 prev.map((file) =>
                   file.uri === asset.uri
@@ -538,6 +558,7 @@ export default function SubmitReportScreen() {
               );
               return { success: true, uri: asset.uri, url: uploadResult.url };
             } else {
+              console.error(`❌ Gallery evidence upload ${index + 1} failed:`, uploadResult.error);
               // Remove failed file
               setEvidenceFiles((prev) =>
                 prev.filter((file) => file.uri !== asset.uri)
@@ -549,7 +570,7 @@ export default function SubmitReportScreen() {
               };
             }
           } catch (uploadError) {
-            console.error("Upload error:", uploadError);
+            console.error(`💥 Gallery evidence upload ${index + 1} exception:`, uploadError);
             setEvidenceFiles((prev) =>
               prev.filter((file) => file.uri !== asset.uri)
             );

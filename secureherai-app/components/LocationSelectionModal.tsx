@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
+  ScrollView,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import MapComponent, {
@@ -16,17 +17,7 @@ import MapComponent, {
 import locationService from "../services/locationService";
 import { useAlert } from "../context/AlertContext";
 import WebPlacesInput from "./WebPlacesInput";
-
-// Conditional import for GooglePlacesAutocomplete (only on native platforms)
-let GooglePlacesAutocomplete: any = null;
-try {
-  if (Platform.OS !== "web") {
-    const GooglePlacesModule = require("react-native-google-places-autocomplete"); // eslint-disable-line
-    GooglePlacesAutocomplete = GooglePlacesModule.GooglePlacesAutocomplete;
-  }
-} catch {
-  console.log("GooglePlacesAutocomplete not available on this platform");
-}
+import CustomPlacesAutocomplete from "./CustomPlacesAutocomplete";
 
 export interface SelectedLocation {
   latitude: number;
@@ -245,7 +236,8 @@ const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
       {/* Backdrop */}
       <View className="flex-1 bg-black/50 justify-center items-center p-4">
         {/* Modal Content */}
-        <View className="bg-white rounded-xl w-full max-w-md max-h-[80%] shadow-xl">
+        <View className="bg-white rounded-xl w-full max-w-md h-3/4 shadow-xl">
+      {/* <ScrollView className="flex-1 bg-white"> */}
           {/* Header */}
           <View className="bg-white px-4 py-3 border-b border-gray-200 rounded-t-xl">
             <View className="flex-row items-center justify-between">
@@ -287,89 +279,88 @@ const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
                     elevation: 300000, // For Android
                   }}
                 >
-              {GooglePlacesAutocomplete && Platform.OS !== "web" ? (
-                <GooglePlacesAutocomplete
-                  placeholder={searchPlaceholder}
-                  fetchDetails={true}
-                  onPress={(data: any, details: any = null) => {
-                    selectLocationFromPlace(data, details);
-                  }}
-                  query={{
-                    key: process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || "",
-                    language: "en",
-                    components: "country:bd",
-                  }}
-                  styles={{
-                    container: {
-                      flex: 1,
-                      zIndex: 20000,
-                    },
-                    textInputContainer: {
-                      backgroundColor: "rgba(0,0,0,0)",
-                      borderTopWidth: 0,
-                      borderBottomWidth: 0,
-                    },
-                    textInput: {
-                      marginLeft: 0,
-                      marginRight: 0,
-                      height: 40,
-                      color: "#5d5d5d",
-                      fontSize: 16,
-                      borderWidth: 1,
-                      borderColor: "#ddd",
-                      borderRadius: 8,
-                      backgroundColor: "#f9fafb",
-                      paddingHorizontal: 12,
-                    },
-                    predefinedPlacesDescription: {
-                      color: "#1faadb",
-                    },
-                    listView: {
-                      position: "absolute",
-                      top: 42,
-                      left: 0,
-                      right: 0,
-                      backgroundColor: "white",
-                      borderRadius: 8,
-                      elevation: 5,
-                      zIndex: 20001,
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.15,
-                      shadowRadius: 8,
-                      borderWidth: 1,
-                      borderColor: "#e5e7eb",
-                    },
-                    row: {
-                      padding: 13,
-                      height: 50,
-                      flexDirection: "row",
-                    },
-                    separator: {
-                      height: 0.5,
-                      backgroundColor: "#c8c7cc",
-                    },
-                    description: {
-                      fontSize: 14,
-                    },
-                  }}
-                  currentLocation={true}
-                  currentLocationLabel="Current location"
-                  enablePoweredByContainer={false}
-                />
-              ) : (
-                <WebPlacesInput
-                  placeholder={searchPlaceholder}
-                  currentLocation={currentLocation || undefined}
-                  safePlaces={[]} // Empty array since this is for general location search
-                  zIndexBase={400000} // Very high z-index to appear above all modal content
-                  value={searchText}
-                  onValueChange={setSearchText}
-                  onPlaceSelect={(place) => {
-                    selectLocationFromPlace(place);
-                  }}
-                />
-              )}
+                  {Platform.OS === "web" ? (
+                    <WebPlacesInput
+                      placeholder={searchPlaceholder}
+                      currentLocation={currentLocation || undefined}
+                      safePlaces={[]} // Empty array since this is for general location search
+                      zIndexBase={400000} // Very high z-index to appear above all modal content
+                      value={searchText}
+                      onValueChange={setSearchText}
+                      onPlaceSelect={(place) => {
+                        selectLocationFromPlace(place);
+                      }}
+                    />
+                  ) : (
+                    <CustomPlacesAutocomplete
+                      placeholder={searchPlaceholder}
+                      currentLocation={currentLocation || undefined}
+                      value={searchText}
+                      onChangeText={setSearchText}
+                      onPress={(place, details) => {
+                        selectLocationFromPlace(place, details);
+                      }}
+                      query={{
+                        key: process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || "",
+                        language: "en",
+                        components: "country:bd",
+                      }}
+                      styles={{
+                        container: {
+                          flex: 1,
+                          zIndex: 20000,
+                        },
+                        textInputContainer: {
+                          backgroundColor: "rgba(0,0,0,0)",
+                          borderTopWidth: 0,
+                          borderBottomWidth: 0,
+                        },
+                        textInput: {
+                          marginLeft: 0,
+                          marginRight: 0,
+                          height: 40,
+                          color: "#5d5d5d",
+                          fontSize: 16,
+                          borderWidth: 1,
+                          borderColor: "#ddd",
+                          borderRadius: 8,
+                          backgroundColor: "#f9fafb",
+                          paddingHorizontal: 12,
+                        },
+                        listView: {
+                          position: "absolute",
+                          top: 42,
+                          left: 0,
+                          right: 0,
+                          backgroundColor: "white",
+                          borderRadius: 8,
+                          elevation: 5,
+                          zIndex: 20001,
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 4 },
+                          shadowOpacity: 0.15,
+                          shadowRadius: 8,
+                          borderWidth: 1,
+                          borderColor: "#e5e7eb",
+                        },
+                        row: {
+                          padding: 13,
+                          height: 50,
+                          flexDirection: "row",
+                        },
+                        separator: {
+                          height: 0.5,
+                          backgroundColor: "#c8c7cc",
+                        },
+                        description: {
+                          fontSize: 14,
+                        },
+                      }}
+                      fetchDetails={true}
+                      currentLocationLabel="Current location"
+                      enablePoweredByContainer={false}
+                    />
+                  )}
             </View>
           </View>
         )}
@@ -436,6 +427,7 @@ const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
           </View>
         </View>
           </View>
+      {/* </ScrollView> */}
         </View>
       </View>
     </Modal>
