@@ -119,42 +119,6 @@ jobs:
           echo "Waiting for all services to be running..."
           timeout 300 bash -c 'while [[ "$(docker compose -f docker-compose-deploy.yml ps --services --filter "status=running" | wc -l)" != "3" ]]; do sleep 5; echo "Waiting for all services to start..."; done' || echo "Timeout waiting for services"
 
-      - name: Verify API deployment
-        working-directory: secureherai-api
-        run: |
-          echo "Showing all containers status:"
-          docker compose -f docker-compose-deploy.yml ps
-          
-          echo "Checking API container health status:"
-          docker inspect --format='{{.State.Health.Status}}' secureherai_api || echo "Failed to get health status"
-          
-          echo "Waiting for API to be ready (2 minutes max)..."
-          for i in {1..12}; do
-            echo "Check attempt $i"
-            if curl --silent --max-time 10 --fail "${{ vars.EXPO_PUBLIC_API_BASE_URL }}/api/isOk" > /dev/null; then
-              echo "✅ API is responding correctly!"
-              break
-            elif [ $i -eq 12 ]; then
-              echo "❌ API health check failed after multiple attempts"
-            else
-              echo "API not ready yet, waiting 10 seconds..."
-              sleep 10
-            fi
-          done
-          
-          echo "API container logs:"
-          docker compose -f docker-compose-deploy.yml logs --tail=100 api
-          
-          echo "Testing API health endpoints directly:"
-          echo "1. Testing /api/isOk endpoint:"
-          curl -v --max-time 10 "${{ vars.EXPO_PUBLIC_API_BASE_URL }}/api/isOk" || true
-          
-          echo "Testing internal container health:"
-          docker exec secureherai_api curl -v --max-time 10 http://localhost:8080/api/isOk || true
-          
-          echo "NGINX container logs:"
-          docker compose -f docker-compose-deploy.yml logs --tail=30 nginx
-
       - name: Reset Docker context
         if: always()
         run: |
