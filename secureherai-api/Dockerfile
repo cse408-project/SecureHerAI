@@ -38,17 +38,17 @@ CMD ["mvn", "spring-boot:run", "-Dspring-boot.run.profiles=dev"]
 FROM eclipse-temurin:17-jre AS production
 WORKDIR /app
 
-# Install required native libraries for Azure Speech SDK and curl for health checks
+# Install runtime libraries for Azure Speech SDK
 RUN apt-get update && apt-get install -y \
     libasound2t64 \
-    libssl3t64 \
+    libssl3 \
     libc6 \
     libffi8 \
     libgstreamer1.0-0 \
     libgstreamer-plugins-base1.0-0 \
     libuuid1 \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/*
 
 # Copy the built jar from build stage
 COPY --from=build /app/target/*.jar app.jar
