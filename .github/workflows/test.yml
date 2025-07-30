@@ -3,7 +3,7 @@ name: Test SecureHerAI Application
 on:
   push:
     branches:
-      - main
+      - ans2003
   workflow_dispatch:
 
 jobs:

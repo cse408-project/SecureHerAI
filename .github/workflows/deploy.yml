@@ -3,7 +3,6 @@ name: Deploy SecureHerAI API to Azure VM
 on:
   push:
     branches:
-      - main
       - ans2003
   workflow_dispatch:
 
