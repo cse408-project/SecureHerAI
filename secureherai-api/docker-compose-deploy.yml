@@ -12,8 +12,7 @@ services:
       - /etc/letsencrypt/live/secureherai.me/fullchain.pem:/etc/nginx/ssl/fullchain.pem:ro
       - /etc/letsencrypt/live/secureherai.me/privkey.pem:/etc/nginx/ssl/privkey.pem:ro
     depends_on:
-      api:
-        condition: service_healthy
+      - api
     networks:
       - app-network
     restart: unless-stopped
@@ -27,7 +26,7 @@ services:
     expose:
       - "8080"
     env_file:
-      - .env   
+      - .env
     volumes:
       - /var/lib/secureherai/data:/app/data
       - /var/lib/secureherai/logs:/app/logs
@@ -62,15 +61,8 @@ services:
       AZURE_SPEECH_KEY: ${AZURE_SPEECH_KEY:-}
       AZURE_SPEECH_REGION: ${AZURE_SPEECH_REGION:-}
     depends_on:
-      db:
-        condition: service_healthy
+      - db
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://api:8080/api/isOk"]
-      interval: 170s
-      timeout: 20s
-      retries: 3
-      start_period: 180s
     networks:
       - app-network
 
@@ -88,12 +80,6 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: secureherai
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d secureherai"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
     networks:
       - app-network
 

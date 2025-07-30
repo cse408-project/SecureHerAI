@@ -1,0 +1,26 @@
+git clone https://github.com/cse408-project/SecureHerAI.git
+backend -> cd secureherai-api
+    # Start all services
+docker-compose -f docker-compose-dev.yml up --build
+
+# Stop all services
+docker-compose -f docker-compose-dev.yml down
+
+frontend ->
+    npm install
+    npm start
+
+
+
+
+back
+./mvnw test
+fron
+npm test
+
+
+
+
+
+
+
