@@ -27,10 +27,7 @@ services:
     expose:
       - "8080"
     env_file:
-      - .env   
-    volumes:
-      - /var/lib/secureherai/data:/app/data
-      - /var/lib/secureherai/logs:/app/logs
+      - .env
     environment:
       # Database Configuration
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/secureherai
