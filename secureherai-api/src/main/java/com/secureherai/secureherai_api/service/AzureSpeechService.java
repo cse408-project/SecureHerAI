@@ -7,14 +7,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Instant;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -134,12 +132,8 @@ public class AzureSpeechService {
         } finally {
             // Clean up temporary files
             if (tempFile != null && tempFile.exists()) {
-                try {
-                    Files.delete(tempFile.toPath());
-                    log.debug("Cleaned up downloaded temporary file: {}", tempFile.getAbsolutePath());
-                } catch (IOException e) {
-                    log.warn("Failed to delete downloaded temporary file {}: {}", tempFile.getAbsolutePath(), e.getMessage());
-                }
+                // Keep for debugging as in original code
+                log.info("Temporary file kept for debugging: {}", tempFile.getAbsolutePath());
             }
             
             if (wavFile != null && !wavFile.equals(tempFile)) {
@@ -408,61 +402,6 @@ public class AzureSpeechService {
 
         public void setMessage(String message) {
             this.message = message;
-        }
-    }
-
-    /**
-     * Scheduled cleanup task to remove old temporary files every hour
-     * Cleans up files older than 1 hour in temp directories
-     */
-    @Scheduled(fixedRate = 3600000) // Run every hour (3600000 ms)
-    public void cleanupOldTempFiles() {
-        log.debug("Starting scheduled cleanup of old temporary audio files");
-        
-        // Clean up directories
-        String[] tempDirs = {"data/temp", "data/received", "data/uploads"};
-        
-        for (String dirPath : tempDirs) {
-            cleanupDirectoryOlderThan(dirPath, 3600000); // 1 hour
-        }
-    }
-
-    /**
-     * Cleanup files in a directory that are older than specified time
-     * 
-     * @param directoryPath Path to directory to clean
-     * @param maxAgeMillis Maximum age in milliseconds
-     */
-    private void cleanupDirectoryOlderThan(String directoryPath, long maxAgeMillis) {
-        try {
-            Path dir = Path.of(directoryPath);
-            if (!Files.exists(dir)) {
-                return;
-            }
-
-            long cutoffTime = System.currentTimeMillis() - maxAgeMillis;
-            
-            Files.list(dir)
-                .filter(Files::isRegularFile)
-                .filter(path -> {
-                    try {
-                        return Files.getLastModifiedTime(path).toMillis() < cutoffTime;
-                    } catch (IOException e) {
-                        log.warn("Failed to get last modified time for file: {}", path, e);
-                        return false;
-                    }
-                })
-                .forEach(path -> {
-                    try {
-                        Files.delete(path);
-                        log.debug("Cleaned up old temporary file: {}", path);
-                    } catch (IOException e) {
-                        log.warn("Failed to delete old temporary file: {}", path, e);
-                    }
-                });
-                
-        } catch (IOException e) {
-            log.warn("Failed to cleanup directory {}: {}", directoryPath, e.getMessage());
         }
     }
 }

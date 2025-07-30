@@ -15,7 +15,6 @@ import com.secureherai.secureherai_api.service.AzureSpeechService.SpeechTranscri
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -127,7 +126,7 @@ public class SOSService {
             }
         } finally {
             // Clean up the temporary file
-            cleanupTemporaryFile(tempFile);
+            // cleanupTemporaryFile(tempFile);
         }
     }
     
@@ -715,46 +714,5 @@ public class SOSService {
         }
         
         return result;
-    }
-
-    /**
-     * Scheduled cleanup task to remove old temporary SOS files every 30 minutes
-     * Cleans up files older than 30 minutes in SOS temp directory
-     */
-    @Scheduled(fixedRate = 1800000) // Run every 30 minutes (1800000 ms)
-    public void cleanupOldSOSTempFiles() {
-        log.debug("Starting scheduled cleanup of old SOS temporary audio files");
-        
-        try {
-            Path tempDir = Path.of("data/temp");
-            if (!Files.exists(tempDir)) {
-                return;
-            }
-
-            long cutoffTime = System.currentTimeMillis() - 1800000; // 30 minutes
-            
-            Files.list(tempDir)
-                .filter(Files::isRegularFile)
-                .filter(path -> path.getFileName().toString().startsWith("temp_sos_"))
-                .filter(path -> {
-                    try {
-                        return Files.getLastModifiedTime(path).toMillis() < cutoffTime;
-                    } catch (IOException e) {
-                        log.warn("Failed to get last modified time for SOS temp file: {}", path, e);
-                        return false;
-                    }
-                })
-                .forEach(path -> {
-                    try {
-                        Files.delete(path);
-                        log.debug("Cleaned up old SOS temporary file: {}", path);
-                    } catch (IOException e) {
-                        log.warn("Failed to delete old SOS temporary file: {}", path, e);
-                    }
-                });
-                
-        } catch (IOException e) {
-            log.warn("Failed to cleanup SOS temp directory: {}", e.getMessage());
-        }
     }
 }
