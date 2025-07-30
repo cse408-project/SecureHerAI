@@ -64,10 +64,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://api:8080/api/isOk"]
-      interval: 110s
+      interval: 170s
       timeout: 20s
       retries: 3
-      start_period: 120s
+      start_period: 180s
     networks:
       - app-network
 
