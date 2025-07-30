@@ -2,7 +2,7 @@ name: Create Production Builds and Deploy Web
 
 on:
   push:
-    branches: ['main','amin']
+    branches: ['main']
 
 jobs:
   deploy_web:

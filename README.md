@@ -217,6 +217,10 @@ PRs and issues welcome! Please see the documentation and follow the established 
 
 - **Web App:** [https://secureherai.expo.app/](https://secureherai.expo.app/)
 - **API:** [https://www.secureherai.me/api](https://www.secureherai.me/api)
+- **GitHub Repository:** [https://github.com/cse408-project/SecureHerAI](https://github.com/cse408-project/SecureHerAI)
+- **YouTube Feature Demonstration:** [https://youtu.be/nzQa7lJh-DY](https://youtu.be/nzQa7lJh-DY)
+- **YouTube Infrastructure Demonstration:** [https://youtu.be/8jLjqTsxLg8](https://youtu.be/8jLjqTsxLg8)
+- **Android APK Download:** [https://drive.google.com/file/d/11Xcj2ziMdfetfb8kgcxy_vzZB5QDoV43/view?usp=sharing](https://drive.google.com/file/d/11Xcj2ziMdfetfb8kgcxy_vzZB5QDoV43/view?usp=sharing)
 - **Docs:** See links above and `/Design files/`
 
 ---
