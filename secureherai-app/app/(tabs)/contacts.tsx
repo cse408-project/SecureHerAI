@@ -649,7 +649,7 @@ export default function ContactsScreen() {
                     <Text className="font-semibold text-gray-700 mb-3">
                       Emergency Contacts ({userInfo.trustedContacts.length})
                     </Text>
-                    {userInfo.trustedContacts.map((contact, contactIndex: number) => (
+                    {userInfo.trustedContacts.map((contact, contactIndex) => (
                       <View 
                         key={contactIndex}
                         className="flex-row items-center bg-gray-50 p-3 rounded-lg mb-2"
@@ -695,7 +695,6 @@ export default function ContactsScreen() {
           // User View: Display their own trusted contacts
           trustedContacts.length === 0 ? (
             <View className="bg-white p-6 rounded-lg shadow-sm items-center">
-              <MaterialIcons name="contacts" size={48} color="#9CA3AF" />
               <Text className="text-gray-600 mt-2 text-center">
                 No trusted contacts yet. Add your first contact!
               </Text>
@@ -730,23 +729,17 @@ export default function ContactsScreen() {
                 </View>
 
                 
-                <View className="flex-row items-center space-x-2">
+                <View className="flex-row items-center">
                   <TouchableOpacity
                     onPress={() => handleCall(contact.phone)}
-                    className="p-2"
+                    className="p-2 mr-2"
                   >
                     <MaterialIcons name="phone" size={20} color="#67082F" />
                   </TouchableOpacity>
 
                   <TouchableOpacity
                     onPress={() => startEditContact(contact)}
-                    className="p-2"
-                  >
-                    <MaterialIcons name="edit" size={20} color="#67082F" />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => startEditContact(contact)}
-                    className="p-2"
+                    className="p-2 mr-2"
                   >
                     <MaterialIcons name="edit" size={20} color="#67082F" />
                   </TouchableOpacity>

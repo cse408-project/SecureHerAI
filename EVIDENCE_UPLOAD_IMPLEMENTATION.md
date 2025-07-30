@@ -39,7 +39,7 @@ Authorization: Bearer {token}
 
 ### Cloudinary Service Enhancements
 - `uploadEvidence()`: Upload files to 'report_evidence' folder
-- `pickMultipleImagesFromGallery()`: Select multiple files for evidence
+- `pickMultipleFilesFromGallery()`: Select multiple files for evidence
 - `takeEvidencePhotoWithCamera()`: Capture evidence with camera
 - `uploadMultipleEvidence()`: Batch upload multiple files
 

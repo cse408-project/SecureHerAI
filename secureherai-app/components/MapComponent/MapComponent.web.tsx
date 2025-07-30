@@ -1180,3 +1180,5 @@ export interface MapComponentRef {
   getCamera: () => Promise<any>;
   setCamera: (camera: any) => void;
 }
+
+export type { MapComponentProps };
