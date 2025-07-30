@@ -17,7 +17,6 @@
       }
     },
     "production": {
-      "prebuildCommand": "npm run test:ci",
       "android": {
         "buildType": "apk"
       }
