@@ -11,7 +11,7 @@ import com.secureherai.secureherai_api.repository.AlertRepository;
 import com.secureherai.secureherai_api.repository.AlertResponderRepository;
 import com.secureherai.secureherai_api.repository.UserRepository;
 import com.secureherai.secureherai_api.repository.ResponderRepository;
-import com.secureherai.secureherai_api.service.AzureSpeechService.SpeechTranscriptionResult;
+import com.secureherai.secureherai_api.service.GeminiSpeechService.SpeechTranscriptionResult;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,7 +47,7 @@ public class SOSService {
     private final AlertResponderRepository alertResponderRepository;
     private final UserRepository userRepository;
     private final ResponderRepository responderRepository;
-    private final AzureSpeechService azureSpeechService;
+    private final GeminiSpeechService geminiSpeechService;
     private final NotificationService notificationService;
     private final SettingsService settingsService;
     private final ReportService reportService;
@@ -77,8 +77,8 @@ public class SOSService {
             // Save the uploaded file temporarily
             tempFile = saveTemporaryFile(audioFile);
             
-            // Transcribe the audio file
-            SpeechTranscriptionResult transcriptionResult = azureSpeechService.transcribeAudioFile(tempFile);
+            // Transcribe the audio file using Gemini AI
+            SpeechTranscriptionResult transcriptionResult = geminiSpeechService.transcribeAudioFile(tempFile);
             
             if (!transcriptionResult.isSuccess()) {
                 log.warn("Transcription failed: {}", transcriptionResult.getMessage());
@@ -144,8 +144,8 @@ public class SOSService {
         
         log.info("Processing voice command from URL for user: {}", userId);
         
-        // Transcribe the audio from URL
-        SpeechTranscriptionResult transcriptionResult = azureSpeechService.transcribeAudioFromUrl(audioUrl, null);
+        // Transcribe the audio from URL using Gemini AI
+        SpeechTranscriptionResult transcriptionResult = geminiSpeechService.transcribeAudioFromUrl(audioUrl, null);
         
         if (!transcriptionResult.isSuccess()) {
             log.warn("URL transcription failed: {}", transcriptionResult.getMessage());

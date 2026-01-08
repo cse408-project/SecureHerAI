@@ -166,8 +166,8 @@ Content-Type: audio/mpeg
 # What's Changed:
 # 1. ✅ Updated SUPPORTED_FORMATS to include WebM, AAC, WMA
 # 2. ✅ Increased max file size from 10MB to 50MB
-# 3. ✅ Enhanced AzureSpeechService with automatic format conversion
-# 4. ✅ Your existing endpoints now automatically convert non-WAV files to WAV before Azure processing
+# 3. ✅ Enhanced GoogleSpeechService with automatic format conversion
+# 4. ✅ Your existing endpoints now automatically convert non-WAV files to WAV before Google Cloud Speech processing
 
 # File Formats Now Supported:
 # - WAV (native support)
@@ -182,7 +182,7 @@ Content-Type: audio/mpeg
 # 1. User uploads any supported format
 # 2. System validates format and size
 # 3. If not WAV, automatically converts to WAV using JAVE2/FFmpeg
-# 4. Sends WAV file to Azure Speech service
+# 4. Sends WAV file to Google Cloud Speech service
 # 5. Returns transcription result
 # 6. Cleans up temporary files
 

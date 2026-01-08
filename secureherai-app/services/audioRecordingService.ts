@@ -59,9 +59,9 @@ class AudioRecordingService {
     const options = {
       ...RecordingPresets.HIGH_QUALITY,
       android: {
-        extension: '.m4a', // Use M4A for Android (compatible with Azure Speech)
+        extension: '.m4a', // Use M4A for Android (compatible with Google Cloud Speech)
         outputFormat: 'aac_adts' as AndroidOutputFormat, // AAC-LC format for true audio-only M4A container
-        audioEncoder: 'aac' as AndroidAudioEncoder, // AAC codec (supported by Azure Speech)
+        audioEncoder: 'aac' as AndroidAudioEncoder, // AAC codec (supported by Google Cloud Speech)
         sampleRate: 16000, // 16kHz - optimal for speech recognition
       },
       ios: {

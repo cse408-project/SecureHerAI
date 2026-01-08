@@ -1,7 +1,7 @@
 package com.secureherai.secureherai_api.controller;
 
 import com.secureherai.secureherai_api.dto.SpeechTranscriptionResponseDto;
-import com.secureherai.secureherai_api.service.AzureSpeechService;
+import com.secureherai.secureherai_api.service.GeminiSpeechService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -20,7 +20,8 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * REST controller for Azure Speech-to-Text API endpoints
+ * REST controller for Gemini AI Speech-to-Text API endpoints
+ * Features audio transcription with emotion detection
  */
 @RestController
 @RequestMapping("/api/speech")
@@ -28,7 +29,7 @@ import java.util.List;
 @Slf4j
 public class SpeechController {
 
-    private final AzureSpeechService azureSpeechService;
+    private final GeminiSpeechService geminiSpeechService;
     
     // Supported audio file formats - now includes WebM, AAC, and more
     private static final List<String> SUPPORTED_FORMATS = Arrays.asList(
@@ -48,10 +49,10 @@ public class SpeechController {
     private static final String TEMP_AUDIO_DIR = "data/received";
 
     /**
-     * Transcribes uploaded audio file to text using Azure Speech-to-Text service
+     * Transcribes uploaded audio file to text using Gemini AI with emotion detection
      *
      * @param audioFile The uploaded audio file (WAV, MP3, AAC, WebM, FLAC, OGG, WMA formats supported)
-     * @return Transcription result with recognized text and metadata
+     * @return Transcription result with recognized text, emotion, and metadata
      */
     @PostMapping(value = "/transcribe", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<SpeechTranscriptionResponseDto> transcribeAudio(
@@ -82,21 +83,27 @@ public class SpeechController {
             // Save the uploaded file temporarily
             tempFile = saveTemporaryFile(audioFile);
             
-            // Transcribe the audio file
-            AzureSpeechService.SpeechTranscriptionResult result = 
-                azureSpeechService.transcribeAudioFile(tempFile);
+            // Transcribe the audio file using Gemini AI
+            GeminiSpeechService.SpeechTranscriptionResult result = 
+                geminiSpeechService.transcribeAudioFile(tempFile);
             
             long processingTime = System.currentTimeMillis() - startTime;
             
-            // Create response DTO
-            SpeechTranscriptionResponseDto response = new SpeechTranscriptionResponseDto(
-                result.isSuccess(),
-                result.getText(),
-                result.getConfidence(),
-                result.getMessage(),
-                originalFileName,
-                processingTime
-            );
+            // Create response DTO with emotion detection data
+            SpeechTranscriptionResponseDto response = SpeechTranscriptionResponseDto.builder()
+                .success(result.isSuccess())
+                .transcribedText(result.getText())
+                .confidence(result.getConfidence())
+                .message(result.getMessage())
+                .fileName(originalFileName)
+                .processingTimeMs(processingTime)
+                .emotion(result.getEmotion())
+                .language(result.getLanguage())
+                .languageCode(result.getLanguageCode())
+                .urgent(result.isUrgent())
+                .distressed(result.isDistressed())
+                .summary(result.getSummary())
+                .build();
             
             log.info("Transcription completed for file: {} in {}ms", 
                     originalFileName, processingTime);

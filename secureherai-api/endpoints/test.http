@@ -1,4 +1,4 @@
-### Azure Speech-to-Text API Tests
+### Google Cloud Speech-to-Text API Tests
 
 ### Health Check - Speech Service
 GET http://localhost:8080/api/speech/health

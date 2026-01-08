@@ -72,9 +72,10 @@ A comprehensive women's safety platform with AI integration, featuring a robust 
 
 ## 🏗️ Architecture
 
-- **Backend:** Spring Boot 3.x, PostgreSQL, Spring Security, Docker, Azure VM deployment
+- **Backend:** Spring Boot 3.x, PostgreSQL, Spring Security, Docker, Render.com deployment
 - **Frontend:** Expo (React Native), Expo Router, EAS (Expo Application Services), NativeWind/Tailwind, TypeScript
-- **CI/CD:** GitHub Actions (API deploy to Azure), EAS (web & Android builds/deploys), Namecheap DNS
+- **CI/CD:** GitHub Actions (build & test), Render.com (API deployment), EAS (web & Android builds/deploys), Namecheap DNS
+- **AI Services:** Google Cloud Speech-to-Text API for voice transcription
 
 ---
 
@@ -150,12 +151,18 @@ SecureHerAI/
 
 ## 📲 Deployment & CI/CD
 
-### GitHub Actions (API → Azure)
+### GitHub Actions (Build & Test)
 
 - **Workflow:** `.github/workflows/deploy.yml`
-- **Deploys API** to Azure VM on push to `main`
-- **Steps:** Docker build, SSH to VM, deploy with Docker Compose, health checks
-- **Secrets:** Managed via GitHub repository secrets (Azure VM, mail, OAuth, etc.)
+- **Builds and tests API** on push to `main` or PRs
+- **Steps:** Maven build, run tests, package JAR, upload artifact
+
+### Render.com (API Deployment)
+
+- **Automatic Deployment:** Render.com deploys the API when code is pushed to `main`
+- **Build Command:** `cd secureherai-api && mvn clean package -DskipTests`
+- **Start Command:** `java -jar target/*.jar`
+- **Environment Variables:** Configure in Render.com dashboard (database, Google Cloud, JWT, mail, OAuth)
 
 ### EAS (Expo Application Services)
 

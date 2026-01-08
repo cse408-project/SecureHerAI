@@ -51,9 +51,6 @@ git commit -m "Merge remote branch and resolve conflicts"
 git push origin your-branch-name
 
 
-
-Azure VM connection:
-ssh -i ../SecureHerAI-Deploy_key.pem azureuser@98.70.27.208
-
-docker logs --since 2025-07-10T00:00:00 secureherai_api > mycontainer.log
-nano mycontainer.log
+# Render.com Deployment:
+# Configure your Render.com service to connect to this GitHub repository
+# Render will automatically deploy when you push to main branch

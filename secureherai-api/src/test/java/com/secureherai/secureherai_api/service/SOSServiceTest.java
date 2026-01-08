@@ -4,7 +4,7 @@ import com.secureherai.secureherai_api.dto.sos.LocationDto;
 import com.secureherai.secureherai_api.entity.Alert;
 import com.secureherai.secureherai_api.repository.AlertRepository;
 import com.secureherai.secureherai_api.enums.AlertStatus;
-import com.secureherai.secureherai_api.service.AzureSpeechService.SpeechTranscriptionResult;
+import com.secureherai.secureherai_api.service.GeminiSpeechService.SpeechTranscriptionResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,7 +31,7 @@ class SOSServiceTest {
     private AlertRepository alertRepository;
 
     @Mock
-    private AzureSpeechService azureSpeechService;
+    private GeminiSpeechService geminiSpeechService;
 
     @InjectMocks
     private SOSService sosService;
@@ -82,7 +82,7 @@ class SOSServiceTest {
         // Arrange
         SpeechTranscriptionResult failedTranscription = new SpeechTranscriptionResult(false, "", 0.0, "Transcription failed");
         
-        when(azureSpeechService.transcribeAudioFile(any(File.class))).thenReturn(failedTranscription);
+        when(geminiSpeechService.transcribeAudioFile(any(File.class))).thenReturn(failedTranscription);
 
         // Act
         Alert result = sosService.processVoiceCommand(testUserId, mockAudioFile, locationDto);
@@ -90,7 +90,7 @@ class SOSServiceTest {
         // Assert
         assertNull(result);
         
-        verify(azureSpeechService).transcribeAudioFile(any(File.class));
+        verify(geminiSpeechService).transcribeAudioFile(any(File.class));
         verify(alertRepository, never()).save(any(Alert.class));
     }
 
@@ -101,7 +101,7 @@ class SOSServiceTest {
         String transcribedText = "This is a normal message without any trigger phrases";
         SpeechTranscriptionResult transcriptionResult = new SpeechTranscriptionResult(true, transcribedText, 0.9, "Success");
         
-        when(azureSpeechService.transcribeAudioFile(any(File.class))).thenReturn(transcriptionResult);
+        when(geminiSpeechService.transcribeAudioFile(any(File.class))).thenReturn(transcriptionResult);
         
         // The key is not to mock the alertRepository.save here to let the real flow run
         
@@ -111,7 +111,7 @@ class SOSServiceTest {
         // Assert
         assertNull(result);
         
-        verify(azureSpeechService).transcribeAudioFile(any(File.class));
+        verify(geminiSpeechService).transcribeAudioFile(any(File.class));
         // Verify that save was never called since no keywords were detected
         verify(alertRepository, never()).save(any(Alert.class));
     }

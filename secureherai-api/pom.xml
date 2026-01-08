@@ -139,11 +139,12 @@
 			<artifactId>spring-boot-starter-oauth2-client</artifactId>
 		</dependency>
 		
-		<!-- Azure Cognitive Services Speech SDK -->
+		<!-- Gemini AI API - using REST client (no SDK dependency needed) -->
+		<!-- Uses OkHttp for HTTP requests and Jackson for JSON parsing -->
 		<dependency>
-			<groupId>com.microsoft.cognitiveservices.speech</groupId>
-			<artifactId>client-sdk</artifactId>
-			<version>1.44.0</version>
+			<groupId>com.squareup.okhttp3</groupId>
+			<artifactId>okhttp</artifactId>
+			<version>4.12.0</version>
 		</dependency>
 		
 		<!-- JAVE2 for audio format conversion -->

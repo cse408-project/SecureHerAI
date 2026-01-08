@@ -19,7 +19,7 @@ import java.util.List;
 
 /**
  * Utility class for converting various audio formats to WAV format
- * compatible with Azure Speech-to-Text service
+ * compatible with Google Cloud Speech-to-Text service
  */
 @Component
 @Slf4j
@@ -39,7 +39,7 @@ public class AudioFormatConverter {
     private final Tika tika = new Tika();
 
     /**
-     * Converts an audio file to WAV format suitable for Azure Speech service
+     * Converts an audio file to WAV format suitable for Google Cloud Speech service
      * 
      * @param inputFile The input audio file
      * @return File object pointing to the converted WAV file
@@ -143,12 +143,12 @@ public class AudioFormatConverter {
         File outputFile = Paths.get(TEMP_DIR, tempFileName).toFile();
 
         try {
-            // Set up audio attributes for WAV output compatible with Azure Speech
+            // Set up audio attributes for WAV output compatible with Google Cloud Speech
             AudioAttributes audioAttributes = new AudioAttributes();
             audioAttributes.setCodec("pcm_s16le");  // 16-bit PCM
             audioAttributes.setBitRate(256000);     // High quality bitrate
-            audioAttributes.setChannels(1);         // Mono (required for Azure Speech)
-            audioAttributes.setSamplingRate(16000); // 16kHz (optimal for Azure Speech)
+            audioAttributes.setChannels(1);         // Mono (required for Google Cloud Speech)
+            audioAttributes.setSamplingRate(16000); // 16kHz (optimal for Google Cloud Speech)
 
             // Set up encoding attributes
             EncodingAttributes encodingAttributes = new EncodingAttributes();

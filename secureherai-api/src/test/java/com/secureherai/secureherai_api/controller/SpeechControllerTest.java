@@ -1,7 +1,7 @@
 package com.secureherai.secureherai_api.controller;
 
 import com.secureherai.secureherai_api.config.TestSecurityConfig;
-import com.secureherai.secureherai_api.service.AzureSpeechService;
+import com.secureherai.secureherai_api.service.GeminiSpeechService;
 import com.secureherai.secureherai_api.service.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,14 +29,14 @@ class SpeechControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private AzureSpeechService azureSpeechService;
+    private GeminiSpeechService geminiSpeechService;
 
     @MockBean
     private JwtService jwtService;
 
     private UUID testUserId;
     private String validToken;
-    private AzureSpeechService.SpeechTranscriptionResult successResult;
+    private GeminiSpeechService.SpeechTranscriptionResult successResult;
 
     @BeforeEach
     void setUp() {
@@ -47,9 +47,18 @@ class SpeechControllerTest {
         when(jwtService.isTokenValid(validToken)).thenReturn(true);
         when(jwtService.extractUserId(validToken)).thenReturn(testUserId);
 
-        // Setup successful transcription result
-        successResult = new AzureSpeechService.SpeechTranscriptionResult(
-                true, "This is a test transcription", 0.95, "Speech recognized successfully");
+        // Setup successful transcription result with emotion detection
+        successResult = new GeminiSpeechService.SpeechTranscriptionResult();
+        successResult.setSuccess(true);
+        successResult.setText("This is a test transcription");
+        successResult.setConfidence(0.95);
+        successResult.setMessage("Speech recognized successfully");
+        successResult.setEmotion("neutral");
+        successResult.setLanguage("English");
+        successResult.setLanguageCode("en-US");
+        successResult.setUrgent(false);
+        successResult.setDistressed(false);
+        successResult.setSummary("A test audio recording");
     }
 
     @Test
@@ -58,7 +67,7 @@ class SpeechControllerTest {
         MockMultipartFile audioFile = new MockMultipartFile(
                 "audio", "test.wav", "audio/wav", "test audio content".getBytes());
         
-        when(azureSpeechService.transcribeAudioFile(any())).thenReturn(successResult);
+        when(geminiSpeechService.transcribeAudioFile(any())).thenReturn(successResult);
 
         // Act & Assert
         mockMvc.perform(multipart("/api/speech/transcribe")
@@ -67,9 +76,10 @@ class SpeechControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.transcribedText").value("This is a test transcription"))
-                .andExpect(jsonPath("$.confidence").value(0.95));
+                .andExpect(jsonPath("$.confidence").value(0.95))
+                .andExpect(jsonPath("$.emotion").value("neutral"));
 
-        verify(azureSpeechService).transcribeAudioFile(any());
+        verify(geminiSpeechService).transcribeAudioFile(any());
     }
 
 
@@ -82,7 +92,7 @@ class SpeechControllerTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value("No audio file provided"));
 
-        verify(azureSpeechService, never()).transcribeAudioFile(any());
+        verify(geminiSpeechService, never()).transcribeAudioFile(any());
     }
 
     @Test
@@ -99,7 +109,7 @@ class SpeechControllerTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value("Audio file cannot be empty"));
 
-        verify(azureSpeechService, never()).transcribeAudioFile(any());
+        verify(geminiSpeechService, never()).transcribeAudioFile(any());
     }
 
 
@@ -112,8 +122,8 @@ class SpeechControllerTest {
         MockMultipartFile audioFile = new MockMultipartFile(
                 "audio", "test.wav", "audio/wav", "test audio content".getBytes());
         
-        when(azureSpeechService.transcribeAudioFile(any()))
-                .thenThrow(new RuntimeException("Azure service error"));
+        when(geminiSpeechService.transcribeAudioFile(any()))
+                .thenThrow(new RuntimeException("Gemini API service error"));
 
         // Act & Assert
         mockMvc.perform(multipart("/api/speech/transcribe")

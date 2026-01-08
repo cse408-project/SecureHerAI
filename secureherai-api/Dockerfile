@@ -14,15 +14,8 @@ RUN mvn clean package -DskipTests
 FROM maven:3.9.6-eclipse-temurin-17 AS development
 WORKDIR /app
 
-# Install required native libraries for Azure Speech SDK
+# Install curl for health checks
 RUN apt-get update && apt-get install -y \
-    libasound2-dev \
-    libssl-dev \
-    libc6-dev \
-    libffi-dev \
-    libgstreamer1.0-dev \
-    libgstreamer-plugins-base1.0-dev \
-    uuid-dev \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -38,15 +31,8 @@ CMD ["mvn", "spring-boot:run", "-Dspring-boot.run.profiles=dev"]
 FROM eclipse-temurin:17-jre AS production
 WORKDIR /app
 
-# Install required native libraries for Azure Speech SDK and curl for health checks
+# Install curl for health checks
 RUN apt-get update && apt-get install -y \
-    libasound2t64 \
-    libssl3t64 \
-    libc6 \
-    libffi8 \
-    libgstreamer1.0-0 \
-    libgstreamer-plugins-base1.0-0 \
-    libuuid1 \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
