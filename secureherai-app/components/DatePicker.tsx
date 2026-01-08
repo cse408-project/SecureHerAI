@@ -1,8 +1,12 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Modal } from "react-native";
-// @ts-ignore
-import CalendarPicker from "react-native-calendar-picker";
+import { View, Text, TouchableOpacity, Modal, Platform } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
+
+// Only import CalendarPicker on native platforms
+let CalendarPicker: any = null;
+if (Platform.OS !== "web") {
+  CalendarPicker = require("react-native-calendar-picker").default;
+}
 
 interface DatePickerProps {
   value: string;
@@ -47,6 +51,44 @@ export default function DatePicker({
     });
   };
 
+  // Web-specific date picker using native HTML input
+  if (Platform.OS === "web") {
+    const computedMaxDate =
+      maxDate || (allowFutureDates ? undefined : new Date());
+    return (
+      <View className="mb-4">
+        <Text className="text-sm font-medium text-gray-700 mb-2">
+          {label} {required && <Text className="text-red-500">*</Text>}
+        </Text>
+        <View className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white flex-row items-center justify-between">
+          <input
+            type="date"
+            value={value || ""}
+            onChange={(e) => onDateChange(e.target.value)}
+            min={minDate ? minDate.toISOString().split("T")[0] : undefined}
+            max={
+              computedMaxDate
+                ? computedMaxDate.toISOString().split("T")[0]
+                : undefined
+            }
+            style={{
+              flex: 1,
+              border: "none",
+              outline: "none",
+              fontSize: 16,
+              color: value ? "#111827" : "#9CA3AF",
+              backgroundColor: "transparent",
+              fontFamily: "inherit",
+            }}
+            placeholder={placeholder}
+          />
+          <MaterialIcons name="calendar-today" size={20} color="#67082F" />
+        </View>
+      </View>
+    );
+  }
+
+  // Native (iOS/Android) date picker using CalendarPicker
   return (
     <View className="mb-4">
       <Text className="text-sm font-medium text-gray-700 mb-2">
