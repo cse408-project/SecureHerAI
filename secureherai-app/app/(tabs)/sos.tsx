@@ -19,6 +19,12 @@ import { AlertStatus } from "../../types/AlertStatus";
 import { router } from "expo-router";
 import NotificationModal from "../../components/NotificationModal";
 import AlertDetailsModal from "../../components/AlertDetailsModal";
+import {
+  getAlertStatusColor,
+  getSeverityColor,
+  getSeverityBgClass,
+  getSeverityTextClass,
+} from "../../utils/incidentHelpers";
 
 export default function SOSScreen() {
   const [refreshing, setRefreshing] = useState(false);
@@ -373,24 +379,25 @@ export default function SOSScreen() {
     }
   };
 
+  // Use unified status color helper - consistent across app
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case AlertStatus.ACTIVE:
-        return "text-red-600 bg-red-50 border-red-200";
-      case AlertStatus.ACCEPTED:
-        return "text-blue-600 bg-blue-50 border-blue-200";
-      case AlertStatus.CANCELED:
-        return "text-orange-600 bg-orange-50 border-orange-200";
-      case AlertStatus.RESOLVED:
-        return "text-green-600 bg-green-50 border-green-200";
+    switch (status?.toUpperCase()) {
       case AlertStatus.CRITICAL:
-        return "text-purple-600 bg-purple-50 border-purple-200";
+        return "text-red-700 bg-red-100 border-red-300";
+      case AlertStatus.ACTIVE:
+        return "text-amber-700 bg-amber-100 border-amber-300";
+      case AlertStatus.ACCEPTED:
+        return "text-blue-700 bg-blue-100 border-blue-300";
+      case AlertStatus.RESOLVED:
+        return "text-green-700 bg-green-100 border-green-300";
+      case AlertStatus.CANCELED:
+        return "text-gray-700 bg-gray-100 border-gray-300";
       case AlertStatus.FALSE_ALARM:
-        return "text-gray-600 bg-gray-50 border-gray-200";
+        return "text-purple-700 bg-purple-100 border-purple-300";
       case AlertStatus.REJECTED:
         return "text-red-600 bg-red-50 border-red-200";
       default:
-        return "text-gray-600 bg-gray-50 border-gray-200";
+        return "text-gray-700 bg-gray-100 border-gray-300";
     }
   };
 

@@ -26,6 +26,10 @@ import NotificationModal from "../../components/NotificationModal";
 import WebPlacesInput from "../../components/WebPlacesInput";
 import CustomPlacesAutocomplete from "../../components/CustomPlacesAutocomplete";
 import MapViewDirectionsWeb from "../../components/MapViewDirectionsWeb";
+import {
+  getIncidentTypeColor,
+  getIncidentTypeIcon,
+} from "../../utils/incidentHelpers";
 
 // Conditional import for MapViewDirections (only on native platforms)
 let MapViewDirections: any = null;
@@ -36,7 +40,6 @@ try {
 } catch {
   console.log("MapViewDirections not available on this platform");
 }
-
 
 // Extended interface for map markers with report data
 interface ExtendedMapMarker extends MapMarker {
@@ -87,21 +90,7 @@ export default function MapScreen() {
   );
   const [showPOIs, setShowPOIs] = useState(false);
 
-  // Helper functions for incident types
-  const getIncidentTypeColor = (type: string): string => {
-    switch (type) {
-      case "harassment":
-        return "#DC2626"; // Red
-      case "theft":
-        return "#7C2D12"; // Brown
-      case "assault":
-        return "#B91C1C"; // Dark Red
-      case "emergency":
-        return "#EF4444"; // Bright Red for emergencies
-      default:
-        return "#6B7280"; // Gray
-    }
-  };
+  // Using unified helper from incidentHelpers.ts for getIncidentTypeColor
 
   const getTimeAgo = (date: Date): string => {
     const now = new Date();
@@ -655,7 +644,7 @@ export default function MapScreen() {
                   onPress={(data: any, details: any = null) => {
                     console.log("Origin selected - data:", data);
                     console.log("Origin selected - details:", details);
-                    
+
                     try {
                       if (details?.geometry?.location) {
                         const location = {
@@ -670,7 +659,9 @@ export default function MapScreen() {
                           id: "origin",
                           coordinate: location,
                           title:
-                            data.structured_formatting?.main_text || data.description || "Origin",
+                            data.structured_formatting?.main_text ||
+                            data.description ||
+                            "Origin",
                           description: data.description || "",
                           type: "custom", // Changed from "general" to a valid type
                           color: "#4285F4", // Blue
@@ -678,14 +669,14 @@ export default function MapScreen() {
 
                         // Filter out any existing origin marker
                         setMarkers((prevMarkers) => {
-                          const filteredMarkers = Array.isArray(prevMarkers) 
+                          const filteredMarkers = Array.isArray(prevMarkers)
                             ? prevMarkers.filter(
                                 (marker) =>
                                   marker.id !== "origin" &&
                                   marker.id !== "destination"
                               )
                             : [];
-                          
+
                           return [
                             ...filteredMarkers,
                             originMarker,
@@ -1322,7 +1313,6 @@ export default function MapScreen() {
           visible={showFilterModal}
           onRequestClose={() => setShowFilterModal(false)}
         >
-          
           <View className="flex-1 bg-black/50 justify-center items-center">
             <View className="bg-white rounded-lg p-6 m-4 w-11/12 max-w-md h-3/5">
               <View className="flex-row justify-between items-center mb-4">

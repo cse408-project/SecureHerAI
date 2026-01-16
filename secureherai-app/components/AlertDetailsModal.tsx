@@ -11,6 +11,15 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { Alert as AlertType } from "../types/sos";
 import { AlertStatus } from "../types/AlertStatus";
 import apiService from "../services/api";
+import {
+  getAlertStatusColor,
+  getSeverityColor,
+  getSeverityBgClass,
+  getSeverityTextClass,
+  getSeverityLabel,
+  getIncidentTypeIcon,
+  getIncidentTypeColor,
+} from "../utils/incidentHelpers";
 
 interface AlertDetailsModalProps {
   visible: boolean;
@@ -42,28 +51,30 @@ const AlertDetailsModal = ({
     return `${date.toLocaleDateString()} at ${date.toLocaleTimeString()}`;
   };
 
+  // Unified status color helper - consistent across app
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (status?.toUpperCase()) {
+      case "CRITICAL":
+        return "text-red-700 bg-red-100 border-red-300";
       case "ACTIVE":
-      case "active":
-        return "text-red-600 bg-red-50 border-red-200";
+        return "text-amber-700 bg-amber-100 border-amber-300";
+      case "ACCEPTED":
+        return "text-blue-700 bg-blue-100 border-blue-300";
       case "RESPONDED":
-      case "responded":
         return "text-blue-600 bg-blue-50 border-blue-200";
       case "EN_ROUTE":
-      case "en_route":
         return "text-yellow-600 bg-yellow-50 border-yellow-200";
       case "ARRIVED":
-      case "arrived":
         return "text-indigo-600 bg-indigo-50 border-indigo-200";
-      case "CANCELED":
-      case "canceled":
-        return "text-orange-600 bg-orange-50 border-orange-200";
       case "RESOLVED":
-      case "resolved":
-        return "text-green-600 bg-green-50 border-green-200";
+        return "text-green-700 bg-green-100 border-green-300";
+      case "CANCELED":
+        return "text-gray-700 bg-gray-100 border-gray-300";
+      case "FALSE_ALARM":
+        return "text-purple-700 bg-purple-100 border-purple-300";
+      case "REJECTED":
+        return "text-red-600 bg-red-50 border-red-200";
       case "VERIFIED":
-      case "verified":
         return "text-purple-600 bg-purple-50 border-purple-200";
       default:
         return "text-gray-600 bg-gray-50 border-gray-200";
@@ -159,6 +170,72 @@ const AlertDetailsModal = ({
                   </View>
                 </View>
 
+                {/* Severity Badge - AI Analyzed */}
+                {alert?.severity && (
+                  <View className="flex-row items-center justify-between mb-3">
+                    <Text className="text-gray-800 font-semibold">
+                      Severity
+                    </Text>
+                    <View
+                      className="px-3 py-1 rounded-full flex-row items-center"
+                      style={{
+                        backgroundColor: `${getSeverityColor(
+                          alert.severity
+                        )}20`,
+                      }}
+                    >
+                      <MaterialIcons
+                        name={
+                          alert.severity === "CRITICAL"
+                            ? "priority-high"
+                            : alert.severity === "HIGH"
+                            ? "warning"
+                            : "info"
+                        }
+                        size={14}
+                        color={getSeverityColor(alert.severity)}
+                      />
+                      <Text
+                        className="text-xs font-medium ml-1"
+                        style={{ color: getSeverityColor(alert.severity) }}
+                      >
+                        {alert.severity}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Incident Type - AI Analyzed */}
+                {alert?.incidentType && (
+                  <View className="flex-row items-center justify-between mb-3">
+                    <Text className="text-gray-800 font-semibold">
+                      Incident Type
+                    </Text>
+                    <View
+                      className="px-3 py-1 rounded-full flex-row items-center"
+                      style={{
+                        backgroundColor: `${getIncidentTypeColor(
+                          alert.incidentType
+                        )}20`,
+                      }}
+                    >
+                      <MaterialIcons
+                        name={getIncidentTypeIcon(alert.incidentType) as any}
+                        size={14}
+                        color={getIncidentTypeColor(alert.incidentType)}
+                      />
+                      <Text
+                        className="text-xs font-medium ml-1 capitalize"
+                        style={{
+                          color: getIncidentTypeColor(alert.incidentType),
+                        }}
+                      >
+                        {alert.incidentType}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
                 <View className="flex-row items-center justify-between mb-3">
                   <Text className="text-gray-800 font-semibold">Created</Text>
                   <Text className="text-gray-600">
@@ -231,6 +308,35 @@ const AlertDetailsModal = ({
                   <Text className="text-gray-700 mt-1">
                     &ldquo;{alert?.alertMessage}&rdquo;
                   </Text>
+                </View>
+              )}
+
+              {/* AI Analysis Summary */}
+              {alert?.aiSummary && (
+                <View className="bg-indigo-50 p-4 rounded-lg mb-4">
+                  <View className="flex-row items-center mb-2">
+                    <MaterialIcons
+                      name="psychology"
+                      size={20}
+                      color="#4F46E5"
+                    />
+                    <Text className="text-indigo-700 font-semibold ml-1">
+                      AI Analysis
+                    </Text>
+                  </View>
+                  <Text className="text-gray-700 mt-1">{alert.aiSummary}</Text>
+                  {alert?.emotionDetected && (
+                    <View className="flex-row items-center mt-2">
+                      <MaterialIcons
+                        name="sentiment-satisfied"
+                        size={16}
+                        color="#4F46E5"
+                      />
+                      <Text className="text-indigo-600 text-sm ml-1">
+                        Detected emotion: {alert.emotionDetected}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               )}
 

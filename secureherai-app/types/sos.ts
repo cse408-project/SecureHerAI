@@ -1,5 +1,17 @@
 import { AlertStatusString } from "./AlertStatus";
 
+// Severity levels for alerts (AI-analyzed)
+export type AlertSeverity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+
+// Incident types for alerts (AI-analyzed)
+export type IncidentType =
+  | "emergency"
+  | "assault"
+  | "harassment"
+  | "theft"
+  | "accident"
+  | "other";
+
 export interface Alert {
   id: string;
   userId: string;
@@ -16,6 +28,12 @@ export interface Alert {
   resolvedAt: string | null;
   forwarded?: boolean;
   notes?: string;
+
+  // AI-analyzed fields
+  severity?: AlertSeverity;
+  incidentType?: IncidentType;
+  emotionDetected?: string;
+  aiSummary?: string;
 }
 
 export interface AlertResponse {

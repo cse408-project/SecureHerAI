@@ -60,6 +60,7 @@ public class SOSService {
 
     /**
      * Process voice command and create an alert if a keyword is detected
+     * Uses Gemini AI for both transcription AND severity/incident analysis
      *
      * @param userId    The user ID from authentication
      * @param audioFile The audio file containing the voice command
@@ -77,7 +78,7 @@ public class SOSService {
             // Save the uploaded file temporarily
             tempFile = saveTemporaryFile(audioFile);
 
-            // Transcribe the audio file using Gemini AI
+            // Transcribe the audio file using Gemini AI (includes severity analysis)
             SpeechTranscriptionResult transcriptionResult = geminiSpeechService.transcribeAudioFile(tempFile);
 
             if (!transcriptionResult.isSuccess()) {
@@ -86,14 +87,19 @@ public class SOSService {
             }
 
             String transcribedText = transcriptionResult.getText();
-            log.info("Transcribed text: {}", transcribedText);
+            log.info("Transcribed text: {} | Severity: {} | IncidentType: {} | HasEmergencyKeyword: {}",
+                    transcribedText, transcriptionResult.getSeverity(),
+                    transcriptionResult.getIncidentType(), transcriptionResult.isHasEmergencyKeyword());
 
-            // Check if any keywords are present in the transcribed text
-            if (containsKeyword(transcribedText, userId)) {
+            // Use Gemini's AI keyword detection OR fallback to local keyword check
+            boolean hasKeyword = transcriptionResult.isHasEmergencyKeyword()
+                    || containsKeyword(transcribedText, userId);
+
+            if (hasKeyword) {
                 // Save the audio file to a persistent location
                 String audioUrl = saveAudioFile(audioFile, userId);
 
-                // Create alert
+                // Create alert with AI-analyzed severity and incident type
                 Alert alert = new Alert();
                 alert.setUserId(userId);
                 alert.setLatitude(location.getLatitude());
@@ -102,6 +108,17 @@ public class SOSService {
                 alert.setTriggerMethod("voice");
                 alert.setAlertMessage(transcribedText);
                 alert.setAudioRecording(audioUrl);
+
+                // Set AI-analyzed fields
+                alert.setSeverity(transcriptionResult.getSeverity());
+                alert.setIncidentType(transcriptionResult.getIncidentType());
+                alert.setEmotionDetected(transcriptionResult.getEmotion());
+                alert.setAiSummary(transcriptionResult.getSummary());
+
+                // Set initial status based on severity
+                if ("CRITICAL".equals(transcriptionResult.getSeverity())) {
+                    alert.setStatus(AlertStatus.CRITICAL);
+                }
 
                 // Save the alert
                 Alert savedAlert = alertRepository.save(alert);
@@ -132,6 +149,7 @@ public class SOSService {
 
     /**
      * Process voice command from URL and create an alert if a keyword is detected
+     * Uses Gemini AI for both transcription AND severity/incident analysis
      *
      * @param userId   The user ID from authentication
      * @param audioUrl The URL of the audio file
@@ -144,7 +162,7 @@ public class SOSService {
 
         log.info("Processing voice command from URL for user: {}", userId);
 
-        // Transcribe the audio from URL using Gemini AI
+        // Transcribe the audio from URL using Gemini AI (includes severity analysis)
         SpeechTranscriptionResult transcriptionResult = geminiSpeechService.transcribeAudioFromUrl(audioUrl, null);
 
         if (!transcriptionResult.isSuccess()) {
@@ -153,11 +171,15 @@ public class SOSService {
         }
 
         String transcribedText = transcriptionResult.getText();
-        log.info("Transcribed text from URL: {}", transcribedText);
+        log.info("Transcribed text from URL: {} | Severity: {} | IncidentType: {} | HasEmergencyKeyword: {}",
+                transcribedText, transcriptionResult.getSeverity(),
+                transcriptionResult.getIncidentType(), transcriptionResult.isHasEmergencyKeyword());
 
-        // Check if any default keywords are present in the transcribed text
-        if (containsKeyword(transcribedText, userId)) {
-            // Create alert
+        // Use Gemini's AI keyword detection OR fallback to local keyword check
+        boolean hasKeyword = transcriptionResult.isHasEmergencyKeyword() || containsKeyword(transcribedText, userId);
+
+        if (hasKeyword) {
+            // Create alert with AI-analyzed severity and incident type
             Alert alert = new Alert();
             alert.setUserId(userId);
             alert.setLatitude(location.getLatitude());
@@ -167,6 +189,17 @@ public class SOSService {
             alert.setAlertMessage(transcribedText);
             alert.setAudioRecording(audioUrl); // Use the provided URL directly
             alert.setTriggeredAt(LocalDateTime.now());
+
+            // Set AI-analyzed fields
+            alert.setSeverity(transcriptionResult.getSeverity());
+            alert.setIncidentType(transcriptionResult.getIncidentType());
+            alert.setEmotionDetected(transcriptionResult.getEmotion());
+            alert.setAiSummary(transcriptionResult.getSummary());
+
+            // Set initial status based on severity
+            if ("CRITICAL".equals(transcriptionResult.getSeverity())) {
+                alert.setStatus(AlertStatus.CRITICAL);
+            }
 
             // Save the alert
             Alert savedAlert = alertRepository.save(alert);
@@ -193,7 +226,7 @@ public class SOSService {
 
     /**
      * Process text command and create an alert if the provided keyword matches
-     * user's SOS keyword
+     * user's SOS keyword. Uses Gemini AI for severity and incident analysis.
      *
      * @param userId   The user ID from authentication
      * @param message  The text message
@@ -213,7 +246,15 @@ public class SOSService {
             // Check if the provided keyword matches the user's SOS keyword
             // (case-insensitive)
             if (keyword != null && keyword.toLowerCase().equals(userSosKeyword.toLowerCase())) {
-                // Create alert
+
+                // Analyze the message text using Gemini AI for severity classification
+                SpeechTranscriptionResult analysisResult = geminiSpeechService.analyzeTextMessage(message);
+
+                log.info("Text analysis complete: Severity: {} | IncidentType: {} | HasEmergencyKeyword: {}",
+                        analysisResult.getSeverity(), analysisResult.getIncidentType(),
+                        analysisResult.isHasEmergencyKeyword());
+
+                // Create alert with AI-analyzed severity and incident type
                 Alert alert = new Alert();
                 alert.setUserId(userId);
                 alert.setLatitude(location.getLatitude());
@@ -222,6 +263,17 @@ public class SOSService {
                 alert.setTriggerMethod("text");
                 alert.setAlertMessage(message);
                 alert.setTriggeredAt(LocalDateTime.now());
+
+                // Set AI-analyzed fields
+                alert.setSeverity(analysisResult.getSeverity());
+                alert.setIncidentType(analysisResult.getIncidentType());
+                alert.setEmotionDetected(analysisResult.getEmotion());
+                alert.setAiSummary(analysisResult.getSummary());
+
+                // Set initial status based on severity
+                if ("CRITICAL".equals(analysisResult.getSeverity())) {
+                    alert.setStatus(AlertStatus.CRITICAL);
+                }
 
                 // Save the alert
                 Alert savedAlert = alertRepository.save(alert);
