@@ -2122,6 +2122,93 @@ class ApiService {
       };
     }
   }
+
+  // =====================
+  // Device Token Methods (Push Notifications)
+  // =====================
+
+  async registerDeviceToken(data: {
+    token: string;
+    tokenType: string;
+    platform: string;
+    deviceId?: string;
+    deviceName?: string;
+  }) {
+    try {
+      console.log("API: Registering device token");
+      const response = await fetch(`${API_BASE_URL}/device-tokens/register`, {
+        method: "POST",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify(data),
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error:
+            responseData.error ||
+            responseData.message ||
+            "Failed to register device token",
+        };
+      }
+
+      return { success: true, data: responseData };
+    } catch (error) {
+      console.error("API: Error registering device token:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  async deactivateDeviceToken(token: string) {
+    try {
+      console.log("API: Deactivating device token");
+      const response = await fetch(
+        `${API_BASE_URL}/device-tokens/deactivate?token=${encodeURIComponent(
+          token
+        )}`,
+        {
+          method: "DELETE",
+          headers: await this.getHeaders(true),
+        }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        return {
+          success: false,
+          error:
+            data.error || data.message || "Failed to deactivate device token",
+        };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error("API: Error deactivating device token:", error);
+      return {
+        success: false,
+        error: "Network error. Please check your connection and try again.",
+      };
+    }
+  }
+
+  // =====================
+  // WebSocket URL Helper
+  // =====================
+
+  getWebSocketUrl(): string {
+    // Convert API URL to WebSocket URL
+    const baseUrl = API_BASE_URL.replace("/api", "");
+    return baseUrl.replace(/^http/, "ws") + "/ws/emergency";
+  }
+
+  getApiBaseUrl(): string {
+    return API_BASE_URL.replace("/api", "");
+  }
 }
 
 export default new ApiService();

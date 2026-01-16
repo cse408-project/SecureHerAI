@@ -59,6 +59,14 @@ services:
 
       # Gemini AI Configuration
       GOOGLE_CLOUD_API_KEY: ${GOOGLE_CLOUD_API_KEY:-}
+
+      # Twilio SMS Configuration (for emergency notification fallback)
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER:-}
+
+      # Expo Push Notification Configuration
+      EXPO_PUSH_URL: ${EXPO_PUSH_URL:-https://exp.host/--/api/v2/push/send}
     depends_on:
       - db
     restart: unless-stopped

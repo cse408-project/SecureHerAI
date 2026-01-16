@@ -41,7 +41,16 @@
           "backgroundColor": "#67082F"
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/secureherai_logo.png",
+          "color": "#67082F",
+          "sounds": [],
+          "defaultChannel": "emergency-alerts"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

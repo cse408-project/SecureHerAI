@@ -6,8 +6,9 @@ import {
   RefreshControl,
   Modal,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { StatusBar } from "expo-status-bar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -18,6 +19,7 @@ import NotificationModal from "./NotificationModal";
 import { Alert as AlertType } from "../types/sos";
 import { AlertStatus } from "../types/AlertStatus";
 import apiService from "../services/api";
+import locationService from "../services/locationService";
 
 // Interface for accepted alert response from backend
 interface AcceptedAlertResponder {
@@ -31,6 +33,7 @@ interface AcceptedAlertResponder {
 export default function ResponderHomepage() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isBackgroundLoading, setIsBackgroundLoading] = useState(false);
   const [pendingAlerts, setPendingAlerts] = useState<AlertType[]>([]);
   const [acceptedAlerts, setAcceptedAlerts] = useState<
     AcceptedAlertResponder[]
@@ -52,11 +55,18 @@ export default function ResponderHomepage() {
   const [alertDetailsData, setAlertDetailsData] = useState<any>(null);
   const [loadingUserDetails, setLoadingUserDetails] = useState(false);
   const { showAlert, showConfirmAlert } = useAlert();
-  useNotifications(); // For notification count in header
+  const { emergencyAlerts, isConnected, connectRealtime, clearEmergencyAlert } =
+    useNotifications();
+  const isInitialLoad = useRef(true);
 
-  const loadAlerts = useCallback(async () => {
+  const loadAlerts = useCallback(async (isBackground: boolean = false) => {
     try {
-      setLoading(true);
+      // Only show full loading spinner on initial load
+      if (!isBackground && isInitialLoad.current) {
+        setLoading(true);
+      } else {
+        setIsBackgroundLoading(true);
+      }
       console.log("ResponderHomepage: Loading pending and accepted alerts");
 
       // Load both pending and accepted alerts in parallel
@@ -120,21 +130,33 @@ export default function ResponderHomepage() {
       setCriticalAlerts([]);
     } finally {
       setLoading(false);
+      setIsBackgroundLoading(false);
+      isInitialLoad.current = false;
     }
   }, []);
 
+  // Connect to real-time services on mount
   useEffect(() => {
-    loadAlerts();
+    loadAlerts(false); // Initial load
+    connectRealtime(); // Connect WebSocket for real-time updates
 
-    // Refresh alerts every 30 seconds
-    const interval = setInterval(loadAlerts, 30000);
+    // Reduced polling interval as fallback - only every 2 minutes since we have WebSocket now
+    const interval = setInterval(() => loadAlerts(true), 120000);
 
     return () => clearInterval(interval);
-  }, [loadAlerts]);
+  }, [loadAlerts, connectRealtime]);
+
+  // Handle incoming real-time emergency alerts
+  useEffect(() => {
+    if (emergencyAlerts.length > 0) {
+      // Refresh pending alerts when we receive new emergency alerts via WebSocket
+      loadAlerts(true);
+    }
+  }, [emergencyAlerts, loadAlerts]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadAlerts();
+    await loadAlerts(false);
     setRefreshing(false);
   };
 
@@ -148,6 +170,20 @@ export default function ResponderHomepage() {
           const response = await apiService.acceptAlert(alertId);
 
           if (response.success) {
+            // Enable emergency tracking for responder (real-time location sharing with victim)
+            try {
+              await locationService.enableEmergencyTracking(alertId, false); // false = responder
+              console.log(
+                "🚨 Responder emergency tracking enabled for alert:",
+                alertId
+              );
+            } catch (trackingError) {
+              console.error(
+                "Failed to enable emergency tracking:",
+                trackingError
+              );
+            }
+
             showAlert(
               "Success",
               "Emergency alert accepted. You are now the assigned responder.",
@@ -268,6 +304,25 @@ export default function ResponderHomepage() {
       );
 
       if (response.success) {
+        // Disable emergency tracking when alert is resolved or closed
+        if (
+          status === AlertStatus.RESOLVED ||
+          status === AlertStatus.FALSE_ALARM ||
+          status === AlertStatus.REJECTED
+        ) {
+          try {
+            await locationService.disableEmergencyTracking();
+            console.log(
+              "✅ Emergency tracking disabled - alert resolved/closed"
+            );
+          } catch (trackingError) {
+            console.error(
+              "Failed to disable emergency tracking:",
+              trackingError
+            );
+          }
+        }
+
         const statusMessage =
           status === AlertStatus.RESOLVED
             ? "Alert marked as resolved successfully"
@@ -567,6 +622,25 @@ export default function ResponderHomepage() {
           </View>
         </View> */}
 
+        {/* Real-time Connection Status */}
+        <View className="flex-row items-center justify-end mb-2 px-1">
+          <View
+            className={`w-2 h-2 rounded-full mr-2 ${
+              isConnected ? "bg-green-500" : "bg-gray-400"
+            }`}
+          />
+          <Text className="text-xs text-gray-500">
+            {isConnected ? "Live updates active" : "Connecting..."}
+          </Text>
+          {isBackgroundLoading && (
+            <ActivityIndicator
+              size="small"
+              color="#6B7280"
+              style={{ marginLeft: 8 }}
+            />
+          )}
+        </View>
+
         {/* Pending Alerts Section */}
         <View className="mb-6">
           <View className="flex-row items-center justify-between mb-3">
@@ -574,7 +648,7 @@ export default function ResponderHomepage() {
               🚨 Pending Emergency Alerts
             </Text>
             <TouchableOpacity
-              onPress={loadAlerts}
+              onPress={() => loadAlerts(false)}
               className="bg-gray-100 rounded-full p-2"
             >
               <MaterialIcons name="refresh" size={20} color="#374151" />
@@ -583,7 +657,10 @@ export default function ResponderHomepage() {
 
           {loading ? (
             <View className="bg-white rounded-xl p-8 items-center">
-              <Text className="text-gray-500">Loading emergency alerts...</Text>
+              <ActivityIndicator size="large" color="#EF4444" />
+              <Text className="text-gray-500 mt-2">
+                Loading emergency alerts...
+              </Text>
             </View>
           ) : pendingAlerts.length === 0 ? (
             <View className="bg-white rounded-xl p-8 items-center">
@@ -595,7 +672,9 @@ export default function ResponderHomepage() {
                 No pending emergency alerts at the moment
               </Text>
               <Text className="text-gray-400 text-sm text-center mt-2">
-                New emergency alerts will appear here automatically
+                {isConnected
+                  ? "New emergency alerts will appear here instantly"
+                  : "New emergency alerts will appear here automatically"}
               </Text>
             </View>
           ) : (
@@ -654,7 +733,7 @@ export default function ResponderHomepage() {
                           {priority.level}
                         </Text>
                       </View>
-                    </View>{" "}
+                    </View>
                     {/* Alert Details */}
                     <View className="mb-3">
                       <View className="flex-row items-center mb-2">

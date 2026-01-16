@@ -16,6 +16,7 @@ import { useAlert } from "../context/AlertContext";
 import { AlertResponse } from "../types/sos";
 import apiService from "../services/api";
 import cloudinaryService from "../services/cloudinary";
+import locationService from "../services/locationService";
 import { router } from "expo-router";
 
 interface SOSModalProps {
@@ -526,7 +527,15 @@ const SOSModal: React.FC<SOSModalProps> = ({ visible, onClose, onSuccess }) => {
     }
   };
 
-  const navigateToReportPage = (alertId: string, audioUrl?: string) => {
+  const navigateToReportPage = async (alertId: string, audioUrl?: string) => {
+    // Enable emergency tracking for victim (real-time location sharing with responders)
+    try {
+      await locationService.enableEmergencyTracking(alertId, true); // true = victim
+      console.log("🚨 Victim emergency tracking enabled for alert:", alertId);
+    } catch (error) {
+      console.error("Failed to enable emergency tracking:", error);
+    }
+
     // Close the modal first
     onClose();
 

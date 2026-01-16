@@ -428,8 +428,7 @@ export default function SOSScreen() {
   };
 
   const handleManageContacts = () => {
-    showAlert("Info", "Redirecting to trusted contacts management...", "info");
-    // TODO: Navigate to contacts management
+    router.push("/(tabs)/contacts");
   };
 
   const handleEmergencySettings = () => {

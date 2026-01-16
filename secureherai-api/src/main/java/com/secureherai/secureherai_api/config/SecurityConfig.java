@@ -21,50 +21,62 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Autowired
-    private JwtAuthFilter jwtAuthFilter;
+        @Autowired
+        private JwtAuthFilter jwtAuthFilter;
 
-    @Autowired
-    private OAuth2SuccessHandler oAuth2SuccessHandler;
-    
-    @Autowired
-    private ApiAuthenticationEntryPoint apiAuthenticationEntryPoint;
-    
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {        
-        http
-            .csrf(csrf -> csrf.disable())
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/isOk", "/api/health", "/api/auth/**", "/health", "/auth/**", "/api/responder/available", "/api/contacts/test", "/oauth2/**", "/login/oauth2/**").permitAll()
-                .requestMatchers("/oauth2/**", "/login/oauth2/**", "/api/speech/**").permitAll()
-                .requestMatchers("/actuator/health").permitAll()
-                .anyRequest().authenticated()
-            )   .oauth2Login(oauth2 -> oauth2
-                .authorizationEndpoint(authorization -> authorization
-                    .baseUri("/oauth2/authorize")
-                    .authorizationRequestRepository(authorizationRequestRepository())
-                )
-                .redirectionEndpoint(redirection -> redirection
-                    .baseUri("/login/oauth2/code/*")
-                )
-                .successHandler(oAuth2SuccessHandler)
-            )
-            .exceptionHandling(exceptions -> exceptions
-                .authenticationEntryPoint(apiAuthenticationEntryPoint)
-            )
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-            .httpBasic(httpBasic -> httpBasic.disable())
-            .formLogin(formLogin -> formLogin.disable());
-        return http.build();
-    }
-    
-    @Bean
-    public AuthorizationRequestRepository<OAuth2AuthorizationRequest> authorizationRequestRepository() {
-        return new HttpSessionOAuth2AuthorizationRequestRepository();
-    }    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+        @Autowired
+        private OAuth2SuccessHandler oAuth2SuccessHandler;
+
+        @Autowired
+        private ApiAuthenticationEntryPoint apiAuthenticationEntryPoint;
+
+        @Bean
+        public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+                http
+                                .csrf(csrf -> csrf.disable())
+                                .sessionManagement(session -> session
+                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                // Allow iframes for SockJS fallback transport (used by WebSocket)
+                                // NOTE: Required for SockJS iframe-based transports to work
+                                .headers(headers -> headers
+                                                .frameOptions(frameOptions -> frameOptions.sameOrigin()))
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers("/api/isOk", "/api/health", "/api/auth/**", "/health",
+                                                                "/auth/**",
+                                                                "/api/responder/available", "/api/contacts/test",
+                                                                "/oauth2/**", "/login/oauth2/**")
+                                                .permitAll()
+                                                .requestMatchers("/oauth2/**", "/login/oauth2/**", "/api/speech/**")
+                                                .permitAll()
+                                                .requestMatchers("/actuator/health").permitAll()
+                                                // WebSocket endpoints - authentication handled by
+                                                // WebSocketAuthInterceptor
+                                                // NOTE: All /ws/** paths must be permitAll for SockJS handshake to work
+                                                .requestMatchers("/ws/**").permitAll()
+                                                .anyRequest().authenticated())
+                                .oauth2Login(oauth2 -> oauth2
+                                                .authorizationEndpoint(authorization -> authorization
+                                                                .baseUri("/oauth2/authorize")
+                                                                .authorizationRequestRepository(
+                                                                                authorizationRequestRepository()))
+                                                .redirectionEndpoint(redirection -> redirection
+                                                                .baseUri("/login/oauth2/code/*"))
+                                                .successHandler(oAuth2SuccessHandler))
+                                .exceptionHandling(exceptions -> exceptions
+                                                .authenticationEntryPoint(apiAuthenticationEntryPoint))
+                                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                                .httpBasic(httpBasic -> httpBasic.disable())
+                                .formLogin(formLogin -> formLogin.disable());
+                return http.build();
+        }
+
+        @Bean
+        public AuthorizationRequestRepository<OAuth2AuthorizationRequest> authorizationRequestRepository() {
+                return new HttpSessionOAuth2AuthorizationRequestRepository();
+        }
+
+        @Bean
+        public PasswordEncoder passwordEncoder() {
+                return new BCryptPasswordEncoder();
+        }
 }
-
