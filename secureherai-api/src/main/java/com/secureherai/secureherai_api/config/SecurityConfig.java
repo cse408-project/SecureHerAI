@@ -44,7 +44,8 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/isOk", "/api/health", "/api/auth/**", "/health",
                                                                 "/auth/**",
                                                                 "/api/responder/available", "/api/contacts/test",
-                                                                "/oauth2/**", "/login/oauth2/**")
+                                                                "/oauth2/**", "/login/oauth2/**",
+                                                                "/api/admin/**") // Admin endpoints use API key auth
                                                 .permitAll()
                                                 .requestMatchers("/oauth2/**", "/login/oauth2/**", "/api/speech/**")
                                                 .permitAll()

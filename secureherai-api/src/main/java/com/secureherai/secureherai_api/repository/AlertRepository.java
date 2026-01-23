@@ -15,41 +15,51 @@ import java.util.UUID;
 
 @Repository
 public interface AlertRepository extends JpaRepository<Alert, UUID> {
-    
+
     // Find alerts by user ID
     List<Alert> findByUserId(UUID userId);
-    
+
     // Find active alerts by user ID
     List<Alert> findByUserIdAndStatus(UUID userId, AlertStatus status);
-    
+
     // Find alert by ID and user ID (for authorization)
     Optional<Alert> findByIdAndUserId(UUID id, UUID userId);
-    
+
     // Find alerts within a time range
     List<Alert> findByTriggeredAtBetween(LocalDateTime startTime, LocalDateTime endTime);
-    
+
     // Find alerts by status
     List<Alert> findByStatus(AlertStatus status);
-    
+
     // Find alerts by verification status
     List<Alert> findByVerificationStatus(String verificationStatus);
-    
+
     // Find recent alerts by user (last 24 hours)
     @Query("SELECT a FROM Alert a WHERE a.userId = :userId AND a.triggeredAt >= :since ORDER BY a.triggeredAt DESC")
     List<Alert> findRecentAlertsByUser(@Param("userId") UUID userId, @Param("since") LocalDateTime since);
-    
-    // Find active alerts for all users (for responders)
-    @Query("SELECT a FROM Alert a WHERE a.status = 'ACTIVE' ORDER BY a.triggeredAt DESC")
+
+    // Find active alerts for all users (for responders) - includes ACTIVE and
+    // CRITICAL
+    @Query("SELECT a FROM Alert a WHERE a.status IN ('ACTIVE', 'CRITICAL') ORDER BY a.triggeredAt DESC")
     List<Alert> findActiveAlerts();
+
+    // Find only CRITICAL alerts (high priority)
+    @Query("SELECT a FROM Alert a WHERE a.status = 'CRITICAL' ORDER BY a.triggeredAt DESC")
+    List<Alert> findCriticalAlerts();
 
     // Find all alerts for all users (for responders)
     @Query("SELECT a FROM Alert a ORDER BY a.triggeredAt DESC")
     List<Alert> findAllAlerts();
-    
+
     // Count alerts by user and status
     @Query("SELECT COUNT(a) FROM Alert a WHERE a.userId = :userId AND a.status = :status")
     Long countByUserIdAndStatus(@Param("userId") UUID userId, @Param("status") AlertStatus status);
-    
+
+    // Find only alert IDs by user ID (to avoid loading full entities with
+    // relationships)
+    @Query("SELECT a.id FROM Alert a WHERE a.userId = :userId")
+    List<UUID> findAlertIdsByUserId(@Param("userId") UUID userId);
+
     // Delete all alerts by user ID (for account deletion)
     @Modifying
     @Query("DELETE FROM Alert a WHERE a.userId = :userId")

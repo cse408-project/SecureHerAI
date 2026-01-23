@@ -1,0 +1,90 @@
+### SecureHerAI Admin API Tests
+### These endpoints use a fixed API key instead of JWT authentication
+### Header: X-Admin-Key: SECUREHER_ADMIN_KEY_2026
+
+@baseUrl = http://localhost:8080/api
+@adminKey = SECUREHER_ADMIN_KEY_2026
+
+### ========================================
+### USER MANAGEMENT ENDPOINTS
+### ========================================
+
+### 1. Get All Users
+### Returns list of all users with their details
+GET {{baseUrl}}/admin/users
+X-Admin-Key: {{adminKey}}
+
+### 2. Get User Statistics
+### Returns counts and breakdowns of users
+GET {{baseUrl}}/admin/stats
+X-Admin-Key: {{adminKey}}
+
+### 3. Get User by ID
+### Replace {userId} with actual UUID
+GET {{baseUrl}}/admin/users/b2139a31-1857-4429-82ab-7ba1af861f1d
+X-Admin-Key: {{adminKey}}
+
+### 4. Get User by Email
+### URL encode the email if it contains special characters
+GET {{baseUrl}}/admin/users/email/ansextra001@gmail.com
+X-Admin-Key: {{adminKey}}
+
+### ========================================
+### DELETE USER ENDPOINTS
+### ========================================
+
+### 5. Delete User by ID
+### Replace {userId} with actual UUID
+DELETE {{baseUrl}}/admin/users/b2139a31-1857-4429-82ab-7ba1af861f1d
+X-Admin-Key: {{adminKey}}
+
+### 6. Delete User by Email
+DELETE {{baseUrl}}/admin/users/email/ansextra001@gmail.com
+X-Admin-Key: {{adminKey}}
+
+### 7. Delete ALL Users - DANGER!
+### Requires confirmation parameter for safety
+### This will permanently delete ALL users from the database!
+DELETE {{baseUrl}}/admin/users/all?confirm=DELETE_ALL_USERS
+X-Admin-Key: {{adminKey}}
+
+### 7b. Delete All Users - Without confirmation (will fail safely)
+DELETE {{baseUrl}}/admin/users/all
+X-Admin-Key: {{adminKey}}
+
+### ========================================
+### ERROR CASES (For testing)
+### ========================================
+
+### 8. Invalid Admin Key (should return 401)
+GET {{baseUrl}}/admin/users
+X-Admin-Key: wrong_key
+
+### 9. Missing Admin Key (should return 401)
+GET {{baseUrl}}/admin/users
+
+### 10. Invalid User ID format (should return 400)
+GET {{baseUrl}}/admin/users/invalid-uuid
+X-Admin-Key: {{adminKey}}
+
+### 11. Non-existent User (should return 404)
+GET {{baseUrl}}/admin/users/00000000-0000-0000-0000-000000000000
+X-Admin-Key: {{adminKey}}
+
+### ========================================
+### PRODUCTION ENDPOINTS
+### ========================================
+
+@prodUrl = https://www.secureherai.me/api
+
+### 12. Get All Users (Production)
+GET {{prodUrl}}/admin/users
+X-Admin-Key: {{adminKey}}
+
+### 13. Get User Stats (Production)
+GET {{prodUrl}}/admin/stats
+X-Admin-Key: {{adminKey}}
+
+### 14. Get User by Email (Production)
+GET {{prodUrl}}/admin/users/email/a.n.swapnil2003@gmail.com
+X-Admin-Key: {{adminKey}}

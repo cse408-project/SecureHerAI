@@ -63,14 +63,22 @@ export const getAlertStatusColor = (status: string): string => {
       return "#F59E0B"; // Amber-500 - Requires attention
     case "ACCEPTED":
       return "#3B82F6"; // Blue-500 - Responder accepted
+    case "EN_ROUTE":
+      return "#8B5CF6"; // Purple-500 - Responder on the way
+    case "ARRIVED":
+      return "#059669"; // Emerald-600 - Responder arrived
     case "RESOLVED":
       return "#10B981"; // Green-500 - Successfully resolved
     case "CANCELED":
       return "#6B7280"; // Gray-500 - User canceled
     case "FALSE_ALARM":
-      return "#8B5CF6"; // Purple-500 - False alarm
+      return "#F97316"; // Orange-500 - False alarm
     case "REJECTED":
       return "#EF4444"; // Red-500 - Rejected
+    case "PENDING":
+      return "#FBBF24"; // Amber-400 - Pending
+    case "FORWARDED":
+      return "#06B6D4"; // Cyan-500 - Forwarded
     default:
       return "#6B7280"; // Gray-500
   }
@@ -87,14 +95,22 @@ export const getAlertStatusBgClass = (status: string): string => {
       return "bg-amber-100";
     case "ACCEPTED":
       return "bg-blue-100";
+    case "EN_ROUTE":
+      return "bg-purple-100";
+    case "ARRIVED":
+      return "bg-emerald-100";
     case "RESOLVED":
       return "bg-green-100";
     case "CANCELED":
       return "bg-gray-100";
     case "FALSE_ALARM":
-      return "bg-purple-100";
+      return "bg-orange-100";
     case "REJECTED":
       return "bg-red-50";
+    case "PENDING":
+      return "bg-amber-50";
+    case "FORWARDED":
+      return "bg-cyan-100";
     default:
       return "bg-gray-100";
   }
@@ -111,14 +127,22 @@ export const getAlertStatusTextClass = (status: string): string => {
       return "text-amber-700";
     case "ACCEPTED":
       return "text-blue-700";
+    case "EN_ROUTE":
+      return "text-purple-700";
+    case "ARRIVED":
+      return "text-emerald-700";
     case "RESOLVED":
       return "text-green-700";
     case "CANCELED":
       return "text-gray-700";
     case "FALSE_ALARM":
-      return "text-purple-700";
+      return "text-orange-700";
     case "REJECTED":
       return "text-red-600";
+    case "PENDING":
+      return "text-amber-600";
+    case "FORWARDED":
+      return "text-cyan-700";
     default:
       return "text-gray-700";
   }

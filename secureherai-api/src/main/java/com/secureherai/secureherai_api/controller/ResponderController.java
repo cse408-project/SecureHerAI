@@ -369,17 +369,22 @@ public class ResponderController {
 
             // Filter alerts to show only pending ones for this responder:
             // INCLUDE:
-            // 1. Active alerts with no AlertResponder record for this responder (new
+            // 1. Active/Critical alerts with no AlertResponder record for this responder
+            // (new
             // alerts)
-            // 2. Active alerts with AlertResponder status "pending" (includes forwarded
+            // 2. Active/Critical alerts with AlertResponder status "pending" (includes
+            // forwarded
             // alerts)
             // EXCLUDE:
             // 3. Alerts with AlertResponder status "accepted", "rejected", "forwarded" (by
             // this responder)
-            // 4. Alerts with Alert.status "responded" (accepted by another responder)
+            // 4. Alerts with Alert.status "ACCEPTED" (fully accepted by a responder -
+            // different from CRITICAL)
             List<Map<String, Object>> pendingAlerts = activeAlerts.stream()
                     .filter(alert -> {
-                        // Skip alerts that have been responded to (accepted by someone else)
+                        // Skip alerts that have been fully accepted (status=ACCEPTED means responder
+                        // took it)
+                        // But DO NOT skip CRITICAL alerts - they need responders!
                         if (AlertStatus.ACCEPTED.equals(alert.getStatus())) {
                             // System.out.println(" DEBUG - Skipping alert " + alert.getId() + " - already
                             // responded");
@@ -413,6 +418,11 @@ public class ResponderController {
                         alertData.put("alertMessage", alert.getAlertMessage());
                         alertData.put("triggerMethod", alert.getTriggerMethod());
                         alertData.put("triggeredAt", alert.getTriggeredAt());
+                        alertData.put("severity", alert.getSeverity());
+                        alertData.put("incidentType", alert.getIncidentType());
+
+                        // Mark if this is a critical alert
+                        alertData.put("isCritical", AlertStatus.CRITICAL.equals(alert.getStatus()));
 
                         // Check if this alert was forwarded to this responder
                         AlertResponder alertResponder = alertResponderMap.get(alert.getId());
@@ -601,11 +611,17 @@ public class ResponderController {
             UUID responderId = jwtService.extractUserId(token);
             UUID alertId = UUID.fromString(request.get("alertId"));
 
-            // Verify the alert exists and is active
+            // Verify the alert exists and is active or critical (both can be accepted)
             Optional<Alert> alertOpt = alertRepository.findById(alertId);
-            if (alertOpt.isEmpty() || !alertOpt.get().getStatus().equals(AlertStatus.ACTIVE)) {
+            if (alertOpt.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(createErrorResponse("Alert not found or not active"));
+                        .body(createErrorResponse("Alert not found"));
+            }
+            AlertStatus alertStatus = alertOpt.get().getStatus();
+            if (!AlertStatus.ACTIVE.equals(alertStatus) && !AlertStatus.CRITICAL.equals(alertStatus)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(createErrorResponse(
+                                "Alert is not active or critical - current status: " + alertStatus.getValue()));
             }
 
             Alert alert = alertOpt.get();
@@ -662,11 +678,17 @@ public class ResponderController {
                 alertResponderRepository.save(alertResponder);
             } else {
                 // Create new AlertResponder record with rejected status
-                // First verify the alert exists and is active
+                // First verify the alert exists and is active or critical
                 Optional<Alert> alertOpt = alertRepository.findById(alertId);
-                if (alertOpt.isEmpty() || !alertOpt.get().getStatus().equals(AlertStatus.ACTIVE)) {
+                if (alertOpt.isEmpty()) {
                     return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                            .body(createErrorResponse("Alert not found or not active"));
+                            .body(createErrorResponse("Alert not found"));
+                }
+                AlertStatus alertStatus = alertOpt.get().getStatus();
+                if (!AlertStatus.ACTIVE.equals(alertStatus) && !AlertStatus.CRITICAL.equals(alertStatus)) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body(createErrorResponse(
+                                    "Alert is not active or critical - current status: " + alertStatus.getValue()));
                 }
 
                 AlertResponder newAlertResponder = new AlertResponder(alertId, responderId, AlertStatus.REJECTED);

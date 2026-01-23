@@ -5,6 +5,7 @@ import React, {
   useState,
   ReactNode,
   useCallback,
+  useRef,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as WebBrowser from "expo-web-browser";
@@ -17,7 +18,7 @@ import {
   AuthResponse,
   RegisterRequest,
 } from "../types/auth";
-import ApiService from "../services/api";
+import ApiService, { authEvents, AUTH_EVENTS } from "../services/api";
 
 // Register the URL handler for the OAuth flow
 // This ensures the app can handle the callback from OAuth
@@ -33,6 +34,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Track if we're handling a 401 to prevent multiple logout attempts
+  const isHandling401Ref = useRef(false);
+
+  // Handle 401 unauthorized from API - called via event emitter
+  const handleUnauthorized = useCallback(async (data: { endpoint: string }) => {
+    if (isHandling401Ref.current) {
+      console.log("AuthContext - Already handling 401, skipping");
+      return;
+    }
+    
+    isHandling401Ref.current = true;
+    console.log(`AuthContext - Received 401 unauthorized from ${data.endpoint}, logging out...`);
+    
+    // Clear state immediately
+    setToken(null);
+    setUser(null);
+
+    try {
+      await AsyncStorage.removeItem("auth_token");
+      await AsyncStorage.removeItem("user_data");
+      console.log("AuthContext - Successfully cleared storage due to 401");
+      
+      // Navigate to login page (root)
+      router.replace("/");
+    } catch (error) {
+      console.error("AuthContext - Error during 401 logout:", error);
+    }
+    
+    // Reset the flag after a delay
+    setTimeout(() => {
+      isHandling401Ref.current = false;
+    }, 5000);
+  }, []);
 
   // Handle OAuth redirect URLs
   const handleOAuthRedirect = useCallback(async (event: { url: string }) => {
@@ -69,10 +104,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Set up URL listener for deep linking (OAuth redirects)
     const subscription = Linking.addEventListener("url", handleOAuthRedirect);
 
+    // Listen for 401 unauthorized events from API service
+    authEvents.on(AUTH_EVENTS.UNAUTHORIZED, handleUnauthorized);
+
     return () => {
       subscription.remove();
+      // Remove the unauthorized event listener
+      authEvents.off(AUTH_EVENTS.UNAUTHORIZED, handleUnauthorized);
     };
-  }, [handleOAuthRedirect]);
+  }, [handleOAuthRedirect, handleUnauthorized]);
 
   useEffect(() => {
     // Log auth state changes for debugging
@@ -287,6 +327,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await AsyncStorage.removeItem("auth_token");
       await AsyncStorage.removeItem("user_data");
       console.log("AuthContext - Successfully cleared storage");
+      
+      // Navigate to login page (root)
+      router.replace("/");
     } catch (error) {
       console.error("Logout error:", error);
       // State is already cleared above, so this is just cleanup

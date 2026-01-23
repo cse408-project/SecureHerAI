@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { EventEmitter } from "events";
 import {
   SubmitReportRequest,
   GenericReportResponse,
@@ -21,7 +22,57 @@ fetch(`${API_BASE_URL}/isOk`)
   .then((data) => console.log("API Health Check:", data))
   .catch((error) => console.error("API Health Check Failed:", error));
 
+// Event emitter for auth events (like 401 unauthorized)
+export const authEvents = new EventEmitter();
+export const AUTH_EVENTS = {
+  UNAUTHORIZED: "unauthorized",
+};
+
 class ApiService {
+  // Track if we're already handling a 401 to prevent multiple logouts
+  private isHandling401 = false;
+
+  // Handle 401 response - emit event for AuthContext to handle
+  // ONLY triggers logout if user was actually logged in (had a token)
+  private async handle401Response(endpoint: string): Promise<void> {
+    if (this.isHandling401) {
+      console.log("API: Already handling 401, skipping duplicate");
+      return;
+    }
+    
+    // Check if there's actually a token stored - if not, user isn't logged in yet
+    // This prevents logout during OAuth flow before token is saved
+    const token = await AsyncStorage.getItem("auth_token");
+    if (!token) {
+      console.log(`API: 401 from ${endpoint} but no token stored - user not logged in, skipping logout`);
+      return;
+    }
+    
+    this.isHandling401 = true;
+    console.log(`API: 401 Unauthorized received from ${endpoint}, triggering logout`);
+    
+    // Emit unauthorized event for AuthContext to handle
+    authEvents.emit(AUTH_EVENTS.UNAUTHORIZED, { endpoint });
+    
+    // Reset the flag after a short delay to allow re-triggering if needed
+    setTimeout(() => {
+      this.isHandling401 = false;
+    }, 5000);
+  }
+
+  // Helper method to check response and handle 401
+  private async handleResponse<T>(
+    response: Response,
+    endpoint: string,
+    skipAuthCheck: boolean = false
+  ): Promise<{ ok: boolean; data?: T; status: number }> {
+    if (response.status === 401 && !skipAuthCheck) {
+      await this.handle401Response(endpoint);
+      return { ok: false, status: 401 };
+    }
+    return { ok: response.ok, status: response.status };
+  }
+
   private async getHeaders(
     includeAuth: boolean = false
   ): Promise<Record<string, string>> {
@@ -37,6 +88,25 @@ class ApiService {
     }
 
     return headers;
+  }
+
+  // Authenticated fetch that handles 401 automatically
+  private async authenticatedFetch(
+    url: string,
+    options: RequestInit = {},
+    endpoint: string
+  ): Promise<Response> {
+    const response = await fetch(url, {
+      ...options,
+      headers: await this.getHeaders(true),
+    });
+
+    // Handle 401 Unauthorized - trigger logout
+    if (response.status === 401) {
+      await this.handle401Response(endpoint);
+    }
+
+    return response;
   }
 
   // Google Authentication Methods
@@ -223,6 +293,12 @@ class ApiService {
       headers: await this.getHeaders(true),
     });
 
+    // Handle 401 Unauthorized
+    if (response.status === 401) {
+      await this.handle401Response("/user/profile");
+      return { success: false, error: "User not authenticated" };
+    }
+
     return response.json();
   }
 
@@ -289,14 +365,6 @@ class ApiService {
         };
       }
 
-      // // Explicitly format the request body to match backend expectations
-      // const locationData = {
-      //   latitude: data.latitude,
-      //   longitude: data.longitude
-      // };
-
-      // console.log('📍 Sending location to server:', locationData);
-
       const response = await fetch(`${API_BASE_URL}/user/location`, {
         method: "PUT",
         headers: await this.getHeaders(true),
@@ -305,6 +373,12 @@ class ApiService {
           currentLongitude: data.longitude,
         }),
       });
+
+      // Handle 401 Unauthorized - trigger logout
+      if (response.status === 401) {
+        await this.handle401Response("/user/location");
+        return { success: false, error: "User not authenticated" };
+      }
 
       const result = await response.json();
 
@@ -565,6 +639,12 @@ class ApiService {
         headers: await this.getHeaders(true),
       });
 
+      // Handle 401 Unauthorized - trigger logout
+      if (response.status === 401) {
+        await this.handle401Response("/settings");
+        return { success: false, error: "User not authenticated" };
+      }
+
       const data = await response.json();
 
       if (!response.ok) {
@@ -802,6 +882,14 @@ class ApiService {
         headers: await this.getHeaders(true),
       });
 
+      console.log("API: User reports response status:", response.status);
+
+      // Handle 401 Unauthorized - trigger logout
+      if (response.status === 401) {
+        await this.handle401Response("/report/user-reports");
+        return { success: false, error: "User not authenticated" };
+      }
+
       const data = await response.json();
       console.log("API: User reports response:", data);
 
@@ -979,6 +1067,14 @@ class ApiService {
         method: "GET",
         headers: await this.getHeaders(true),
       });
+
+      console.log("API: Public reports response status:", response.status);
+
+      // Handle 401 Unauthorized - trigger logout
+      if (response.status === 401) {
+        await this.handle401Response("/report/all-reports");
+        return { success: false, error: "User not authenticated" };
+      }
 
       const data = await response.json();
       console.log("API: Public reports response:", data);
@@ -1354,6 +1450,13 @@ class ApiService {
       });
 
       console.log("API: Pending alerts response status:", response.status);
+
+      // Handle 401 Unauthorized - trigger logout
+      if (response.status === 401) {
+        await this.handle401Response("/responder/pending-alerts");
+        return { success: false, error: "User not authenticated" };
+      }
+
       const data = await response.json();
 
       return data;
@@ -1381,6 +1484,13 @@ class ApiService {
       );
 
       console.log("API: Accepted alerts response status:", response.status);
+
+      // Handle 401 Unauthorized - trigger logout
+      if (response.status === 401) {
+        await this.handle401Response("/responder/accepted-alerts");
+        return { success: false, error: "User not authenticated" };
+      }
+
       const data = await response.json();
 
       return data;
@@ -1519,6 +1629,12 @@ class ApiService {
         method: "GET",
         headers: await this.getHeaders(true),
       });
+
+      // Handle 401 Unauthorized - trigger logout
+      if (response.status === 401) {
+        await this.handle401Response("/notifications/count");
+        return { success: false, error: "User not authenticated" };
+      }
 
       const data = await response.json();
 
@@ -1840,6 +1956,12 @@ class ApiService {
         method: "GET",
         headers: await this.getHeaders(true),
       });
+
+      // Handle 401 Unauthorized - trigger logout
+      if (response.status === 401) {
+        await this.handle401Response("/favorite_place");
+        return { success: false, error: "User not authenticated" };
+      }
 
       const data = await response.json();
 

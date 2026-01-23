@@ -108,8 +108,10 @@ const AlertDetailsModal = ({
     }
   };
 
-  // Status options for responders - only allow meaningful alert status updates
+  // Status options for responders - includes responder statuses (EN_ROUTE, ARRIVED) and alert resolution statuses
   const statusOptions = [
+    AlertStatus.EN_ROUTE,
+    AlertStatus.ARRIVED,
     AlertStatus.RESOLVED,
     AlertStatus.CRITICAL,
     AlertStatus.FALSE_ALARM,

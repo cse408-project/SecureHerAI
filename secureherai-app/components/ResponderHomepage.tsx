@@ -25,9 +25,24 @@ import locationService from "../services/locationService";
 interface AcceptedAlertResponder {
   alertId: string;
   responderId: string;
-  status: AlertStatus;
+  responderStatus: string; // The responder's status on this alert
+  alertStatus: string; // The alert's current status (ACCEPTED, CRITICAL, etc.)
   acceptedAt: string;
-  eta?: string;
+  arrivalTime?: string;
+  notes?: string;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
+  alertMessage?: string;
+  triggerMethod?: string;
+  triggeredAt?: string;
+  resolvedAt?: string;
+  victim?: {
+    userId: string;
+    fullName: string;
+    phone: string;
+    profilePicture?: string;
+  };
 }
 
 export default function ResponderHomepage() {
@@ -99,15 +114,15 @@ export default function ResponderHomepage() {
           "accepted/critical alerts"
         );
 
-        // Separate ACCEPTED and CRITICAL alerts
+        // Separate ACCEPTED and CRITICAL alerts based on alertStatus field
         const acceptedOnly = acceptedResponse.data.filter(
           (alert: AcceptedAlertResponder) =>
-            alert.status === AlertStatus.ACCEPTED
+            alert.alertStatus === "ACCEPTED" || alert.alertStatus === AlertStatus.ACCEPTED
         );
 
         const criticalOnly = acceptedResponse.data.filter(
           (alert: AcceptedAlertResponder) =>
-            alert.status === AlertStatus.CRITICAL
+            alert.alertStatus === "CRITICAL" || alert.alertStatus === AlertStatus.CRITICAL
         );
 
         setAcceptedAlerts(acceptedOnly);
@@ -896,7 +911,7 @@ export default function ResponderHomepage() {
 
                     <View className="bg-green-100 px-2 py-1 rounded-full">
                       <Text className="text-xs font-semibold text-green-700">
-                        {alertResponder.status?.toUpperCase() || "ACCEPTED"}
+                        {alertResponder.alertStatus?.toUpperCase() || "ACCEPTED"}
                       </Text>
                     </View>
                   </View>
@@ -1015,7 +1030,7 @@ export default function ResponderHomepage() {
 
                     <View className="bg-red-100 px-2 py-1 rounded-full">
                       <Text className="text-xs font-semibold text-red-700">
-                        {alertResponder.status?.toUpperCase() || "CRITICAL"}
+                        {alertResponder.alertStatus?.toUpperCase() || "CRITICAL"}
                       </Text>
                     </View>
                   </View>

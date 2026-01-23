@@ -66,4 +66,16 @@ public interface DeviceTokenRepository extends JpaRepository<DeviceToken, Long> 
      */
     @Query("SELECT dt FROM DeviceToken dt WHERE dt.userId IN :userIds AND dt.isActive = true")
     List<DeviceToken> findActiveTokensForUsers(@Param("userIds") List<UUID> userIds);
+
+    /**
+     * Count tokens by user
+     */
+    long countByUserId(UUID userId);
+
+    /**
+     * Delete all tokens for a user
+     */
+    @Modifying
+    @Query("DELETE FROM DeviceToken dt WHERE dt.userId = :userId")
+    void deleteByUserId(@Param("userId") UUID userId);
 }

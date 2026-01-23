@@ -65,9 +65,12 @@ public class NotificationService {
             .build();
 
     // TTL Configuration
-    private static final Duration EMERGENCY_TTL = Duration.ofHours(1); // 1 hour TTL
-    private static final int BATCH_SIZE = 2; // Send to 2 responders at a time
-    private static final int MAX_RESPONDERS = 10; // Maximum responders to notify per alert
+    // TODO: BATCH_SIZE = 2 & MAX_RESPONDERS = 10 $ EMERGENCY_TTL = 1 hour for
+    // production
+    private static final Duration EMERGENCY_TTL = Duration.ofMinutes(10); // 10 minutes TTL for testing (production: 1
+                                                                          // hour)
+    private static final int BATCH_SIZE = 1; // Send to 1 responder at a time (for testing, production: 2)
+    private static final int MAX_RESPONDERS = 2; // Maximum responders to notify per alert (for testing, production: 10)
 
     /**
      * Create a new notification
@@ -75,6 +78,13 @@ public class NotificationService {
     @Transactional
     public NotificationResponseDto createNotification(NotificationCreateDto createDto) {
         log.info("Creating notification for user: {}, type: {}", createDto.getUserId(), createDto.getType());
+
+        // Verify user exists before creating notification to avoid FK constraint
+        // violation
+        if (!userRepository.existsById(createDto.getUserId())) {
+            log.warn("Cannot create notification: user {} not found", createDto.getUserId());
+            return null;
+        }
 
         Notification notification = new Notification();
         notification.setUserId(createDto.getUserId());
@@ -817,6 +827,13 @@ public class NotificationService {
     public void sendAlertStatusUpdate(UUID userId, UUID alertId, String newStatus, UUID responderId) {
         log.info("Sending alert status update notification: userId={}, alertId={}, status={}, responderId={}",
                 userId, alertId, newStatus, responderId);
+
+        // Check if the user still exists before creating notification
+        Optional<User> alertUser = userRepository.findById(userId);
+        if (alertUser.isEmpty()) {
+            log.warn("Cannot send alert status update notification: user {} not found (may have been deleted)", userId);
+            return;
+        }
 
         // Get responder name for the notification
         String responderName = "A responder";

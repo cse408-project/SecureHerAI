@@ -483,9 +483,14 @@ public class SOSService {
             return null;
         }
 
-        // Check if the alert is already canceled or resolved
-        if (!alert.getStatus().equals(AlertStatus.ACTIVE)) {
-            log.warn("Alert {} is already {}, cannot cancel", alertId, alert.getStatus());
+        // Check if the alert can be canceled - allow ACTIVE, CRITICAL, and ACCEPTED
+        // states
+        // (before responder arrives, user can still cancel)
+        AlertStatus currentStatus = alert.getStatus();
+        if (!AlertStatus.ACTIVE.equals(currentStatus) &&
+                !AlertStatus.CRITICAL.equals(currentStatus) &&
+                !AlertStatus.ACCEPTED.equals(currentStatus)) {
+            log.warn("Alert {} is in {} state, cannot cancel", alertId, currentStatus);
             return null;
         }
 
@@ -632,9 +637,10 @@ public class SOSService {
             return null;
         }
 
-        // Valid status transitions for responders
+        // Valid status transitions for responders (includes responder statuses like
+        // EN_ROUTE, ARRIVED)
         List<AlertStatus> validStatuses = Arrays.asList(AlertStatus.RESOLVED, AlertStatus.CRITICAL,
-                AlertStatus.FALSE_ALARM, AlertStatus.REJECTED);
+                AlertStatus.FALSE_ALARM, AlertStatus.REJECTED, AlertStatus.EN_ROUTE, AlertStatus.ARRIVED);
         AlertStatus statusEnum;
         try {
             statusEnum = AlertStatus.fromString(newStatus);

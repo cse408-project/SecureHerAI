@@ -1,12 +1,18 @@
 export enum AlertStatus {
-  // Working alert statuses only
+  // Alert statuses
   ACTIVE = "ACTIVE",
   CANCELED = "CANCELED",
   RESOLVED = "RESOLVED",
   CRITICAL = "CRITICAL",
   FALSE_ALARM = "FALSE_ALARM",
+  EXPIRED = "EXPIRED",
+  // Responder statuses
+  PENDING = "PENDING",
   ACCEPTED = "ACCEPTED",
   REJECTED = "REJECTED",
+  FORWARDED = "FORWARDED",
+  EN_ROUTE = "EN_ROUTE",
+  ARRIVED = "ARRIVED",
 }
 
 export type AlertStatusString =
@@ -15,8 +21,13 @@ export type AlertStatusString =
   | "RESOLVED"
   | "CRITICAL"
   | "FALSE_ALARM"
+  | "EXPIRED"
+  | "PENDING"
   | "ACCEPTED"
-  | "REJECTED";
+  | "REJECTED"
+  | "FORWARDED"
+  | "EN_ROUTE"
+  | "ARRIVED";
 
 // Helper functions for status categorization
 export const isValidAlertStatus = (status: AlertStatus): boolean => {
@@ -41,10 +52,21 @@ export const parseAlertStatus = (status: string): AlertStatus => {
     case "FALSE_ALARM":
     case "FALSE":
       return AlertStatus.FALSE_ALARM;
+    case "EXPIRED":
+      return AlertStatus.EXPIRED;
+    case "PENDING":
+      return AlertStatus.PENDING;
     case "ACCEPTED":
       return AlertStatus.ACCEPTED;
     case "REJECTED":
       return AlertStatus.REJECTED;
+    case "FORWARDED":
+      return AlertStatus.FORWARDED;
+    case "EN_ROUTE":
+    case "ENROUTE":
+      return AlertStatus.EN_ROUTE;
+    case "ARRIVED":
+      return AlertStatus.ARRIVED;
     default:
       console.warn(`Unknown status: ${status}, defaulting to ACTIVE`);
       return AlertStatus.ACTIVE;

@@ -2,6 +2,7 @@ package com.secureherai.secureherai_api.repository;
 
 import com.secureherai.secureherai_api.entity.FavoritePlace;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -13,11 +14,17 @@ import java.util.UUID;
 
 @Repository
 public interface FavoritePlaceRepository extends JpaRepository<FavoritePlace, UUID> {
-    
-  
+
     List<FavoritePlace> findByUserId(UUID userId);
+
     Optional<FavoritePlace> findByUserIdAndId(UUID userId, UUID id);
-    Optional<FavoritePlace> findByUserIdAndPlaceName(UUID userId , String placeName);
-    
+
+    Optional<FavoritePlace> findByUserIdAndPlaceName(UUID userId, String placeName);
+
+    long countByUserId(UUID userId);
+
+    @Modifying
+    @Query("DELETE FROM FavoritePlace fp WHERE fp.userId = :userId")
+    void deleteByUserId(@Param("userId") UUID userId);
 
 }
