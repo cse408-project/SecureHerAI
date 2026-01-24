@@ -1,0 +1,168 @@
+CREATE TABLE notifications (
+  id                BIGINT       PRIMARY KEY AUTO_INCREMENT,
+  user_id           BIGINT       NOT NULL,               -- recipient
+  type              VARCHAR(30)  NOT NULL,               -- see Type Key enum
+  channel           VARCHAR(10)  NOT NULL,               -- 'IN_APP' or 'EMAIL' or 'BOTH'
+  title             VARCHAR(100) NOT NULL,               -- brief headline
+  message           TEXT         NOT NULL,               -- full body
+  payload           JSON         NULL,                   -- extra data (e.g. { lat, lng, reportId })
+  priority          INT          NOT NULL DEFAULT 0,      -- higher = more urgent
+  status            VARCHAR(15)  NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'SENT', 'READ', 'FAILED'
+  created_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  sent_at           TIMESTAMP    NULL,
+  read_at           TIMESTAMP    NULL,
+  INDEX (user_id),
+  INDEX (type),
+  INDEX (status)
+);
+
+
+implement this entity. this notification for:
+1. Notification Types
+Type ID	Key	Description
+1	EMERGENCY_NEARBY	Emergency alert sent to nearby responder
+2	EMERGENCY_TRUSTED_CONTACT	Emergency alert sent to user’s trusted contact
+3	HEATMAP_ALERT	Proactive safety warning when entering a high-risk zone
+4	EMERGENCY_ACCEPTED	Confirmation that a responder has accepted your emergency alert
+5	ARE_YOU_SAFE	“Are you safe?” follow-up alert if emergency status remains unresolved
+6	SYSTEM_NOTIFICATION	App/system updates, maintenance notices, policy changes
+
+
+
+for now do not include heatmap functionaliity just though build full entity. and methods. after successful sos alert send alert to all trusted contact and nearest 2 active responder. 
+proposed algo (do whatever should be done):
+B. Rolling Invitation Queue
+Build an ordered queue of all responders sorted by distance at t=0.
+Send invitations in batches of 2, each with a short TTL (e.g., 1 h).
+As invites expire (no “accepted” event), automatically send to the next in queue.
+If someone comes online after SOS, insert them into the queue in distance order and honor their turn.
+This approach guarantees you’re always inviting the closest available responders, even as availability shifts.
+
+
+
+
+you will not need to build queue or something as you can use database and see current active responder.
+
+build the backend and right necessary endpoints in sos_test.http or notification_test.http
+
+
+
+
+
+for responder registration, include currentLatitude, currentLongitude, branch name, address. update auth_test.http and backend also frontend. also add this in update profile in frontend and backend accordingly. current location and branch name. current location will add address and currentlongitude and currentlatitude, already currennt location implemented in report and sos service. however add these register and update profile for responder.
+
+
+
+
+
+alert keyword set option in setting entity. use this keyword to verify sos, (for now it is "help"). by default this will be help, user can change and view it, using password in frontend's settings. write the endpoint to view and set keyword in sos_test.http. first read the existing sos endpoint and their implementation where they use keyword then implement. do efficient coding not add any file use existing one in backend and frontend. first implement backend.
+ekta settings entity create koiro. oitai sob settings thakbe. keyword o okhane thakbe. ekhnkar notification settings ja ache (frontend e) okhanei thakbe. backend e notification preference ke delete kore/ change kore settings entity jeno use kore omn banate hbe.
+successful na hole/ voice retry korle storage theke delete audio. and success er por je report ta likhte asbe otake thik kora. existing jeta report er jonno page ache otai use kora. okhane details=alertmessage, evidence  = audio (if available), keyword show  korbe na though, ar location tao set hoe jabe automatic. baki aro nije add korte parbe.
+
+
+
+
+
+
+update backend seureherai-api:
+whenever create an sos, if sos is successful a report will auto generate for the alert using description = alert message, location address = alert location address, type emergency. primary evidence= audiourl (if voice), etc.
+Implement an endpoint get /alert-report/alertId=? returns report details.
+Report can be updated by only owner and responder. responder can't delete owner's uploaded evidence.
+
+update frontend secureherai-app:
+Instead of create report after sos and in emergency alert page, Use update report use the new get /alert-report/alertId=? No more create report button anymore in emergency page.
+
+
+
+Places API, Places UI Kit, Places API (New), Routes API, Directions API, Navigation SDK
+I've enabled these API's. Now Implement search field (with place suggestion). Also drop down destination field (also wiith place suggestion).Then show direction between these places.
+Show all nearby police stations and medical center (using api) [add one option in Map's pages filter to show Police & medical].
+Do these with minimal code. @websearch for best approach.
+
+
+
+
+Lets Make a flow.......
+When a responder accepts an alert, he will navigate to a page almost like map page, but it will show route responder current location to user's current location (alert location also visible). search option will be available too, but other map's options not needed. He can allso navigate to the page by a button in the accepted alert.
+User will see if an alert is accepted by its notification. also alert status in emergency page. By clicking a button if in accepted alert... he will also go the same page showing route his location to responder location. 
+Both locations should be stream to each other.
+For this page no tab button will be added. like submit.tsx, details.tsx pages.
+@websearch for best way to stream locations... (in web and android)
+
+
+When an user click on a alert it will see alert details. if it is responded or resolved, etc. he can see responder info. edit frontend and backend to implement it.
+With currentlocation of participant, get the phone number and email address, other necessary info in SOSService and Controller. Update NavigationScreen to show the call button and send email button for both end (responder and user). also show their necessary info...
+User can cancel an alert with canceled. responder can set alert resolved, critical, false status. update backend and frontend.
+Responder can filter the alerts in sos.tsx page. with their status and other info.
+setting page won't have the keyword setting for responder. Responders AllUser page should have a filter and user's contact should appear dropdown.
+
+
+
+Alert filter is not working correctly. I think there is some uppercase lowercase issue or incorrect status. see backend SOSService
+It is Because Alert status is incosistant. need to fix it everywhere. with enum class in backend and frontend.
+Search wherever alert status is. make them consistent.
+
+
+
+
+
+
+#################################################### Fix alert chain in responder ##################################################################
+
+
+1) ok then create alertresponse as soon as a alert is created based on batch size max size time like in #file:NotificationService.java . also when any alert accepted by someone. delete all other pending requests of the alert from alertresponse.
+
+2) update all the websocket, pending request all the things needs to be updated for the changes
+
+3) fix the view report. only the responder who accepted the alert and the user who created the alert can edit report. other view report must not let to edit report, only can see report. after that fix, who can see what? 1. accepted respponder and created user can view private evidence and edit them, 2. other responder can see officials only, not edit them, 3. other normal user just can see public evidence. it needs to be deeply analyze, because there are so much error and inconsistency.
+
+4) even though some alert are critical, mediam, low. all of the alert are showing as low in pending request, even though they are critical/mediam, fix them sothat they correctly show the flag. also when it is pending, low/mediam/critical will be in pending request (showing flag). after accepting it, if it is low or mediam then it will be in accepted alerts, if critical then automedtically shown in critical section in responder home. 
+
+5) maintain status in #file:Alert.java or #file:AlertResponder.java . also remove some stutus type in #file:AlertResponder.java if they are unused. please maintain the consitency accross the project.
+
+
+
+take your time. make lots of plan. order them correctly. that lots of work. please do them correctly.
+
+
+
+#################################################### Alert status confusion ###############################################################
+
+
+#file:AlertResponder.java 
+status:
+(its about what its responder status, seen by only the victim/user , and the associated responder)
+pending(no one still accepted it), accepted(a responder accepted it, but did not took any action), rejected(responder dismissed it, severity becaomes false_alarm), canceled(responder unable to do anything, then create a new notification sends to other police like a new alert/sos), forwarded(a responder forwarded this alert to me (another responder), it will be shown in my pending req with forwarded flag), en_rute/arrived (responders position), resolved(responder successfully finished it)
+
+
+#file:Alert.java 
+severity:
+(its about what the alert's severity, doesnot matter whateever it's alert status, seen byt everybody)
+critical, high, medium, low, false_alarm.
+
+AlertStatus:
+(its about alert's condition, everybody can see it, for security purpose)
+active: (when AlertResponder's status is pending/accepted/en_route/arrived/canceled/forwarded), finished(resolved/rejected), deleted(victim delete's the alert, all other alertresponder when status pending or forwarded will be deleted, except if it is assigned to someone then status will become canceled for him), expired(after [20 minutes for testing now, in production it will be 1week] of keeping as pending or forwarded, it will be assigned as expired)
+
+
+
+......
+
+
+User can only delete their alert, making it deleted, cant change other alertstatus of alert.java. also can edit the severity. but can't edit status of alertresponder.java only can view it.
+When responder accept's a alert, all other alertresponder will be removed. if it is critical then it will be placed in critical section in homepage. responder can edit severity. when alertresponder status is pending/forwarded it will be in on pending section. when accepted/resolved/en_route/arrived it will be accepted section/critical section based on severity. when canceled/rejected it wont show it in homepage.
+
+
+......
+
+please show more details (like texts location etc) when in accepted/critical section, like you are showing it in pending section.
+show the severity flag everywhere, victim and responder only can change them. show the alertstatus flag when it is not user/responder, other user/responder cant change them, alertstatus only changed by user when it is deleted. show the status flag to the victim and assigned responder, responder can only change them (only can change pending/forwarded to accepted by selecting, then it can be en_route/arrived/accepted but will stay in homepage, when cenceled/rejected/resolved it will be gone from homepage cant change them back).
+improve the homepage's style and the details page (make more interective) modal style, less colorful more standard.
+when try to forward to someone, the alertresponder of the forwarder will be deleted, assigned to forwarded responder as status forwarded. 
+show a list of responder select any number of them to forward. show the list in a modal, give a search bar, to search by badge name branch etc. remove the current forward by branch.
+
+thanks in advance.
+
+>>
+please analyze deeply. make a plan and lots of todo. then implement. if there is any incosistency fix by yourself by your intelectual ability and analyzing the project.
+before fixing frontend, remember its for android and web both. analyze then update. take your time

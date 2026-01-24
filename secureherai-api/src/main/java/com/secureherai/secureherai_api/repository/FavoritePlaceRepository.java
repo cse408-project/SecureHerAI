@@ -24,6 +24,7 @@ public interface FavoritePlaceRepository extends JpaRepository<FavoritePlace, UU
     long countByUserId(UUID userId);
 
     @Modifying
+    @org.springframework.transaction.annotation.Transactional
     @Query("DELETE FROM FavoritePlace fp WHERE fp.userId = :userId")
     void deleteByUserId(@Param("userId") UUID userId);
 

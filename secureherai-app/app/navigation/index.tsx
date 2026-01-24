@@ -11,7 +11,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
-  Alert,
   Linking,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -40,7 +39,7 @@ try {
 const NavigationScreen: React.FC = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { showAlert } = useAlert();
+  const { showAlert, showConfirmAlert } = useAlert();
   const { manualLocationReload } = useLocation();
 
   // Extract params
@@ -50,7 +49,7 @@ const NavigationScreen: React.FC = () => {
 
   // Location and participant states
   const [currentLocation, setCurrentLocation] = useState<MapLocation | null>(
-    null
+    null,
   );
   const [targetCurrentLocation, setTargetCurrentLocation] =
     useState<MapLocation | null>(null);
@@ -107,7 +106,7 @@ const NavigationScreen: React.FC = () => {
       // Only update if location changed by more than ~10 meters
       return latDiff > 0.0001 || lngDiff > 0.0001;
     },
-    []
+    [],
   );
 
   // Manual route update - only called explicitly on manual reload
@@ -126,7 +125,7 @@ const NavigationScreen: React.FC = () => {
         // Skip change detection - manual reload is always significant
       }
     },
-    []
+    [],
   );
 
   useEffect(() => {
@@ -140,7 +139,7 @@ const NavigationScreen: React.FC = () => {
 
       console.log(
         `📍 Fetching ${userRole === "USER" ? "responder" : "user"} location...`,
-        result
+        result,
       );
 
       if (result.success) {
@@ -161,7 +160,7 @@ const NavigationScreen: React.FC = () => {
               `📍 Updated ${
                 userRole === "USER" ? "responder" : "user"
               } location:`,
-              newLocation
+              newLocation,
             );
             setTargetCurrentLocation(newLocation);
             setConnectionStatus("connected");
@@ -169,7 +168,7 @@ const NavigationScreen: React.FC = () => {
             console.warn(
               `📍 ${
                 userRole === "USER" ? "Responder" : "User"
-              } location is null - they may not have shared location yet`
+              } location is null - they may not have shared location yet`,
             );
             console.log("Location data:", { latitude, longitude, lastUpdate });
             setConnectionStatus("connecting");
@@ -183,14 +182,14 @@ const NavigationScreen: React.FC = () => {
             `📍 Got ${
               userRole === "USER" ? "responder" : "user"
             } contact info:`,
-            result.participantInfo
+            result.participantInfo,
           );
           setParticipantInfo(result.participantInfo);
         }
       } else {
         console.warn(
           "Failed to get participant location:",
-          result.error || "Unknown error"
+          result.error || "Unknown error",
         );
         setConnectionStatus("disconnected");
       }
@@ -277,13 +276,13 @@ const NavigationScreen: React.FC = () => {
             } else {
               console.warn(
                 "📍 Failed to update location on server:",
-                updateResult.error
+                updateResult.error,
               );
             }
           } else {
             console.warn(
               "📍 Invalid coordinates - not sending to server",
-              location.coords
+              location.coords,
             );
           }
         } catch (error) {
@@ -348,7 +347,7 @@ const NavigationScreen: React.FC = () => {
     if (stableOrigin && stableDestination && !mapLoaded) {
       setMapLoaded(true);
       console.log(
-        "🗺️ Initial route coordinates set - ready for manual reload only"
+        "🗺️ Initial route coordinates set - ready for manual reload only",
       );
     }
   }, [
@@ -461,7 +460,7 @@ const NavigationScreen: React.FC = () => {
       ) {
         console.log(
           "🗺️ Setting stable origin with valid location:",
-          currentLocation
+          currentLocation,
         );
         setStableOrigin(currentLocation);
       }
@@ -477,7 +476,7 @@ const NavigationScreen: React.FC = () => {
       ) {
         console.log(
           "🗺️ Setting stable destination with valid location:",
-          targetLoc
+          targetLoc,
         );
         setStableDestination(targetLoc);
       }
@@ -505,17 +504,16 @@ const NavigationScreen: React.FC = () => {
 
   // Navigate back
   const handleBack = useCallback(() => {
-    Alert.alert("End Navigation", "Are you sure you want to end navigation?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "End",
-        style: "destructive",
-        onPress: () => {
-          router.back();
-        },
+    showConfirmAlert(
+      "End Navigation",
+      "Are you sure you want to end navigation?",
+      () => {
+        router.back();
       },
-    ]);
-  }, [router]);
+      undefined,
+      "warning",
+    );
+  }, [router, showConfirmAlert]);
 
   // Handle phone call
   const handleCall = useCallback(() => {
@@ -564,6 +562,7 @@ const NavigationScreen: React.FC = () => {
   }, [participantInfo, showAlert]);
 
   // Prepare markers for map - memoized to prevent constant re-renders
+  // Only show 2 markers: current user location + other participant's current location
   const markers = useMemo(() => {
     const markerList: MapMarker[] = [];
 
@@ -585,19 +584,8 @@ const NavigationScreen: React.FC = () => {
       });
     }
 
-    // Add target location marker (original alert location)
-    markerList.push({
-      id: "target",
-      coordinate: {
-        latitude: targetLocation.latitude,
-        longitude: targetLocation.longitude,
-      },
-      title: "Alert Location",
-      description: "Original emergency location",
-      color: "#FF0000",
-    });
-
     // Add current target location marker (other participant's current location)
+    // This is the main navigation target - the other person's real-time location
     if (
       targetCurrentLocation &&
       targetCurrentLocation.latitude != null &&
@@ -615,10 +603,26 @@ const NavigationScreen: React.FC = () => {
         } position`,
         color: userRole === "USER" ? "#00FF00" : "#0000FF",
       });
+    } else if (
+      targetLocation &&
+      targetLocation.latitude != null &&
+      targetLocation.longitude != null
+    ) {
+      // Fallback to alert location only if we don't have real-time location
+      markerList.push({
+        id: "target",
+        coordinate: {
+          latitude: targetLocation.latitude,
+          longitude: targetLocation.longitude,
+        },
+        title: "Alert Location",
+        description: "Emergency location (waiting for live location)",
+        color: "#FF0000",
+      });
     }
 
     return markerList;
-  }, [currentLocation, targetCurrentLocation, targetLocation, userRole]); // Include targetLocation
+  }, [currentLocation, targetCurrentLocation, targetLocation, userRole]);
 
   if (loading) {
     return (
@@ -712,10 +716,10 @@ const NavigationScreen: React.FC = () => {
                       mode === "DRIVING"
                         ? "directions-car"
                         : mode === "WALKING"
-                        ? "directions-walk"
-                        : mode === "BICYCLING"
-                        ? "directions-bike"
-                        : "directions-transit"
+                          ? "directions-walk"
+                          : mode === "BICYCLING"
+                            ? "directions-bike"
+                            : "directions-transit"
                     }
                     size={14}
                     color={routeMode === mode ? "white" : "#67082F"}
@@ -728,7 +732,7 @@ const NavigationScreen: React.FC = () => {
                     {mode.charAt(0) + mode.slice(1).toLowerCase()}
                   </Text>
                 </TouchableOpacity>
-              )
+              ),
             )}
           </View>
         )}
@@ -749,8 +753,14 @@ const NavigationScreen: React.FC = () => {
                 console.log("stableOrigin:", stableOrigin);
                 console.log("stableDestination:", stableDestination);
                 console.log("routeMode:", routeMode);
-                console.log("MapViewDirections available:", !!MapViewDirections);
-                console.log("API Key present:", !!process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY);
+                console.log(
+                  "MapViewDirections available:",
+                  !!MapViewDirections,
+                );
+                console.log(
+                  "API Key present:",
+                  !!process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY,
+                );
                 return null;
               })()}
               {Platform.OS !== "web" && MapViewDirections ? (
@@ -762,13 +772,19 @@ const NavigationScreen: React.FC = () => {
                   strokeColor="#4285F4"
                   mode={routeMode.toLowerCase() as any}
                   onReady={(result: any) => {
-                    console.log("🗺️ Native navigation directions ready:", result);
+                    console.log(
+                      "🗺️ Native navigation directions ready:",
+                      result,
+                    );
                     if (route === null || !mapLoaded) {
                       setRoute(result);
                     }
                   }}
                   onError={(errorMessage: any) => {
-                    console.error("🗺️ Native navigation directions error:", errorMessage);
+                    console.error(
+                      "🗺️ Native navigation directions error:",
+                      errorMessage,
+                    );
                   }}
                 />
               ) : Platform.OS === "web" ? (
@@ -786,7 +802,10 @@ const NavigationScreen: React.FC = () => {
                     }
                   }}
                   onError={(errorMessage: any) => {
-                    console.error("🗺️ Web navigation directions error:", errorMessage);
+                    console.error(
+                      "🗺️ Web navigation directions error:",
+                      errorMessage,
+                    );
                   }}
                 />
               ) : null}
@@ -860,12 +879,12 @@ const NavigationScreen: React.FC = () => {
                     userRole === "USER" ? "responder" : "user"
                   } to share location...`
                 : connectionStatus === "disconnected"
-                ? `Unable to connect to ${
-                    userRole === "USER" ? "responder" : "user"
-                  }`
-                : `Getting ${
-                    userRole === "USER" ? "responder" : "user"
-                  } location...`}
+                  ? `Unable to connect to ${
+                      userRole === "USER" ? "responder" : "user"
+                    }`
+                  : `Getting ${
+                      userRole === "USER" ? "responder" : "user"
+                    } location...`}
             </Text>
           </View>
         )}

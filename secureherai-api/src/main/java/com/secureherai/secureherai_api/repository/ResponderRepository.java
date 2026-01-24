@@ -31,9 +31,33 @@ public interface ResponderRepository extends JpaRepository<Responder, UUID> {
             @Param("type") Responder.ResponderType type);
 
     @Modifying
+    @org.springframework.transaction.annotation.Transactional
     @Query("DELETE FROM Responder r WHERE r.userId = :userId")
     void deleteByUserId(@Param("userId") UUID userId);
 
     @Query("SELECT r FROM Responder r WHERE r.badgeNumber = :badgeNumber")
     Optional<Responder> findByBadgeNumber(@Param("badgeNumber") String badgeNumber);
+
+    /**
+     * Search responders by badge number, name (from user), or branch name
+     * Returns only active responders, excludes the current responder
+     */
+    @Query("SELECT r FROM Responder r JOIN r.user u WHERE r.isActive = true AND r.userId != :excludeResponderId " +
+            "AND (LOWER(r.badgeNumber) LIKE LOWER(CONCAT('%', :query, '%')) " +
+            "OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :query, '%')) " +
+            "OR LOWER(r.branchName) LIKE LOWER(CONCAT('%', :query, '%')))")
+    List<Responder> searchResponders(@Param("query") String query,
+            @Param("excludeResponderId") UUID excludeResponderId);
+
+    /**
+     * Get all active responders except the current one
+     */
+    @Query("SELECT r FROM Responder r WHERE r.isActive = true AND r.userId != :excludeResponderId")
+    List<Responder> findAllActiveExcept(@Param("excludeResponderId") UUID excludeResponderId);
+
+    /**
+     * Find responders by list of IDs
+     */
+    @Query("SELECT r FROM Responder r WHERE r.userId IN :responderIds")
+    List<Responder> findByUserIdIn(@Param("responderIds") List<UUID> responderIds);
 }

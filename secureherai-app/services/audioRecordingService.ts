@@ -1,4 +1,10 @@
-import { AudioModule, RecordingPresets, RecordingOptions, AndroidOutputFormat, AndroidAudioEncoder } from "expo-audio";
+import {
+  AudioModule,
+  RecordingPresets,
+  RecordingOptions,
+  AndroidOutputFormat,
+  AndroidAudioEncoder,
+} from "expo-audio";
 import { Platform } from "react-native";
 import * as FileSystem from "expo-file-system";
 import cloudinaryService from "./cloudinary";
@@ -59,13 +65,13 @@ class AudioRecordingService {
     const options = {
       ...RecordingPresets.HIGH_QUALITY,
       android: {
-        extension: '.m4a', // Use M4A for Android (compatible with Google Cloud Speech)
-        outputFormat: 'aac_adts' as AndroidOutputFormat, // AAC-LC format for true audio-only M4A container
-        audioEncoder: 'aac' as AndroidAudioEncoder, // AAC codec (supported by Google Cloud Speech)
+        extension: ".m4a", // Use M4A for Android (compatible with Google Cloud Speech)
+        outputFormat: "aac_adts" as AndroidOutputFormat, // AAC-LC format for true audio-only M4A container
+        audioEncoder: "aac" as AndroidAudioEncoder, // AAC codec (supported by Google Cloud Speech)
         sampleRate: 16000, // 16kHz - optimal for speech recognition
       },
       ios: {
-        extension: '.m4a', // Use M4A for iOS for consistency
+        extension: ".m4a", // Use M4A for iOS for consistency
         audioQuality: 96, // High quality for iOS (96 kbps)
         sampleRate: 16000, // 16kHz - optimal for speech recognition
       },
@@ -155,7 +161,7 @@ class AudioRecordingService {
    */
   async uploadRecording(
     uri: string,
-    folder: string = "voice_recordings"
+    folder: string = "voice_recordings",
   ): Promise<AudioUploadResult> {
     try {
       console.log("☁️ Uploading audio to Cloudinary...");
@@ -198,6 +204,12 @@ class AudioRecordingService {
    */
   async deleteLocalRecording(uri: string): Promise<boolean> {
     try {
+      // FileSystem is not available on web platform
+      if (Platform.OS === "web") {
+        console.log("⚠️ File deletion skipped on web platform");
+        return true;
+      }
+
       console.log("🗑️ Deleting local recording:", uri);
 
       // Check if file exists first
@@ -244,7 +256,7 @@ class AudioRecordingService {
    */
   async deleteRecording(
     localUri?: string,
-    cloudUrl?: string
+    cloudUrl?: string,
   ): Promise<{
     localDeleted: boolean;
     cloudDeleted: boolean;

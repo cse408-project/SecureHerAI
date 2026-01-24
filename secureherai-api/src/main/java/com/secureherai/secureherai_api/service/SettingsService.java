@@ -12,44 +12,50 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
 
 /**
- * Service for managing user settings including notification preferences and SOS keyword
+ * Service for managing user settings including notification preferences and SOS
+ * keyword
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class SettingsService {
-    
+
     private final SettingsRepository settingsRepository;
     private final UserRepository userRepository;
-    
+
     /**
      * Get user settings, create default if not exists
      */
     public Settings getUserSettings(UUID userId) {
+        // First check if user exists to provide better error message
+        if (!userRepository.existsById(userId)) {
+            log.warn("User not found with ID: {}. Token may be stale - user should re-login.", userId);
+            throw new RuntimeException("User not found. Please log out and log back in.");
+        }
         return settingsRepository.findByUserId(userId)
-            .orElseGet(() -> createDefaultSettings(userId));
+                .orElseGet(() -> createDefaultSettings(userId));
     }
-    
+
     /**
      * Create default settings for a user
      */
     @Transactional
     public Settings createDefaultSettings(UUID userId) {
         User user = userRepository.findById(userId)
-            .orElseThrow(() -> new RuntimeException("User not found"));
-        
+                .orElseThrow(() -> new RuntimeException("User not found. Please log out and log back in."));
+
         Settings settings = new Settings(user);
         return settingsRepository.save(settings);
     }
-    
+
     /**
      * Update user settings
      */
     @Transactional
-    public Settings updateSettings(UUID userId, Boolean emailAlerts, Boolean smsAlerts, 
-                                 Boolean pushNotifications, String sosKeyword) {
+    public Settings updateSettings(UUID userId, Boolean emailAlerts, Boolean smsAlerts,
+            Boolean pushNotifications, String sosKeyword) {
         Settings settings = getUserSettings(userId);
-        
+
         if (emailAlerts != null) {
             settings.setEmailAlerts(emailAlerts);
         }
@@ -62,10 +68,10 @@ public class SettingsService {
         if (sosKeyword != null && !sosKeyword.trim().isEmpty()) {
             settings.setSosKeyword(sosKeyword.trim().toLowerCase());
         }
-        
+
         return settingsRepository.save(settings);
     }
-    
+
     /**
      * Update SOS keyword specifically
      */
@@ -75,7 +81,7 @@ public class SettingsService {
         settings.setSosKeyword(sosKeyword != null ? sosKeyword.trim().toLowerCase() : "help");
         return settingsRepository.save(settings);
     }
-    
+
     /**
      * Get SOS keyword for a user
      */
@@ -83,15 +89,15 @@ public class SettingsService {
         Settings settings = getUserSettings(userId);
         return settings.getSosKeyword();
     }
-    
+
     /**
      * Update notification preferences only
      */
     @Transactional
-    public Settings updateNotificationPreferences(UUID userId, Boolean emailAlerts, 
-                                                Boolean smsAlerts, Boolean pushNotifications) {
+    public Settings updateNotificationPreferences(UUID userId, Boolean emailAlerts,
+            Boolean smsAlerts, Boolean pushNotifications) {
         Settings settings = getUserSettings(userId);
-        
+
         if (emailAlerts != null) {
             settings.setEmailAlerts(emailAlerts);
         }
@@ -101,7 +107,7 @@ public class SettingsService {
         if (pushNotifications != null) {
             settings.setPushNotifications(pushNotifications);
         }
-        
+
         return settingsRepository.save(settings);
     }
 }

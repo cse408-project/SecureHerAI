@@ -5,6 +5,7 @@ import {
   ScrollView,
   RefreshControl,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import React, { useState, useEffect, useCallback } from "react";
@@ -13,18 +14,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAlert } from "../../context/AlertContext";
 import { useAuth } from "../../context/AuthContext";
 import Header from "../../components/Header";
+import PageControlBar from "../../components/PageControlBar";
 import apiService from "../../services/api";
 import { Alert as AlertType } from "../../types/sos";
-import { AlertStatus } from "../../types/AlertStatus";
+import { AlertStatus, ResponderStatus } from "../../types/AlertStatus";
 import { router } from "expo-router";
 import NotificationModal from "../../components/NotificationModal";
 import AlertDetailsModal from "../../components/AlertDetailsModal";
-import {
-  getAlertStatusColor,
-  getSeverityColor,
-  getSeverityBgClass,
-  getSeverityTextClass,
-} from "../../utils/incidentHelpers";
 
 export default function SOSScreen() {
   const [refreshing, setRefreshing] = useState(false);
@@ -39,9 +35,11 @@ export default function SOSScreen() {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [acceptedAlertIds, setAcceptedAlertIds] = useState<Set<string>>(
-    new Set()
+    new Set(),
   ); // Track which alerts current responder has accepted
-  const [viewMode, setViewMode] = useState<"all" | "my">("all"); // Toggle between all alerts and my alerts
+  const [viewMode, setViewMode] = useState<"my" | "all">("my"); // Toggle between my alerts and all alerts (my first)
+  const [searchQuery, setSearchQuery] = useState(""); // Search query
+  const [showFilterModal, setShowFilterModal] = useState(false); // Filter modal state
 
   const { showAlert, showConfirmAlert } = useAlert();
   const { user } = useAuth(); // Get user from auth context
@@ -60,7 +58,7 @@ export default function SOSScreen() {
           return response.data.responders.some(
             (responder: any) =>
               responder.responderId === user.userId &&
-              responder.status === AlertStatus.ACCEPTED
+              responder.status === ResponderStatus.ACCEPTED,
           );
         }
         return false;
@@ -69,7 +67,7 @@ export default function SOSScreen() {
         return false;
       }
     },
-    [isResponder, user?.userId]
+    [isResponder, user?.userId],
   );
 
   // Check if user is a responder
@@ -82,7 +80,7 @@ export default function SOSScreen() {
           "SOSScreen: User role from context:",
           user.role,
           "Is responder:",
-          isResponderUser
+          isResponderUser,
         );
         setIsResponder(isResponderUser);
         return;
@@ -100,7 +98,7 @@ export default function SOSScreen() {
           "SOSScreen: User role from storage:",
           userRole,
           "Is responder:",
-          isResponderUser
+          isResponderUser,
         );
         setIsResponder(isResponderUser);
       } else {
@@ -126,7 +124,7 @@ export default function SOSScreen() {
           const response = await apiService.getAlertDetails(alert.id);
           if (response.success && response.data?.responders) {
             const hasAccepted = response.data.responders.some(
-              (responder: any) => responder.responderId === user.userId
+              (responder: any) => responder.responderId === user.userId,
             );
             if (hasAccepted) {
               accepted.add(alert.id);
@@ -139,7 +137,7 @@ export default function SOSScreen() {
 
       setAcceptedAlertIds(accepted);
     },
-    [isResponder, user?.userId]
+    [isResponder, user?.userId],
   );
 
   // Load alerts based on user role and view mode
@@ -149,17 +147,17 @@ export default function SOSScreen() {
 
       // Determine which API endpoint to call based on user role and view mode
       let response;
-      if (isResponder) {
-        if (viewMode === "my") {
+      if (viewMode === "my") {
+        if (isResponder) {
           // For responders in "my" mode, get their historical alerts (excluding ACTIVE and CANCELED)
           response = await apiService.getMyAlerts();
         } else {
-          // For responders in "all" mode, get all active alerts from all users
-          response = await apiService.getAllAlerts();
+          // For regular users in "my" mode, get their own alerts
+          response = await apiService.getUserAlerts();
         }
       } else {
-        // For regular users, get their own alerts
-        response = await apiService.getUserAlerts();
+        // For "all" mode, get all alerts (both users and responders can see all)
+        response = await apiService.getAllAlerts();
       }
 
       if (response.success && (response.alerts || response.data)) {
@@ -176,7 +174,7 @@ export default function SOSScreen() {
       } else {
         console.error(
           "Failed to load alerts:",
-          response.error || "Unknown error"
+          response.error || "Unknown error",
         );
         setAlerts([]);
       }
@@ -188,16 +186,32 @@ export default function SOSScreen() {
     }
   }, [isResponder, viewMode, user?.userId, checkAcceptedAlerts]);
 
-  // Get filtered alerts based on status filter
+  // Get filtered alerts based on status filter and search query
   const getFilteredAlerts = useCallback(() => {
-    if (!statusFilter) {
-      return alerts; // Return all alerts if no filter is set
+    let filtered = alerts;
+
+    // Apply status filter
+    if (statusFilter) {
+      filtered = filtered.filter(
+        (alert) => alert.status.toUpperCase() === statusFilter.toUpperCase(),
+      );
     }
 
-    return alerts.filter(
-      (alert) => alert.status.toUpperCase() === statusFilter.toUpperCase()
-    );
-  }, [alerts, statusFilter]);
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (alert) =>
+          alert.id.toLowerCase().includes(query) ||
+          alert.triggerMethod?.toLowerCase().includes(query) ||
+          alert.status?.toLowerCase().includes(query) ||
+          alert.address?.toLowerCase().includes(query) ||
+          alert.alertMessage?.toLowerCase().includes(query),
+      );
+    }
+
+    return filtered;
+  }, [alerts, statusFilter, searchQuery]);
 
   // Handle status filter change
   const handleFilterChange = (status: string | null) => {
@@ -211,23 +225,14 @@ export default function SOSScreen() {
 
   // Reload alerts when view mode changes
   useEffect(() => {
-    if (isResponder) {
-      loadAlerts();
-    }
-  }, [viewMode, loadAlerts, isResponder]);
-
-  // Reload alerts when view mode changes for responders
-  useEffect(() => {
-    if (isResponder) {
-      loadAlerts();
-    }
-  }, [viewMode, isResponder, loadAlerts]);
+    loadAlerts();
+  }, [viewMode, loadAlerts]);
 
   // Re-check user role when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       checkUserRole().then(() => loadAlerts());
-    }, [loadAlerts, checkUserRole])
+    }, [loadAlerts, checkUserRole]),
   );
 
   const onRefresh = async () => {
@@ -249,7 +254,7 @@ export default function SOSScreen() {
             showAlert(
               "Success",
               "Alert has been canceled successfully.",
-              "success"
+              "success",
             );
             // Refresh the alerts list
             loadAlerts();
@@ -257,7 +262,7 @@ export default function SOSScreen() {
             showAlert(
               "Error",
               response.message || "Failed to cancel alert. Please try again.",
-              "error"
+              "error",
             );
           }
         } catch (error) {
@@ -265,14 +270,14 @@ export default function SOSScreen() {
           showAlert(
             "Error",
             "An error occurred while canceling the alert.",
-            "error"
+            "error",
           );
         } finally {
           setCancelingAlertId(null);
         }
       },
       undefined,
-      "warning"
+      "warning",
     );
   };
 
@@ -299,7 +304,7 @@ export default function SOSScreen() {
         showAlert(
           "Report Not Found",
           "The report for this alert hasn't been generated yet. Please wait a moment and try again.",
-          "warning"
+          "warning",
         );
       }
     } catch (error) {
@@ -307,7 +312,7 @@ export default function SOSScreen() {
       showAlert(
         "Error",
         "Failed to fetch report for this alert. Please try again.",
-        "error"
+        "error",
       );
     }
   };
@@ -326,7 +331,7 @@ export default function SOSScreen() {
         showAlert(
           "Error",
           response.error || "Failed to load alert details. Please try again.",
-          "error"
+          "error",
         );
       }
     } catch (error) {
@@ -334,7 +339,7 @@ export default function SOSScreen() {
       showAlert(
         "Error",
         "An error occurred while loading alert details.",
-        "error"
+        "error",
       );
     } finally {
       setLoadingDetails(false);
@@ -347,7 +352,7 @@ export default function SOSScreen() {
         showAlert(
           "Error",
           "Alert location is not available for navigation",
-          "error"
+          "error",
         );
         return;
       }
@@ -374,7 +379,7 @@ export default function SOSScreen() {
       showAlert(
         "Error",
         "Failed to start navigation. Please try again.",
-        "error"
+        "error",
       );
     }
   };
@@ -382,20 +387,30 @@ export default function SOSScreen() {
   // Use unified status color helper - consistent across app
   const getStatusColor = (status: string) => {
     switch (status?.toUpperCase()) {
-      case AlertStatus.CRITICAL:
+      case "CRITICAL":
         return "text-red-700 bg-red-100 border-red-300";
-      case AlertStatus.ACTIVE:
+      case "ACTIVE":
         return "text-amber-700 bg-amber-100 border-amber-300";
-      case AlertStatus.ACCEPTED:
+      case "PENDING":
+        return "text-orange-600 bg-orange-50 border-orange-200";
+      case "ACCEPTED":
         return "text-blue-700 bg-blue-100 border-blue-300";
-      case AlertStatus.RESOLVED:
+      case "EN_ROUTE":
+        return "text-yellow-600 bg-yellow-50 border-yellow-200";
+      case "ARRIVED":
+        return "text-indigo-600 bg-indigo-50 border-indigo-200";
+      case "RESOLVED":
         return "text-green-700 bg-green-100 border-green-300";
-      case AlertStatus.CANCELED:
+      case "CANCELED":
         return "text-gray-700 bg-gray-100 border-gray-300";
-      case AlertStatus.FALSE_ALARM:
+      case "FALSE_ALARM":
         return "text-purple-700 bg-purple-100 border-purple-300";
-      case AlertStatus.REJECTED:
+      case "REJECTED":
         return "text-red-600 bg-red-50 border-red-200";
+      case "FORWARDED":
+        return "text-cyan-600 bg-cyan-50 border-cyan-200";
+      case "EXPIRED":
+        return "text-stone-600 bg-stone-50 border-stone-200";
       default:
         return "text-gray-700 bg-gray-100 border-gray-300";
     }
@@ -426,11 +441,11 @@ export default function SOSScreen() {
         showAlert(
           "Test Alert Sent",
           "Test emergency alert has been sent to your trusted contacts.",
-          "success"
+          "success",
         );
       },
       undefined,
-      "info"
+      "info",
     );
   };
 
@@ -450,180 +465,106 @@ export default function SOSScreen() {
         showNotificationDot={false}
       />
 
-      <ScrollView
-        className="flex-1 p-4 pb-10"
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+      {/* Standardized Control Bar */}
+      <PageControlBar
+        viewMode={viewMode}
+        onViewModeChange={(mode) => setViewMode(mode)}
+        myLabel="My Alerts"
+        allLabel="All Alerts"
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search alerts..."
+        onFilterPress={() => setShowFilterModal(true)}
+        filterLabel="Filter"
+        hasActiveFilter={statusFilter !== null}
+        showAdd={false}
+      />
+
+      {/* Filter Modal */}
+      <Modal
+        visible={showFilterModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowFilterModal(false)}
       >
-        {/* {!isResponder && (
-          <>
-            Quick Emergency Actions
-            <View className="bg-white rounded-lg p-4 shadow-sm mb-4">
-              <Text className="text-lg font-bold text-[#67082F] mb-4">
-                Emergency Actions
+        <View className="flex-1 bg-black/50 justify-center items-center">
+          <View className="bg-white rounded-lg p-6 m-4 w-11/12 max-w-md">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-lg font-bold text-[#67082F]">
+                Filter Alerts
               </Text>
-
               <TouchableOpacity
-                className="flex-row items-center p-3 bg-red-50 rounded-lg mb-3 border border-red-200"
-                onPress={handleTestAlert}
+                onPress={() => setShowFilterModal(false)}
+                className="p-1 rounded-full"
               >
-                <View className="w-10 h-10 bg-red-600 rounded-full items-center justify-center mr-3">
-                  <MaterialIcons name="bug-report" size={20} color="white" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-red-700 font-semibold">
-                    Send Test Alert
-                  </Text>
-                  <Text className="text-red-600 text-sm">
-                    Test your emergency system
-                  </Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={24} color="#67082F" />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className="flex-row items-center p-3 bg-blue-50 rounded-lg mb-3 border border-blue-200"
-                onPress={handleManageContacts}
-              >
-                <View className="w-10 h-10 bg-blue-600 rounded-full items-center justify-center mr-3">
-                  <MaterialIcons name="people" size={20} color="white" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-blue-700 font-semibold">
-                    Manage Trusted Contacts
-                  </Text>
-                  <Text className="text-blue-600 text-sm">
-                    Add or edit emergency contacts
-                  </Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={24} color="#67082F" />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className="flex-row items-center p-3 bg-purple-50 rounded-lg border border-purple-200"
-                onPress={handleEmergencySettings}
-              >
-                <View className="w-10 h-10 bg-purple-600 rounded-full items-center justify-center mr-3">
-                  <MaterialIcons name="settings" size={20} color="white" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-purple-700 font-semibold">
-                    Emergency Settings
-                  </Text>
-                  <Text className="text-purple-600 text-sm">
-                    Configure alert preferences
-                  </Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={24} color="#67082F" />
+                <MaterialIcons name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
-          </>
-        )} */}
 
-        {/* Alerts */}
-        <View className="bg-white rounded-lg p-4 shadow-sm">
-          <Text className="text-lg font-bold text-[#67082F] mb-4">
-            {isResponder ? "All System Alerts" : "Your Alert History"}
-          </Text>
-
-          {/* View Mode Toggle - Only show for responders */}
-          {isResponder && (
-            <View className="bg-white rounded-lg p-4 shadow-sm mb-4">
-              <Text className="text-lg font-bold text-[#67082F] mb-3">
-                Alert View
-              </Text>
-              <View className="flex-row">
-                <TouchableOpacity
-                  className={`flex-1 py-3 px-4 rounded-l-lg border ${
-                    viewMode === "all"
-                      ? "bg-[#67082F] border-[#67082F]"
-                      : "bg-white border-gray-300"
-                  }`}
-                  onPress={() => setViewMode("all")}
-                >
-                  <Text
-                    className={`text-center font-medium ${
-                      viewMode === "all" ? "text-white" : "text-gray-700"
-                    }`}
-                  >
-                    All Alerts
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  className={`flex-1 py-3 px-4 rounded-r-lg border-l-0 border ${
-                    viewMode === "my"
-                      ? "bg-[#67082F] border-[#67082F]"
-                      : "bg-white border-gray-300"
-                  }`}
-                  onPress={() => setViewMode("my")}
-                >
-                  <Text
-                    className={`text-center font-medium ${
-                      viewMode === "my" ? "text-white" : "text-gray-700"
-                    }`}
-                  >
-                    My Alerts
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              <Text className="text-sm text-gray-500 mt-2 text-center">
-                {viewMode === "all"
-                  ? "View all active alerts from users"
-                  : "View your accepted alerts history (you can update status)"}
-              </Text>
-            </View>
-          )}
-
-          {/* Status Filters - Only show for responders in "all" mode */}
-          {isResponder && viewMode === "all" && (
+            <Text className="text-sm font-semibold text-gray-700 mb-2">
+              Status
+            </Text>
             <View className="flex-row flex-wrap mb-4">
-              <Text className="text-gray-700 mr-2 self-center">
-                Filter by:{" "}
-              </Text>
               {[
+                AlertStatus.WAITING,
                 AlertStatus.ACTIVE,
-                AlertStatus.ACCEPTED,
-                AlertStatus.RESOLVED,
-                AlertStatus.CANCELED,
-                AlertStatus.CRITICAL,
-                AlertStatus.FALSE_ALARM,
-                AlertStatus.REJECTED,
+                AlertStatus.FINISHED,
+                AlertStatus.EXPIRED,
               ].map((status) => (
                 <TouchableOpacity
                   key={status}
-                  className={`px-3 py-1 rounded-full mr-2 mb-2 border ${
+                  className={`px-3 py-2 rounded-lg mr-2 mb-2 border ${
                     statusFilter === status
-                      ? "bg-blue-100 border-blue-500"
-                      : "bg-gray-50 border-gray-300"
+                      ? "bg-[#67082F] border-[#67082F]"
+                      : "bg-gray-100 border-gray-200"
                   }`}
                   onPress={() => handleFilterChange(status)}
                 >
                   <Text
                     className={`text-xs font-medium ${
-                      statusFilter === status
-                        ? "text-blue-700"
-                        : "text-gray-600"
+                      statusFilter === status ? "text-white" : "text-gray-600"
                     }`}
                   >
                     {status}
                   </Text>
                 </TouchableOpacity>
               ))}
-              {statusFilter && (
-                <TouchableOpacity
-                  className="px-3 py-1 rounded-full mr-2 mb-2 bg-red-50 border border-red-300"
-                  onPress={() => setStatusFilter(null)}
-                >
-                  <Text className="text-xs font-medium text-red-600">
-                    Clear Filter
-                  </Text>
-                </TouchableOpacity>
-              )}
             </View>
-          )}
 
+            <View className="flex-row justify-between mt-2">
+              <TouchableOpacity
+                className="flex-1 mr-2 py-2.5 border border-gray-300 rounded-lg"
+                onPress={() => {
+                  setStatusFilter(null);
+                  setShowFilterModal(false);
+                }}
+              >
+                <Text className="text-center text-gray-700 font-medium">
+                  Clear
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="flex-1 ml-2 py-2.5 bg-[#67082F] rounded-lg"
+                onPress={() => setShowFilterModal(false)}
+              >
+                <Text className="text-center text-white font-medium">
+                  Apply
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <ScrollView
+        className="flex-1 px-4 pb-10"
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {/* Alerts List */}
+        <View className="bg-white rounded-lg p-4 shadow-sm">
           {loading ? (
             <View className="items-center py-8">
               <ActivityIndicator size="large" color="#67082F" />
@@ -631,21 +572,46 @@ export default function SOSScreen() {
             </View>
           ) : getFilteredAlerts().length === 0 ? (
             <View className="items-center py-8">
-              <MaterialIcons name="history" size={48} color="#9CA3AF" />
+              <MaterialIcons
+                name={searchQuery ? "search-off" : "history"}
+                size={48}
+                color="#9CA3AF"
+              />
               <Text className="text-gray-500 mt-2 text-center">
-                {isResponder
-                  ? statusFilter
-                    ? `No ${statusFilter.toLowerCase()} alerts found`
-                    : "No alerts in the system at the moment"
-                  : "No emergency alerts yet"}
+                {searchQuery
+                  ? "No alerts match your search"
+                  : isResponder
+                    ? statusFilter
+                      ? `No ${statusFilter.toLowerCase()} alerts found`
+                      : "No alerts in the system at the moment"
+                    : statusFilter
+                      ? `No ${statusFilter.toLowerCase()} alerts found`
+                      : "No emergency alerts yet"}
               </Text>
               <Text className="text-gray-400 text-sm text-center mt-1">
-                {isResponder
-                  ? statusFilter
-                    ? "Try changing or clearing the filter"
-                    : "All system alerts from users will appear here"
-                  : "Your emergency alert history will appear here"}
+                {searchQuery
+                  ? "Try a different search term"
+                  : isResponder
+                    ? statusFilter
+                      ? "Try changing or clearing the filter"
+                      : "All system alerts from users will appear here"
+                    : statusFilter
+                      ? "Try changing or clearing the filter"
+                      : "Your emergency alert history will appear here"}
               </Text>
+              {(statusFilter || searchQuery) && (
+                <TouchableOpacity
+                  className="mt-4 px-4 py-2 bg-gray-100 rounded-lg"
+                  onPress={() => {
+                    setStatusFilter(null);
+                    setSearchQuery("");
+                  }}
+                >
+                  <Text className="text-gray-700 font-medium">
+                    Clear Filters
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           ) : (
             getFilteredAlerts().map((alert) => (
@@ -669,7 +635,7 @@ export default function SOSScreen() {
                       </Text>
                       <View
                         className={`px-2 py-1 rounded-full border ${getStatusColor(
-                          alert.status
+                          alert.status,
                         )}`}
                       >
                         <Text className="text-xs font-medium">
@@ -755,9 +721,8 @@ export default function SOSScreen() {
 
                       {/* Navigation button */}
                       {!isResponder
-                        ? // For users: Show navigation for ACCEPTED and CRITICAL alerts
-                          (alert.status === AlertStatus.ACCEPTED ||
-                            alert.status === AlertStatus.CRITICAL) && (
+                        ? // For users: Show navigation for ACTIVE alerts (responder has accepted)
+                          alert.status === AlertStatus.ACTIVE && (
                             <TouchableOpacity
                               className="bg-green-100 rounded-md py-2 px-3 mr-2 flex-row items-center"
                               onPress={() => handleNavigateToResponder(alert)}
@@ -853,8 +818,8 @@ export default function SOSScreen() {
           isResponder && viewMode === "my"
             ? true // In "My Alerts" mode, responder can always update status since these are their accepted alerts
             : selectedAlert?.id
-            ? acceptedAlertIds.has(selectedAlert.id)
-            : false
+              ? acceptedAlertIds.has(selectedAlert.id)
+              : false
         }
         loadingDetails={loadingDetails}
         onStatusUpdate={onRefresh}

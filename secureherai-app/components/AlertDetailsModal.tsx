@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Modal,
   View,
@@ -9,7 +9,11 @@ import {
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Alert as AlertType } from "../types/sos";
-import { AlertStatus } from "../types/AlertStatus";
+import {
+  AlertStatus,
+  AlertSeverity,
+  ResponderStatus,
+} from "../types/AlertStatus";
 import apiService from "../services/api";
 import {
   getAlertStatusColor,
@@ -28,6 +32,8 @@ interface AlertDetailsModalProps {
   alertDetails: any;
   isResponder: boolean;
   isAcceptedResponder?: boolean; // New prop to check if responder has accepted this alert
+  isVictim?: boolean; // New prop to check if user is the alert victim
+  currentResponderStatus?: string; // Current responder's status on this alert
   onStatusUpdate?: () => void;
   loadingDetails: boolean;
 }
@@ -39,11 +45,27 @@ const AlertDetailsModal = ({
   alertDetails,
   isResponder,
   isAcceptedResponder = false,
+  isVictim = false,
+  currentResponderStatus,
   onStatusUpdate,
   loadingDetails,
 }: AlertDetailsModalProps) => {
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [selectedSeverity, setSelectedSeverity] = useState<string | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [updatingSeverity, setUpdatingSeverity] = useState(false);
+
+  // Initialize selected values from current alert data when modal opens
+  useEffect(() => {
+    if (visible && alert) {
+      // Set current severity as selected
+      if (alert.severity) {
+        setSelectedSeverity(alert.severity);
+      }
+      // Reset status selection (don't pre-select to avoid accidental changes)
+      setSelectedStatus(null);
+    }
+  }, [visible, alert]);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "N/A";
@@ -58,6 +80,8 @@ const AlertDetailsModal = ({
         return "text-red-700 bg-red-100 border-red-300";
       case "ACTIVE":
         return "text-amber-700 bg-amber-100 border-amber-300";
+      case "PENDING":
+        return "text-orange-600 bg-orange-50 border-orange-200";
       case "ACCEPTED":
         return "text-blue-700 bg-blue-100 border-blue-300";
       case "RESPONDED":
@@ -74,6 +98,10 @@ const AlertDetailsModal = ({
         return "text-purple-700 bg-purple-100 border-purple-300";
       case "REJECTED":
         return "text-red-600 bg-red-50 border-red-200";
+      case "FORWARDED":
+        return "text-cyan-600 bg-cyan-50 border-cyan-200";
+      case "EXPIRED":
+        return "text-stone-600 bg-stone-50 border-stone-200";
       case "VERIFIED":
         return "text-purple-600 bg-purple-50 border-purple-200";
       default:
@@ -86,9 +114,53 @@ const AlertDetailsModal = ({
 
     try {
       setUpdatingStatus(true);
-      const response = await apiService.updateAlertStatus(
+
+      // If the selected status is a responder status, call the responder endpoint
+      if (
+        selectedStatus === ResponderStatus.EN_ROUTE ||
+        selectedStatus === ResponderStatus.ARRIVED ||
+        selectedStatus === ResponderStatus.RESOLVED
+      ) {
+        const response = await apiService.updateResponderStatus(
+          alert.id,
+          selectedStatus,
+        );
+
+        if (response.success) {
+          if (onStatusUpdate) onStatusUpdate();
+          onClose();
+        } else {
+          console.error("Failed to update responder status:", response.error);
+        }
+      } else {
+        // For completeness: handle alert-level status updates if needed
+        const response = await apiService.updateAlertStatus(
+          alert.id,
+          selectedStatus as any,
+        );
+        if (response.success) {
+          if (onStatusUpdate) onStatusUpdate();
+          onClose();
+        } else {
+          console.error("Failed to update alert status:", response.error);
+        }
+      }
+    } catch (error) {
+      console.error("Error updating status:", error);
+    } finally {
+      setUpdatingStatus(false);
+      setSelectedStatus(null);
+    }
+  };
+
+  const handleUpdateSeverity = async () => {
+    if (!alert?.id || !selectedSeverity) return;
+
+    try {
+      setUpdatingSeverity(true);
+      const response = await apiService.updateAlertSeverity(
         alert.id,
-        selectedStatus
+        selectedSeverity,
       );
 
       if (response.success) {
@@ -96,26 +168,34 @@ const AlertDetailsModal = ({
         if (onStatusUpdate) {
           onStatusUpdate();
         }
-        // Close the modal
-        onClose();
+        setSelectedSeverity(null);
       } else {
-        console.error("Failed to update alert status:", response.error);
+        console.error("Failed to update alert severity:", response.error);
       }
     } catch (error) {
-      console.error("Error updating alert status:", error);
+      console.error("Error updating alert severity:", error);
     } finally {
-      setUpdatingStatus(false);
+      setUpdatingSeverity(false);
     }
   };
 
-  // Status options for responders - includes responder statuses (EN_ROUTE, ARRIVED) and alert resolution statuses
+  // Status options for responders - includes all valid responder statuses
   const statusOptions = [
-    AlertStatus.EN_ROUTE,
-    AlertStatus.ARRIVED,
-    AlertStatus.RESOLVED,
-    AlertStatus.CRITICAL,
-    AlertStatus.FALSE_ALARM,
-    AlertStatus.REJECTED,
+    ResponderStatus.ACCEPTED,
+    ResponderStatus.EN_ROUTE,
+    ResponderStatus.ARRIVED,
+    ResponderStatus.RESOLVED,
+    ResponderStatus.REJECTED,
+    ResponderStatus.CANCELED,
+  ];
+
+  // Severity options for victims and accepted responders
+  const severityOptions = [
+    AlertSeverity.CRITICAL,
+    AlertSeverity.HIGH,
+    AlertSeverity.MEDIUM,
+    AlertSeverity.LOW,
+    AlertSeverity.FALSE_ALARM,
   ];
 
   if (!alert) return null;
@@ -163,7 +243,7 @@ const AlertDetailsModal = ({
                   <Text className="text-gray-800 font-semibold">Status</Text>
                   <View
                     className={`px-3 py-1 rounded-full border ${getStatusColor(
-                      alert?.status || ""
+                      alert?.status || "",
                     )}`}
                   >
                     <Text className="text-xs font-medium">
@@ -182,7 +262,7 @@ const AlertDetailsModal = ({
                       className="px-3 py-1 rounded-full flex-row items-center"
                       style={{
                         backgroundColor: `${getSeverityColor(
-                          alert.severity
+                          alert.severity,
                         )}20`,
                       }}
                     >
@@ -191,8 +271,8 @@ const AlertDetailsModal = ({
                           alert.severity === "CRITICAL"
                             ? "priority-high"
                             : alert.severity === "HIGH"
-                            ? "warning"
-                            : "info"
+                              ? "warning"
+                              : "info"
                         }
                         size={14}
                         color={getSeverityColor(alert.severity)}
@@ -217,7 +297,7 @@ const AlertDetailsModal = ({
                       className="px-3 py-1 rounded-full flex-row items-center"
                       style={{
                         backgroundColor: `${getIncidentTypeColor(
-                          alert.incidentType
+                          alert.incidentType,
                         )}20`,
                       }}
                     >
@@ -426,7 +506,7 @@ const AlertDetailsModal = ({
                             </View>
                           )}
                         </View>
-                      )
+                      ),
                     )}
                   </View>
                 )}
@@ -437,32 +517,106 @@ const AlertDetailsModal = ({
                   <View className="flex-row items-center mb-3">
                     <MaterialIcons name="edit" size={20} color="#D97706" />
                     <Text className="text-yellow-700 font-semibold ml-1">
-                      Update Alert Status
+                      Update Your Response Status
                     </Text>
                   </View>
 
                   <View className="flex-row flex-wrap">
-                    {statusOptions.map((status) => (
-                      <TouchableOpacity
-                        key={status}
-                        className={`px-3 py-2 rounded-md mr-2 mb-2 border ${
-                          selectedStatus === status
-                            ? "bg-blue-100 border-blue-500"
-                            : "bg-white border-gray-300"
-                        }`}
-                        onPress={() => setSelectedStatus(status)}
-                      >
-                        <Text
-                          className={`text-sm ${
-                            selectedStatus === status
-                              ? "text-blue-700 font-medium"
-                              : "text-gray-600"
+                    {statusOptions.map((status) => {
+                      // Get status-specific styling
+                      const getStatusStyle = (s: string) => {
+                        switch (s) {
+                          case ResponderStatus.ACCEPTED:
+                            return {
+                              bg: "bg-blue-100",
+                              border: "border-blue-500",
+                              text: "text-blue-700",
+                              icon: "check-circle" as const,
+                              iconColor: "#1D4ED8",
+                            };
+                          case ResponderStatus.EN_ROUTE:
+                            return {
+                              bg: "bg-yellow-100",
+                              border: "border-yellow-500",
+                              text: "text-yellow-700",
+                              icon: "directions-car" as const,
+                              iconColor: "#B45309",
+                            };
+                          case ResponderStatus.ARRIVED:
+                            return {
+                              bg: "bg-indigo-100",
+                              border: "border-indigo-500",
+                              text: "text-indigo-700",
+                              icon: "location-on" as const,
+                              iconColor: "#4338CA",
+                            };
+                          case ResponderStatus.RESOLVED:
+                            return {
+                              bg: "bg-green-100",
+                              border: "border-green-500",
+                              text: "text-green-700",
+                              icon: "check-circle" as const,
+                              iconColor: "#15803D",
+                            };
+                          case ResponderStatus.REJECTED:
+                            return {
+                              bg: "bg-red-100",
+                              border: "border-red-500",
+                              text: "text-red-700",
+                              icon: "cancel" as const,
+                              iconColor: "#B91C1C",
+                            };
+                          case ResponderStatus.CANCELED:
+                            return {
+                              bg: "bg-gray-100",
+                              border: "border-gray-500",
+                              text: "text-gray-700",
+                              icon: "close" as const,
+                              iconColor: "#374151",
+                            };
+                          default:
+                            return {
+                              bg: "bg-white",
+                              border: "border-gray-300",
+                              text: "text-gray-600",
+                              icon: "info" as const,
+                              iconColor: "#6B7280",
+                            };
+                        }
+                      };
+                      const style = getStatusStyle(status);
+                      const isSelected = selectedStatus === status;
+                      const isCurrent = currentResponderStatus === status;
+                      const isHighlighted = isSelected || isCurrent;
+
+                      return (
+                        <TouchableOpacity
+                          key={status}
+                          className={`px-3 py-2 rounded-md mr-2 mb-2 border flex-row items-center ${
+                            isHighlighted
+                              ? `${style.bg} ${style.border}`
+                              : "bg-white border-gray-300"
                           }`}
+                          onPress={() => setSelectedStatus(status)}
                         >
-                          {status}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                          <MaterialIcons
+                            name={style.icon}
+                            size={16}
+                            color={isHighlighted ? style.iconColor : "#9CA3AF"}
+                          />
+                          <Text
+                            className={`text-sm ml-1 ${
+                              isHighlighted
+                                ? `${style.text} font-medium`
+                                : "text-gray-600"
+                            }`}
+                          >
+                            {status.replace("_", " ")}
+                            {isCurrent && !isSelected ? " (Current)" : ""}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
 
                   <TouchableOpacity
@@ -483,6 +637,159 @@ const AlertDetailsModal = ({
                       </>
                     )}
                   </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Severity Update Section - For Victim or Accepted Responders */}
+              {(isVictim || (isResponder && isAcceptedResponder)) && (
+                <View className="bg-orange-50 p-4 rounded-lg mb-4">
+                  <View className="flex-row items-center mb-3">
+                    <MaterialIcons
+                      name="priority-high"
+                      size={20}
+                      color="#EA580C"
+                    />
+                    <Text className="text-orange-700 font-semibold ml-1">
+                      Update Severity
+                    </Text>
+                  </View>
+
+                  <Text className="text-gray-600 text-sm mb-3">
+                    Current:{" "}
+                    <Text
+                      className="font-medium"
+                      style={{ color: getSeverityColor(alert?.severity || "") }}
+                    >
+                      {alert?.severity || "Not set"}
+                    </Text>
+                    {selectedSeverity &&
+                      selectedSeverity !== alert?.severity && (
+                        <Text className="text-orange-600">
+                          {" "}
+                          → {selectedSeverity.replace("_", " ")}
+                        </Text>
+                      )}
+                  </Text>
+
+                  <View className="flex-row flex-wrap">
+                    {severityOptions.map((severity) => {
+                      // Get severity-specific styling
+                      const getSeverityStyle = (s: string) => {
+                        switch (s) {
+                          case AlertSeverity.CRITICAL:
+                            return {
+                              bg: "bg-red-100",
+                              border: "border-red-500",
+                              text: "text-red-700",
+                              icon: "priority-high" as const,
+                              iconColor: "#B91C1C",
+                            };
+                          case AlertSeverity.HIGH:
+                            return {
+                              bg: "bg-orange-100",
+                              border: "border-orange-500",
+                              text: "text-orange-700",
+                              icon: "warning" as const,
+                              iconColor: "#C2410C",
+                            };
+                          case AlertSeverity.MEDIUM:
+                            return {
+                              bg: "bg-yellow-100",
+                              border: "border-yellow-500",
+                              text: "text-yellow-700",
+                              icon: "report-problem" as const,
+                              iconColor: "#A16207",
+                            };
+                          case AlertSeverity.LOW:
+                            return {
+                              bg: "bg-blue-100",
+                              border: "border-blue-500",
+                              text: "text-blue-700",
+                              icon: "info" as const,
+                              iconColor: "#1D4ED8",
+                            };
+                          case AlertSeverity.FALSE_ALARM:
+                            return {
+                              bg: "bg-gray-100",
+                              border: "border-gray-500",
+                              text: "text-gray-700",
+                              icon: "notifications-off" as const,
+                              iconColor: "#374151",
+                            };
+                          default:
+                            return {
+                              bg: "bg-white",
+                              border: "border-gray-300",
+                              text: "text-gray-600",
+                              icon: "info" as const,
+                              iconColor: "#6B7280",
+                            };
+                        }
+                      };
+                      const style = getSeverityStyle(severity);
+                      const isSelected = selectedSeverity === severity;
+                      const isCurrent = alert?.severity === severity;
+
+                      return (
+                        <TouchableOpacity
+                          key={severity}
+                          className={`px-3 py-2 rounded-md mr-2 mb-2 border flex-row items-center ${
+                            isSelected
+                              ? `${style.bg} ${style.border}`
+                              : isCurrent
+                                ? `${style.bg} border-dashed ${style.border}`
+                                : "bg-white border-gray-300"
+                          }`}
+                          onPress={() => setSelectedSeverity(severity)}
+                        >
+                          <MaterialIcons
+                            name={style.icon}
+                            size={16}
+                            color={
+                              isSelected || isCurrent
+                                ? style.iconColor
+                                : "#9CA3AF"
+                            }
+                          />
+                          <Text
+                            className={`text-sm ml-1 ${
+                              isSelected || isCurrent
+                                ? `${style.text} font-medium`
+                                : "text-gray-600"
+                            }`}
+                          >
+                            {severity.replace("_", " ")}
+                          </Text>
+                          {isCurrent && !isSelected && (
+                            <Text className="text-xs text-gray-500 ml-1">
+                              (current)
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  {/* Only show update button if a different severity is selected */}
+                  {selectedSeverity && selectedSeverity !== alert?.severity && (
+                    <TouchableOpacity
+                      className="mt-3 p-3 rounded-md flex-row justify-center items-center bg-orange-500"
+                      onPress={handleUpdateSeverity}
+                      disabled={updatingSeverity}
+                    >
+                      {updatingSeverity ? (
+                        <ActivityIndicator size="small" color="white" />
+                      ) : (
+                        <>
+                          <MaterialIcons name="save" size={18} color="white" />
+                          <Text className="text-white font-medium ml-2">
+                            Update Severity to{" "}
+                            {selectedSeverity.replace("_", " ")}
+                          </Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
 

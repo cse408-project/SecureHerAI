@@ -46,6 +46,7 @@ public interface DeviceTokenRepository extends JpaRepository<DeviceToken, Long> 
      * Deactivate all tokens for a user (on logout)
      */
     @Modifying
+    @org.springframework.transaction.annotation.Transactional
     @Query("UPDATE DeviceToken dt SET dt.isActive = false WHERE dt.userId = :userId")
     int deactivateAllTokensForUser(@Param("userId") UUID userId);
 
@@ -53,6 +54,7 @@ public interface DeviceTokenRepository extends JpaRepository<DeviceToken, Long> 
      * Deactivate a specific token
      */
     @Modifying
+    @org.springframework.transaction.annotation.Transactional
     @Query("UPDATE DeviceToken dt SET dt.isActive = false WHERE dt.token = :token")
     int deactivateToken(@Param("token") String token);
 
@@ -76,6 +78,7 @@ public interface DeviceTokenRepository extends JpaRepository<DeviceToken, Long> 
      * Delete all tokens for a user
      */
     @Modifying
+    @org.springframework.transaction.annotation.Transactional
     @Query("DELETE FROM DeviceToken dt WHERE dt.userId = :userId")
     void deleteByUserId(@Param("userId") UUID userId);
 }

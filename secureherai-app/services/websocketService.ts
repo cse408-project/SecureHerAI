@@ -97,8 +97,8 @@ class WebSocketService {
           }
         },
         reconnectDelay: this.reconnectDelay,
-        heartbeatIncoming: 10000,
-        heartbeatOutgoing: 10000,
+        heartbeatIncoming: 4000, // Reduced from 10s to 4s for faster detection
+        heartbeatOutgoing: 4000, // Reduced from 10s to 4s for faster updates
         onConnect: () => this.onConnected(),
         onDisconnect: () => this.onDisconnected(),
         onStompError: (frame) => this.onError(frame),
@@ -146,7 +146,7 @@ class WebSocketService {
       "/user/queue/emergency-alerts",
       (message: IMessage) => {
         this.handleMessage(message, "EMERGENCY_ALERT");
-      }
+      },
     );
     this.subscriptions.set("emergency-alerts", subscription);
     console.log("WebSocket: Subscribed to emergency alerts");
@@ -171,7 +171,7 @@ class WebSocketService {
         } catch {
           this.handleMessage(message, "ALERT_UPDATE");
         }
-      }
+      },
     );
     this.subscriptions.set("emergency-updates", subscription);
     console.log("WebSocket: Subscribed to emergency updates (location/status)");
@@ -188,7 +188,7 @@ class WebSocketService {
       "/topic/broadcasts",
       (message: IMessage) => {
         this.handleMessage(message, "SYSTEM");
-      }
+      },
     );
     this.subscriptions.set("broadcasts", broadcastSub);
   }
@@ -204,16 +204,24 @@ class WebSocketService {
         payload: body.payload || body,
       };
 
-      console.log("WebSocket: Received message:", notification.type);
+      console.log(
+        "WebSocket: ⚡ INSTANT message:",
+        notification.type,
+        "at",
+        new Date().toISOString(),
+      );
 
-      // Notify all registered callbacks
-      this.messageCallbacks.forEach((callback) => {
-        try {
-          callback(notification);
-        } catch (error) {
-          console.error("WebSocket: Error in message callback:", error);
-        }
-      });
+      // Notify all registered callbacks IMMEDIATELY
+      // Use setTimeout 0 to ensure UI updates don't block processing
+      setTimeout(() => {
+        this.messageCallbacks.forEach((callback) => {
+          try {
+            callback(notification);
+          } catch (error) {
+            console.error("WebSocket: Error in message callback:", error);
+          }
+        });
+      }, 0);
     } catch (error) {
       console.error("WebSocket: Error parsing message:", error);
     }
@@ -263,7 +271,7 @@ class WebSocketService {
     const delay = this.reconnectDelay * Math.min(this.reconnectAttempts, 5);
 
     console.log(
-      `WebSocket: Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`
+      `WebSocket: Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`,
     );
 
     setTimeout(() => {
@@ -364,7 +372,7 @@ class WebSocketService {
   sendLocationUpdate(
     alertId: number,
     latitude: number,
-    longitude: number
+    longitude: number,
   ): void {
     if (!this.client || !this.client.connected) {
       return;
@@ -389,7 +397,7 @@ class WebSocketService {
   sendVictimLocationUpdate(
     alertId: number,
     latitude: number,
-    longitude: number
+    longitude: number,
   ): void {
     if (!this.client || !this.client.connected) {
       console.warn("WebSocket: Cannot send victim location, not connected");

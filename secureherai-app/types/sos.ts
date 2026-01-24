@@ -34,6 +34,9 @@ export interface Alert {
   incidentType?: IncidentType;
   emotionDetected?: string;
   aiSummary?: string;
+
+  // Flag indicating if this is a critical alert (from backend)
+  isCritical?: boolean;
 }
 
 export interface AlertResponse {

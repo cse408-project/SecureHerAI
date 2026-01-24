@@ -408,19 +408,22 @@ public class GeminiSpeechService {
                            - CRITICAL: Immediate life-threatening danger (attack, weapon, severe injury, fire, kidnapping)
                            - HIGH: Serious safety threat requiring immediate response (assault, active harassment, being followed)
                            - MEDIUM: Safety concern requiring attention (theft, harassment, suspicious activity)
-                           - LOW: General concern or false alarm potential
+                           - LOW: General concern or minor issue
+                           - FALSE_ALARM: Not a real emergency (jokes, tests, accidental triggers, clearly non-emergency messages)
                         2. Classify the INCIDENT TYPE:
                            - emergency: Life-threatening situations
                            - assault: Physical attacks or violence
                            - harassment: Verbal abuse, sexual harassment, stalking
                            - theft: Robbery, pickpocketing, property crimes
                            - accident: Vehicle accidents, falls, injuries
+                           - false_alarm: Not a real emergency, test message, or joke
                            - other: Unclassified incidents
                         3. Detect the primary emotion. Choose exactly one: happy, sad, angry, neutral, fearful, anxious.
                         4. Identify if there's urgency or distress in the message.
                         5. Detect emergency keywords present.
-                        6. Provide a brief summary and recommended action.
+                        6. Provide a BRIEF summary (MAXIMUM 150 characters) and recommended action.
                         7. Rate confidence from 0.0 to 1.0.
+                        8. Set isFalseAlarm to true if the message is clearly not a real emergency.
 
                         Respond in this exact JSON format:
                         {
@@ -430,10 +433,11 @@ public class GeminiSpeechService {
                             "languageCode": "ISO language code like en-US",
                             "isUrgent": true or false,
                             "isDistressed": true or false,
-                            "summary": "brief summary of the situation",
+                            "isFalseAlarm": true or false,
+                            "summary": "brief summary MAX 150 chars",
                             "confidence": 0.0 to 1.0,
-                            "severity": "one of: CRITICAL, HIGH, MEDIUM, LOW",
-                            "incidentType": "one of: emergency, assault, harassment, theft, accident, other",
+                            "severity": "one of: CRITICAL, HIGH, MEDIUM, LOW, FALSE_ALARM",
+                            "incidentType": "one of: emergency, assault, harassment, theft, accident, false_alarm, other",
                             "keywordsDetected": ["list", "of", "detected", "keywords"],
                             "hasEmergencyKeyword": true or false,
                             "recommendedAction": "brief recommended response"
@@ -479,8 +483,13 @@ public class GeminiSpeechService {
             String jsonText = candidate.content.parts.get(0).text;
             GeminiTranscriptionOutput output = objectMapper.readValue(jsonText, GeminiTranscriptionOutput.class);
 
-            log.info("Gemini text analysis successful - Severity: {}, IncidentType: {}, HasKeyword: {}",
-                    output.severity, output.incidentType, output.hasEmergencyKeyword);
+            // Check for false alarm
+            boolean isFalseAlarm = (output.isFalseAlarm != null && output.isFalseAlarm)
+                    || "FALSE_ALARM".equals(output.severity)
+                    || "false_alarm".equals(output.incidentType);
+
+            log.info("Gemini text analysis successful - Severity: {}, IncidentType: {}, HasKeyword: {}, FalseAlarm: {}",
+                    output.severity, output.incidentType, output.hasEmergencyKeyword, isFalseAlarm);
 
             SpeechTranscriptionResult result = new SpeechTranscriptionResult();
             result.setSuccess(true);
@@ -492,7 +501,15 @@ public class GeminiSpeechService {
             result.setLanguageCode(output.languageCode);
             result.setUrgent(output.isUrgent != null ? output.isUrgent : false);
             result.setDistressed(output.isDistressed != null ? output.isDistressed : false);
-            result.setSummary(output.summary);
+            result.setFalseAlarm(isFalseAlarm);
+
+            // Truncate summary to max 200 chars to fit database column
+            String summary = output.summary;
+            if (summary != null && summary.length() > 200) {
+                summary = summary.substring(0, 197) + "...";
+            }
+            result.setSummary(summary);
+
             result.setSeverity(output.severity != null ? output.severity : "MEDIUM");
             result.setIncidentType(output.incidentType != null ? output.incidentType : "other");
             result.setKeywordsDetected(output.keywordsDetected != null ? output.keywordsDetected : List.of());
@@ -760,12 +777,13 @@ public class GeminiSpeechService {
         public String languageCode;
         public Boolean isUrgent;
         public Boolean isDistressed;
+        public Boolean isFalseAlarm; // Added for false alarm detection
         public String summary;
         public Double confidence;
 
         // New fields for severity and incident classification
-        public String severity; // CRITICAL, HIGH, MEDIUM, LOW
-        public String incidentType; // emergency, assault, harassment, theft, accident, other
+        public String severity; // CRITICAL, HIGH, MEDIUM, LOW, FALSE_ALARM
+        public String incidentType; // emergency, assault, harassment, theft, accident, false_alarm, other
         public List<String> keywordsDetected; // List of detected emergency keywords
         public Boolean hasEmergencyKeyword; // Whether emergency keywords are present
         public String recommendedAction; // Recommended response action
@@ -803,11 +821,12 @@ public class GeminiSpeechService {
         private String languageCode; // ISO language code (e.g., en-US)
         private boolean urgent; // Is the message urgent?
         private boolean distressed; // Is the speaker distressed?
-        private String summary; // Brief summary of the content
+        private boolean falseAlarm; // Is this a false alarm (not a real emergency)?
+        private String summary; // Brief summary of the content (max 150 chars)
 
         // Severity and incident classification fields
-        private String severity; // CRITICAL, HIGH, MEDIUM, LOW
-        private String incidentType; // emergency, assault, harassment, theft, accident, other
+        private String severity; // CRITICAL, HIGH, MEDIUM, LOW, FALSE_ALARM
+        private String incidentType; // emergency, assault, harassment, theft, accident, false_alarm, other
         private List<String> keywordsDetected; // List of detected emergency keywords
         private boolean hasEmergencyKeyword; // Whether emergency keywords are present
         private String recommendedAction; // Recommended response action
@@ -825,6 +844,7 @@ public class GeminiSpeechService {
             this.severity = "MEDIUM";
             this.incidentType = "other";
             this.keywordsDetected = new ArrayList<>();
+            this.falseAlarm = false;
         }
     }
 }

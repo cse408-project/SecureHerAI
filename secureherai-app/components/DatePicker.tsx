@@ -31,7 +31,7 @@ export default function DatePicker({
 }: DatePickerProps) {
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(
-    value ? new Date(value) : null
+    value ? new Date(value) : null,
   );
 
   const handleDateChange = (date: Date) => {
@@ -79,9 +79,32 @@ export default function DatePicker({
               color: value ? "#111827" : "#9CA3AF",
               backgroundColor: "transparent",
               fontFamily: "inherit",
+              // Hide browser's native date picker icon
+              WebkitAppearance: "none",
+              MozAppearance: "textfield",
             }}
+            // @ts-ignore - CSS to hide date picker icon in webkit browsers
+            className="hide-date-icon"
             placeholder={placeholder}
           />
+          {/* CSS to hide native date picker icons */}
+          <style>{`
+            input[type="date"]::-webkit-calendar-picker-indicator {
+              display: none;
+              -webkit-appearance: none;
+            }
+            input[type="date"]::-webkit-inner-spin-button,
+            input[type="date"]::-webkit-clear-button {
+              display: none;
+              -webkit-appearance: none;
+            }
+            .hide-date-icon::-webkit-calendar-picker-indicator {
+              display: none !important;
+              opacity: 0 !important;
+              width: 0 !important;
+              height: 0 !important;
+            }
+          `}</style>
           <MaterialIcons name="calendar-today" size={20} color="#67082F" />
         </View>
       </View>

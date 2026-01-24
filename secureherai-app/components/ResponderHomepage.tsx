@@ -5,7 +5,6 @@ import {
   ScrollView,
   RefreshControl,
   Modal,
-  TextInput,
   ActivityIndicator,
 } from "react-native";
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -16,8 +15,15 @@ import { useAlert } from "../context/AlertContext";
 import { useNotifications } from "../context/NotificationContext";
 import Header from "./Header";
 import NotificationModal from "./NotificationModal";
+import ForwardAlertModal from "./ForwardAlertModal";
+import AlertDetailsModal from "./AlertDetailsModal";
 import { Alert as AlertType } from "../types/sos";
-import { AlertStatus } from "../types/AlertStatus";
+import {
+  AlertStatus,
+  ResponderStatus,
+  getSeverityColor,
+  getResponderStatusColor,
+} from "../types/AlertStatus";
 import apiService from "../services/api";
 import locationService from "../services/locationService";
 
@@ -37,6 +43,12 @@ interface AcceptedAlertResponder {
   triggerMethod?: string;
   triggeredAt?: string;
   resolvedAt?: string;
+  eta?: string; // Estimated time of arrival
+  forwarded?: boolean; // Flag indicating if this alert was forwarded
+  // Added for severity-based routing
+  severity?: string; // CRITICAL, HIGH, MEDIUM, LOW
+  incidentType?: string;
+  isCritical?: boolean; // Flag indicating if this was originally a critical alert
   victim?: {
     userId: string;
     fullName: string;
@@ -62,16 +74,27 @@ export default function ResponderHomepage() {
   const [selectedAlertId, setSelectedAlertId] = useState<string>("");
   const [selectedAcceptedAlert, setSelectedAcceptedAlert] =
     useState<AcceptedAlertResponder | null>(null);
-  const [badgeNumber, setBadgeNumber] = useState<string>("");
   const [showAlertDetailsModal, setShowAlertDetailsModal] = useState(false);
-  const [selectedAlertForDetails, setSelectedAlertForDetails] = useState<
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_selectedAlertForDetails, setSelectedAlertForDetails] = useState<
+    string | null
+  >(null);
+  const [selectedAlertObject, setSelectedAlertObject] =
+    useState<AlertType | null>(null);
+  const [selectedAlertIsAccepted, setSelectedAlertIsAccepted] = useState(false);
+  const [currentResponderStatus, setCurrentResponderStatus] = useState<
     string | null
   >(null);
   const [alertDetailsData, setAlertDetailsData] = useState<any>(null);
   const [loadingUserDetails, setLoadingUserDetails] = useState(false);
   const { showAlert, showConfirmAlert } = useAlert();
-  const { emergencyAlerts, isConnected, connectRealtime, clearEmergencyAlert } =
-    useNotifications();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const {
+    emergencyAlerts,
+    isConnected,
+    connectRealtime,
+    clearEmergencyAlert: _clearEmergencyAlert,
+  } = useNotifications();
   const isInitialLoad = useRef(true);
 
   const loadAlerts = useCallback(async (isBackground: boolean = false) => {
@@ -96,13 +119,13 @@ export default function ResponderHomepage() {
         console.log(
           "ResponderHomepage: Loaded",
           pendingResponse.data.length,
-          "pending alerts"
+          "pending alerts",
         );
         setPendingAlerts(pendingResponse.data);
       } else {
         console.error(
           "ResponderHomepage: Failed to load pending alerts:",
-          pendingResponse.error || "Unknown error"
+          pendingResponse.error || "Unknown error",
         );
         setPendingAlerts([]);
       }
@@ -111,18 +134,37 @@ export default function ResponderHomepage() {
         console.log(
           "ResponderHomepage: Loaded",
           acceptedResponse.data.length,
-          "accepted/critical alerts"
+          "accepted/critical alerts",
         );
 
-        // Separate ACCEPTED and CRITICAL alerts based on alertStatus field
+        // Separate ACCEPTED and CRITICAL alerts based on multiple criteria:
+        // 1. alertStatus field (CRITICAL vs ACCEPTED)
+        // 2. severity field (CRITICAL)
+        // 3. isCritical flag
         const acceptedOnly = acceptedResponse.data.filter(
-          (alert: AcceptedAlertResponder) =>
-            alert.alertStatus === "ACCEPTED" || alert.alertStatus === AlertStatus.ACCEPTED
+          (alert: AcceptedAlertResponder) => {
+            // Check if this is a critical alert (CRITICAL or HIGH severity)
+            const isCriticalAlert =
+              alert.alertStatus === "CRITICAL" ||
+              alert.severity === "CRITICAL" ||
+              alert.severity === "HIGH" ||
+              alert.isCritical === true;
+
+            // Non-critical alerts go to accepted list
+            return !isCriticalAlert;
+          },
         );
 
         const criticalOnly = acceptedResponse.data.filter(
-          (alert: AcceptedAlertResponder) =>
-            alert.alertStatus === "CRITICAL" || alert.alertStatus === AlertStatus.CRITICAL
+          (alert: AcceptedAlertResponder) => {
+            // Check if this is a critical alert using multiple criteria (include HIGH)
+            return (
+              alert.alertStatus === "CRITICAL" ||
+              alert.severity === "CRITICAL" ||
+              alert.severity === "HIGH" ||
+              alert.isCritical === true
+            );
+          },
         );
 
         setAcceptedAlerts(acceptedOnly);
@@ -133,7 +175,7 @@ export default function ResponderHomepage() {
       } else {
         console.error(
           "ResponderHomepage: Failed to load accepted alerts:",
-          acceptedResponse.error || "Unknown error"
+          acceptedResponse.error || "Unknown error",
         );
         setAcceptedAlerts([]);
         setCriticalAlerts([]);
@@ -190,26 +232,26 @@ export default function ResponderHomepage() {
               await locationService.enableEmergencyTracking(alertId, false); // false = responder
               console.log(
                 "🚨 Responder emergency tracking enabled for alert:",
-                alertId
+                alertId,
               );
             } catch (trackingError) {
               console.error(
                 "Failed to enable emergency tracking:",
-                trackingError
+                trackingError,
               );
             }
 
             showAlert(
               "Success",
               "Emergency alert accepted. You are now the assigned responder.",
-              "success"
+              "success",
             );
             loadAlerts(); // Refresh the list to move alert from pending to accepted
           } else {
             showAlert(
               "Error",
               response.error || "Failed to accept alert. Please try again.",
-              "error"
+              "error",
             );
           }
         } catch (error) {
@@ -217,48 +259,51 @@ export default function ResponderHomepage() {
           showAlert(
             "Error",
             "Failed to accept alert. Please try again.",
-            "error"
+            "error",
           );
         }
       },
       undefined,
-      "info"
+      "info",
     );
   };
 
-  const handleRejectAlert = (alertId: string) => {
+  const handleCancelPendingAlert = (alertId: string) => {
     showConfirmAlert(
-      "Reject Emergency Alert",
-      "Are you sure you want to reject this emergency alert? This will remove it from your pending alerts.",
+      "Cancel Alert Response",
+      "Are you sure you want to cancel your response to this emergency alert? This will remove it from your pending alerts.",
       async () => {
         try {
-          const response = await apiService.rejectAlert(alertId);
+          const response = await apiService.cancelResponderResponse(
+            alertId,
+            "Responder declined",
+          );
 
           if (response.success) {
             showAlert(
               "Success",
-              "Emergency alert rejected successfully.",
-              "success"
+              "Alert response canceled successfully.",
+              "success",
             );
-            loadAlerts(); // Refresh the list to remove rejected alert
+            loadAlerts(); // Refresh the list to remove canceled alert
           } else {
             showAlert(
               "Error",
-              response.error || "Failed to reject alert. Please try again.",
-              "error"
+              response.error || "Failed to cancel alert. Please try again.",
+              "error",
             );
           }
         } catch (error) {
-          console.error("Error rejecting alert:", error);
+          console.error("Error canceling alert:", error);
           showAlert(
             "Error",
-            "Failed to reject alert. Please try again.",
-            "error"
+            "Failed to cancel alert. Please try again.",
+            "error",
           );
         }
       },
       undefined,
-      "warning"
+      "warning",
     );
   };
 
@@ -267,9 +312,9 @@ export default function ResponderHomepage() {
     setShowForwardModal(true);
   };
 
-  const submitForwardAlert = async () => {
-    if (!selectedAlertId || !badgeNumber.trim()) {
-      showAlert("Error", "Please enter a valid badge number", "error");
+  const submitForwardAlert = async (responderIds: string[]) => {
+    if (!selectedAlertId || responderIds.length === 0) {
+      showAlert("Error", "Please select at least one responder", "error");
       return;
     }
 
@@ -277,20 +322,24 @@ export default function ResponderHomepage() {
       setLoading(true);
       const response = await apiService.forwardAlert(
         selectedAlertId,
-        badgeNumber.trim()
+        responderIds,
       );
 
       if (response.success) {
-        showAlert("Success", "Alert forwarded successfully", "success");
+        const count = response.forwardedCount || responderIds.length;
+        showAlert(
+          "Success",
+          `Alert forwarded to ${count} responder${count > 1 ? "s" : ""} successfully`,
+          "success",
+        );
         setShowForwardModal(false);
-        setBadgeNumber("");
         setSelectedAlertId("");
         loadAlerts(); // Refresh the list
       } else {
         showAlert(
           "Error",
           response.error || "Failed to forward alert. Please try again.",
-          "error"
+          "error",
         );
       }
     } catch (error) {
@@ -306,48 +355,140 @@ export default function ResponderHomepage() {
     setShowStatusModal(true);
   };
 
+  /**
+   * Update responder status (EN_ROUTE, ARRIVED, RESOLVED)
+   * This updates the AlertResponder record, not the Alert itself
+   */
+  const updateResponderStatusLocal = async (status: ResponderStatus) => {
+    if (!selectedAcceptedAlert) return;
+
+    try {
+      setLoading(true);
+
+      const response = await apiService.updateResponderStatus(
+        selectedAcceptedAlert.alertId,
+        status,
+      );
+
+      if (response.success) {
+        // Disable emergency tracking when resolved
+        if (status === ResponderStatus.RESOLVED) {
+          try {
+            await locationService.disableEmergencyTracking();
+            console.log("✅ Emergency tracking disabled - resolved");
+          } catch (trackingError) {
+            console.error(
+              "Failed to disable emergency tracking:",
+              trackingError,
+            );
+          }
+        }
+
+        const statusMessage =
+          status === ResponderStatus.EN_ROUTE
+            ? "Status updated: On the way"
+            : status === ResponderStatus.ARRIVED
+              ? "Status updated: Arrived at scene"
+              : "Alert marked as resolved";
+
+        showAlert("Success", statusMessage, "success");
+        setShowStatusModal(false);
+        setSelectedAcceptedAlert(null);
+        loadAlerts();
+      } else {
+        showAlert(
+          "Error",
+          response.error || "Failed to update status. Please try again.",
+          "error",
+        );
+      }
+    } catch (error) {
+      console.error("Error updating responder status:", error);
+      showAlert("Error", "Failed to update status. Please try again.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Cancel the responder's response to an alert
+   */
+  const handleCancelAlert = async () => {
+    if (!selectedAcceptedAlert) return;
+
+    showConfirmAlert(
+      "Cancel Response",
+      "Are you sure you want to cancel your response to this alert? This cannot be undone.",
+      async () => {
+        try {
+          setLoading(true);
+
+          const response = await apiService.cancelResponderResponse(
+            selectedAcceptedAlert.alertId,
+            "Responder canceled",
+          );
+
+          if (response.success) {
+            try {
+              await locationService.disableEmergencyTracking();
+            } catch (trackingError) {
+              console.error("Failed to disable tracking:", trackingError);
+            }
+
+            showAlert("Success", "Your response has been canceled", "success");
+            setShowStatusModal(false);
+            setSelectedAcceptedAlert(null);
+            loadAlerts();
+          } else {
+            showAlert(
+              "Error",
+              response.error || "Failed to cancel. Please try again.",
+              "error",
+            );
+          }
+        } catch (error) {
+          console.error("Error canceling alert:", error);
+          showAlert("Error", "Failed to cancel. Please try again.", "error");
+        } finally {
+          setLoading(false);
+        }
+      },
+      undefined,
+      "warning",
+    );
+  };
+
+  // Legacy function - keep for updating alert status (severity changes)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const updateAlertStatus = async (status: AlertStatus) => {
     if (!selectedAcceptedAlert) return;
 
     try {
       setLoading(true);
 
-      // Update the overall alert status (responders can mark alerts as resolved, critical, or false alarm)
+      // Update the overall alert status (for severity changes like FALSE_ALARM)
       const response = await apiService.updateAlertStatus(
         selectedAcceptedAlert.alertId,
-        status
+        status,
       );
 
       if (response.success) {
         // Disable emergency tracking when alert is resolved or closed
-        if (
-          status === AlertStatus.RESOLVED ||
-          status === AlertStatus.FALSE_ALARM ||
-          status === AlertStatus.REJECTED
-        ) {
+        if (status === AlertStatus.FINISHED) {
           try {
             await locationService.disableEmergencyTracking();
             console.log(
-              "✅ Emergency tracking disabled - alert resolved/closed"
+              "✅ Emergency tracking disabled - alert resolved/closed",
             );
           } catch (trackingError) {
             console.error(
               "Failed to disable emergency tracking:",
-              trackingError
+              trackingError,
             );
           }
         }
 
-        const statusMessage =
-          status === AlertStatus.RESOLVED
-            ? "Alert marked as resolved successfully"
-            : status === AlertStatus.CRITICAL
-            ? "Alert escalated to critical status"
-            : status === AlertStatus.FALSE_ALARM
-            ? "Alert marked as false alarm"
-            : "Alert marked as rejected";
-
-        showAlert("Success", statusMessage, "success");
+        showAlert("Success", "Alert status updated", "success");
         setShowStatusModal(false);
         setSelectedAcceptedAlert(null);
         loadAlerts(); // Refresh the list
@@ -355,7 +496,7 @@ export default function ResponderHomepage() {
         showAlert(
           "Error",
           response.error || "Failed to update alert status. Please try again.",
-          "error"
+          "error",
         );
       }
     } catch (error) {
@@ -363,17 +504,64 @@ export default function ResponderHomepage() {
       showAlert(
         "Error",
         "Failed to update alert status. Please try again.",
-        "error"
+        "error",
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleViewAlertDetails = async (alertId: string) => {
+  // Helper function to convert AcceptedAlertResponder to AlertType for modal display
+  const convertToAlertType = (
+    alertResponder: AcceptedAlertResponder,
+  ): AlertType => {
+    return {
+      id: alertResponder.alertId,
+      userId: alertResponder.victim?.userId || "",
+      latitude: alertResponder.latitude || 0,
+      longitude: alertResponder.longitude || 0,
+      address: alertResponder.address || "",
+      triggerMethod: alertResponder.triggerMethod || "",
+      alertMessage: alertResponder.alertMessage || "",
+      audioRecording: null,
+      triggeredAt: alertResponder.triggeredAt || "",
+      status: alertResponder.alertStatus as any,
+      verificationStatus: "VERIFIED",
+      canceledAt: null,
+      resolvedAt: alertResponder.resolvedAt || null,
+      notes: alertResponder.notes,
+      severity: alertResponder.severity as any,
+      incidentType: alertResponder.incidentType as any,
+      isCritical: alertResponder.isCritical,
+    };
+  };
+
+  const handleViewAlertDetails = async (
+    alertId: string,
+    alert?: AlertType | AcceptedAlertResponder,
+    isAccepted: boolean = false,
+  ) => {
     setSelectedAlertForDetails(alertId);
+    setSelectedAlertIsAccepted(isAccepted);
     setShowAlertDetailsModal(true);
     setLoadingUserDetails(true);
+
+    // Convert to AlertType if it's an AcceptedAlertResponder
+    if (alert) {
+      if ("alertId" in alert) {
+        // It's an AcceptedAlertResponder
+        const acceptedAlert = alert as AcceptedAlertResponder;
+        setSelectedAlertObject(convertToAlertType(acceptedAlert));
+        setCurrentResponderStatus(acceptedAlert.responderStatus || null);
+      } else {
+        // It's already an AlertType (pending alert)
+        setSelectedAlertObject(alert as AlertType);
+        setCurrentResponderStatus(null);
+      }
+    } else {
+      setSelectedAlertObject(null);
+      setCurrentResponderStatus(null);
+    }
 
     try {
       // Get full alert details including user information using the composite key approach
@@ -412,7 +600,7 @@ export default function ResponderHomepage() {
         showAlert(
           "Report Not Found",
           "The report for this alert hasn't been generated yet. Please wait a moment and try again.",
-          "warning"
+          "warning",
         );
       }
     } catch (error) {
@@ -420,7 +608,7 @@ export default function ResponderHomepage() {
       showAlert(
         "Error",
         "Failed to fetch report for this alert. Please try again.",
-        "error"
+        "error",
       );
     }
   };
@@ -444,7 +632,7 @@ export default function ResponderHomepage() {
         showAlert(
           "Report Not Found",
           "The report for this alert hasn't been generated yet. Please wait a moment and try again.",
-          "warning"
+          "warning",
         );
       }
     } catch (error) {
@@ -452,7 +640,7 @@ export default function ResponderHomepage() {
       showAlert(
         "Error",
         "Failed to fetch report for this alert. Please try again.",
-        "error"
+        "error",
       );
     }
   };
@@ -469,7 +657,7 @@ export default function ResponderHomepage() {
           showAlert(
             "Error",
             "Alert location is not available for navigation",
-            "error"
+            "error",
           );
           return;
         }
@@ -494,7 +682,7 @@ export default function ResponderHomepage() {
         showAlert(
           "Error",
           "Could not load alert details for navigation",
-          "error"
+          "error",
         );
       }
     } catch (error) {
@@ -502,7 +690,7 @@ export default function ResponderHomepage() {
       showAlert(
         "Error",
         "Failed to start navigation. Please try again.",
-        "error"
+        "error",
       );
     }
   };
@@ -511,7 +699,7 @@ export default function ResponderHomepage() {
     const now = new Date();
     const alertTime = new Date(dateString);
     const diffInMinutes = Math.floor(
-      (now.getTime() - alertTime.getTime()) / (1000 * 60)
+      (now.getTime() - alertTime.getTime()) / (1000 * 60),
     );
 
     if (diffInMinutes < 1) return "Just now";
@@ -550,7 +738,33 @@ export default function ResponderHomepage() {
     }
   };
 
+  /**
+   * Get priority level based on alert severity (AI-analyzed from backend)
+   * Falls back to time-based calculation if severity not available
+   */
   const getPriorityLevel = (alert: AlertType) => {
+    // Use AI-analyzed severity from backend if available
+    const severity = alert.severity?.toUpperCase();
+
+    if (severity) {
+      switch (severity) {
+        case "CRITICAL":
+          return { level: "CRITICAL", color: "#DC2626", bgColor: "#FEE2E2" };
+        case "HIGH":
+          return { level: "HIGH", color: "#EA580C", bgColor: "#FED7AA" };
+        case "MEDIUM":
+          return { level: "MEDIUM", color: "#D97706", bgColor: "#FEF3C7" };
+        case "LOW":
+          return { level: "LOW", color: "#059669", bgColor: "#D1FAE5" };
+      }
+    }
+
+    // Also check if alert itself is marked as critical (status-based)
+    if (alert.status === "CRITICAL" || alert.isCritical) {
+      return { level: "CRITICAL", color: "#DC2626", bgColor: "#FEE2E2" };
+    }
+
+    // Fallback to time-based calculation if no severity available
     const alertAge =
       new Date().getTime() - new Date(alert.triggeredAt).getTime();
     const ageInMinutes = alertAge / (1000 * 60);
@@ -803,48 +1017,75 @@ export default function ResponderHomepage() {
                       </View>
                     </View>
                     {/* Action Buttons */}
-                    <View className="flex-row space-x-2">
+                    <View className="flex-row flex-wrap gap-2">
                       <TouchableOpacity
                         className="bg-red-600 rounded-lg px-3 py-2"
                         onPress={() => handleAcceptAlert(alert.id)}
                       >
-                        <Text className="text-white font-semibold text-center">
-                          Accept
-                        </Text>
+                        <View className="flex-row items-center">
+                          <MaterialIcons name="check" size={16} color="white" />
+                          <Text className="text-white font-semibold ml-1">
+                            Accept
+                          </Text>
+                        </View>
                       </TouchableOpacity>
 
                       <TouchableOpacity
                         className="bg-gray-500 rounded-lg px-3 py-2"
-                        onPress={() => handleRejectAlert(alert.id)}
+                        onPress={() => handleCancelPendingAlert(alert.id)}
                       >
-                        <Text className="text-white font-semibold text-center">
-                          Reject
-                        </Text>
+                        <View className="flex-row items-center">
+                          <MaterialIcons name="close" size={16} color="white" />
+                          <Text className="text-white font-semibold ml-1">
+                            Cancel
+                          </Text>
+                        </View>
                       </TouchableOpacity>
 
                       <TouchableOpacity
                         className="bg-blue-600 rounded-lg px-3 py-2"
                         onPress={() => handleForwardAlert(alert.id)}
                       >
-                        <Text className="text-white font-semibold text-center">
-                          Forward
-                        </Text>
+                        <View className="flex-row items-center">
+                          <MaterialIcons
+                            name="forward"
+                            size={16}
+                            color="white"
+                          />
+                          <Text className="text-white font-semibold ml-1">
+                            Forward
+                          </Text>
+                        </View>
                       </TouchableOpacity>
 
                       <TouchableOpacity
                         className="bg-green-600 rounded-lg px-3 py-2"
                         onPress={() => handleViewReport(alert.id)}
                       >
-                        <Text className="text-white font-semibold text-center">
-                          View Report
-                        </Text>
+                        <View className="flex-row items-center">
+                          <MaterialIcons
+                            name="description"
+                            size={16}
+                            color="white"
+                          />
+                          <Text className="text-white font-semibold ml-1">
+                            Report
+                          </Text>
+                        </View>
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        className="bg-gray-100 rounded-lg px-3 py-2"
-                        onPress={() => handleViewAlertDetails(alert.id)}
+                        className="bg-indigo-600 rounded-lg px-3 py-2"
+                        onPress={() =>
+                          handleViewAlertDetails(alert.id, alert, false)
+                        }
                       >
-                        <MaterialIcons name="info" size={20} color="#374151" />
+                        <View className="flex-row items-center">
+                          <MaterialIcons name="info" size={16} color="white" />
+                          <Text className="text-white font-semibold ml-1">
+                            Details
+                          </Text>
+                        </View>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -878,105 +1119,218 @@ export default function ResponderHomepage() {
             </View>
           ) : (
             <View className="space-y-3">
-              {acceptedAlerts.map((alertResponder: AcceptedAlertResponder) => (
-                <View
-                  key={`${alertResponder.alertId}-${alertResponder.responderId}`}
-                  className="bg-green-50 rounded-xl p-4 shadow-sm border border-green-200"
-                >
-                  {/* Header */}
-                  <View className="flex-row items-start justify-between mb-3">
-                    <View className="flex-row items-center">
-                      <View className="w-10 h-10 rounded-full items-center justify-center mr-3 bg-green-200">
-                        <MaterialIcons
-                          name="check-circle"
-                          size={20}
-                          color="#059669"
-                        />
-                      </View>
-                      <View>
-                        <Text className="font-bold text-gray-800 text-base">
-                          {`Alert #${alertResponder.alertId
-                            .slice(-8)
-                            .toUpperCase()}`}
-                        </Text>
+              {acceptedAlerts.map((alertResponder: AcceptedAlertResponder) => {
+                const severityColor = getSeverityColor(
+                  alertResponder.severity || "MEDIUM",
+                );
+                const statusColor = getResponderStatusColor(
+                  alertResponder.responderStatus,
+                );
 
-                        <Text className="text-green-600 text-sm">
-                          Accepted on{" "}
-                          {new Date(
-                            alertResponder.acceptedAt
-                          ).toLocaleDateString()}
-                        </Text>
+                return (
+                  <View
+                    key={`${alertResponder.alertId}-${alertResponder.responderId}`}
+                    className="bg-white rounded-xl p-4 shadow-sm border border-gray-100"
+                  >
+                    {/* Header with severity badge */}
+                    <View className="flex-row items-start justify-between mb-3">
+                      <View className="flex-row items-center flex-1">
+                        <View
+                          className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                          style={{ backgroundColor: severityColor + "20" }}
+                        >
+                          <MaterialIcons
+                            name="warning"
+                            size={20}
+                            color={severityColor}
+                          />
+                        </View>
+                        <View className="flex-1">
+                          <Text className="font-bold text-gray-800 text-base">
+                            {alertResponder.victim?.fullName ||
+                              `Alert #${alertResponder.alertId.slice(-8).toUpperCase()}`}
+                          </Text>
+                          <View className="flex-row items-center">
+                            <Text className="text-gray-500 text-sm">
+                              {alertResponder.triggeredAt
+                                ? getTimeAgo(alertResponder.triggeredAt)
+                                : "Time unknown"}
+                            </Text>
+                            {alertResponder.forwarded && (
+                              <View className="ml-2 px-2 py-0.5 bg-purple-100 rounded-full">
+                                <Text className="text-xs text-purple-700 font-medium">
+                                  Forwarded
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        </View>
+                      </View>
+
+                      {/* Status badges */}
+                      <View className="items-end">
+                        <View
+                          className="px-2 py-1 rounded-full mb-1"
+                          style={{ backgroundColor: severityColor + "20" }}
+                        >
+                          <Text
+                            className="text-xs font-semibold"
+                            style={{ color: severityColor }}
+                          >
+                            {alertResponder.severity || "MEDIUM"}
+                          </Text>
+                        </View>
+                        <View
+                          className="px-2 py-1 rounded-full"
+                          style={{ backgroundColor: statusColor + "20" }}
+                        >
+                          <Text
+                            className="text-xs font-semibold"
+                            style={{ color: statusColor }}
+                          >
+                            {alertResponder.responderStatus}
+                          </Text>
+                        </View>
                       </View>
                     </View>
 
-                    <View className="bg-green-100 px-2 py-1 rounded-full">
-                      <Text className="text-xs font-semibold text-green-700">
-                        {alertResponder.alertStatus?.toUpperCase() || "ACCEPTED"}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Alert Details */}
-                  <View className="mb-3">
-                    <Text className="text-gray-600 text-sm">
-                      Status: Currently responding to this emergency
-                    </Text>
-                    {alertResponder.eta && (
-                      <Text className="text-gray-600 text-sm">
-                        ETA: {alertResponder.eta}
-                      </Text>
-                    )}
-                  </View>
-
-                  {/* Action Buttons */}
-                  <View className="flex-row space-x-2">
-                    <TouchableOpacity
-                      className="bg-green-600 rounded-lg px-4 py-2 flex-1"
-                      onPress={() =>
-                        handleNavigateToUser(alertResponder.alertId)
-                      }
-                    >
-                      <View className="flex-row items-center justify-center">
+                    {/* Alert Details */}
+                    <View className="mb-3 space-y-1">
+                      {/* Location */}
+                      <View className="flex-row items-center">
                         <MaterialIcons
-                          name="navigation"
+                          name="location-on"
                           size={16}
-                          color="white"
+                          color="#6B7280"
                         />
-                        <Text className="text-white font-semibold ml-1">
-                          Navigate
+                        <Text
+                          className="text-gray-600 ml-1 flex-1"
+                          numberOfLines={1}
+                        >
+                          {alertResponder.address ||
+                            (alertResponder.latitude
+                              ? `${alertResponder.latitude.toFixed(4)}, ${alertResponder.longitude?.toFixed(4)}`
+                              : "Location unknown")}
                         </Text>
                       </View>
-                    </TouchableOpacity>
 
-                    <TouchableOpacity
-                      className="bg-orange-600 rounded-lg px-3 py-2"
-                      onPress={() => handleUpdateReport(alertResponder.alertId)}
-                    >
-                      <Text className="text-white font-semibold text-center">
-                        Update Report
-                      </Text>
-                    </TouchableOpacity>
+                      {/* Victim phone */}
+                      {alertResponder.victim?.phone && (
+                        <View className="flex-row items-center">
+                          <MaterialIcons
+                            name="phone"
+                            size={16}
+                            color="#6B7280"
+                          />
+                          <Text className="text-gray-600 ml-1">
+                            {alertResponder.victim.phone}
+                          </Text>
+                        </View>
+                      )}
 
-                    <TouchableOpacity
-                      className="bg-blue-600 rounded-lg px-3 py-2"
-                      onPress={() => handleUpdateStatus(alertResponder)}
-                    >
-                      <Text className="text-white font-semibold text-center">
-                        Status
-                      </Text>
-                    </TouchableOpacity>
+                      {/* Alert message */}
+                      {alertResponder.alertMessage && (
+                        <View className="flex-row items-start">
+                          <MaterialIcons
+                            name="message"
+                            size={16}
+                            color="#6B7280"
+                          />
+                          <Text
+                            className="text-gray-600 ml-1 flex-1"
+                            numberOfLines={2}
+                          >
+                            {alertResponder.alertMessage}
+                          </Text>
+                        </View>
+                      )}
 
-                    <TouchableOpacity
-                      className="bg-gray-100 rounded-lg px-3 py-2"
-                      onPress={() =>
-                        handleViewAlertDetails(alertResponder.alertId)
-                      }
-                    >
-                      <MaterialIcons name="info" size={20} color="#374151" />
-                    </TouchableOpacity>
+                      {/* ETA if set */}
+                      {alertResponder.eta && (
+                        <View className="flex-row items-center">
+                          <MaterialIcons
+                            name="timer"
+                            size={16}
+                            color="#2563EB"
+                          />
+                          <Text className="text-blue-600 ml-1">
+                            ETA: {alertResponder.eta} min
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Action Buttons */}
+                    <View className="flex-row flex-wrap gap-2">
+                      <TouchableOpacity
+                        className="bg-blue-600 rounded-lg px-3 py-2"
+                        onPress={() =>
+                          handleNavigateToUser(alertResponder.alertId)
+                        }
+                      >
+                        <View className="flex-row items-center">
+                          <MaterialIcons
+                            name="navigation"
+                            size={16}
+                            color="white"
+                          />
+                          <Text className="text-white font-semibold ml-1">
+                            Navigate
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        className="bg-amber-600 rounded-lg px-3 py-2"
+                        onPress={() =>
+                          handleUpdateReport(alertResponder.alertId)
+                        }
+                      >
+                        <View className="flex-row items-center">
+                          <MaterialIcons
+                            name="edit-note"
+                            size={16}
+                            color="white"
+                          />
+                          <Text className="text-white font-semibold ml-1">
+                            Report
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        className="bg-green-600 rounded-lg px-3 py-2"
+                        onPress={() => handleUpdateStatus(alertResponder)}
+                      >
+                        <View className="flex-row items-center">
+                          <MaterialIcons name="sync" size={16} color="white" />
+                          <Text className="text-white font-semibold ml-1">
+                            Status
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        className="bg-gray-600 rounded-lg px-3 py-2"
+                        onPress={() =>
+                          handleViewAlertDetails(
+                            alertResponder.alertId,
+                            alertResponder,
+                            true,
+                          )
+                        }
+                      >
+                        <View className="flex-row items-center">
+                          <MaterialIcons name="info" size={16} color="white" />
+                          <Text className="text-white font-semibold ml-1">
+                            Details
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           )}
         </View>
@@ -987,115 +1341,203 @@ export default function ResponderHomepage() {
             <Text className="text-lg font-bold text-gray-800">
               🚨 Critical Alerts
             </Text>
+            {criticalAlerts.length > 0 && (
+              <View className="bg-red-100 px-2 py-1 rounded-full">
+                <Text className="text-red-700 text-sm font-medium">
+                  {criticalAlerts.length} active
+                </Text>
+              </View>
+            )}
           </View>
 
           {criticalAlerts.length === 0 ? (
             <View className="bg-white rounded-xl p-8 items-center">
-              <MaterialIcons name="warning" size={48} color="#6B7280" />
+              <MaterialIcons name="check-circle" size={48} color="#16A34A" />
               <Text className="text-gray-800 text-lg font-semibold mt-2">
                 No Critical Alerts
               </Text>
               <Text className="text-gray-500 text-center mt-1">
-                Critical alerts will appear here
+                All clear - no critical emergencies
               </Text>
             </View>
           ) : (
             <View className="space-y-3">
-              {criticalAlerts.map((alertResponder: AcceptedAlertResponder) => (
-                <View
-                  key={`${alertResponder.alertId}-${alertResponder.responderId}`}
-                  className="bg-red-50 rounded-xl p-4 shadow-sm border border-red-200"
-                >
-                  {/* Header */}
-                  <View className="flex-row items-start justify-between mb-3">
-                    <View className="flex-row items-center">
-                      <View className="w-10 h-10 rounded-full items-center justify-center mr-3 bg-red-200">
+              {criticalAlerts.map((alertResponder: AcceptedAlertResponder) => {
+                const statusColor = getResponderStatusColor(
+                  alertResponder.responderStatus,
+                );
+
+                return (
+                  <View
+                    key={`${alertResponder.alertId}-${alertResponder.responderId}`}
+                    className="bg-red-50 rounded-xl p-4 shadow-sm border border-red-300"
+                  >
+                    {/* Header */}
+                    <View className="flex-row items-start justify-between mb-3">
+                      <View className="flex-row items-center flex-1">
+                        <View className="w-10 h-10 rounded-full items-center justify-center mr-3 bg-red-200">
+                          <MaterialIcons
+                            name="warning"
+                            size={22}
+                            color="#DC2626"
+                          />
+                        </View>
+                        <View className="flex-1">
+                          <Text className="font-bold text-gray-800 text-base">
+                            {alertResponder.victim?.fullName ||
+                              `Alert #${alertResponder.alertId.slice(-8).toUpperCase()}`}
+                          </Text>
+                          <View className="flex-row items-center">
+                            <Text className="text-red-600 text-sm font-medium">
+                              CRITICAL
+                            </Text>
+                            <Text className="text-gray-500 text-sm ml-2">
+                              •{" "}
+                              {alertResponder.triggeredAt
+                                ? getTimeAgo(alertResponder.triggeredAt)
+                                : "Time unknown"}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      {/* Status badge */}
+                      <View
+                        className="px-2 py-1 rounded-full"
+                        style={{ backgroundColor: statusColor + "20" }}
+                      >
+                        <Text
+                          className="text-xs font-semibold"
+                          style={{ color: statusColor }}
+                        >
+                          {alertResponder.responderStatus}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Alert Details */}
+                    <View className="mb-3 space-y-1">
+                      {/* Location */}
+                      <View className="flex-row items-center">
                         <MaterialIcons
-                          name="warning"
-                          size={24}
+                          name="location-on"
+                          size={16}
                           color="#DC2626"
                         />
-                      </View>
-                      <View className="flex-1">
-                        <Text className="text-gray-800 font-semibold">
-                          Alert #{alertResponder.alertId}
+                        <Text
+                          className="text-gray-700 ml-1 flex-1 font-medium"
+                          numberOfLines={1}
+                        >
+                          {alertResponder.address ||
+                            (alertResponder.latitude
+                              ? `${alertResponder.latitude.toFixed(4)}, ${alertResponder.longitude?.toFixed(4)}`
+                              : "Location unknown")}
                         </Text>
-                        <Text className="text-gray-600 text-sm">
-                          {new Date(
-                            alertResponder.acceptedAt || Date.now()
-                          ).toLocaleString()}
-                        </Text>
                       </View>
+
+                      {/* Victim phone */}
+                      {alertResponder.victim?.phone && (
+                        <View className="flex-row items-center">
+                          <MaterialIcons
+                            name="phone"
+                            size={16}
+                            color="#DC2626"
+                          />
+                          <Text className="text-gray-700 ml-1 font-medium">
+                            {alertResponder.victim.phone}
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Alert message */}
+                      {alertResponder.alertMessage && (
+                        <View className="flex-row items-start">
+                          <MaterialIcons
+                            name="message"
+                            size={16}
+                            color="#6B7280"
+                          />
+                          <Text
+                            className="text-gray-600 ml-1 flex-1"
+                            numberOfLines={2}
+                          >
+                            {alertResponder.alertMessage}
+                          </Text>
+                        </View>
+                      )}
                     </View>
 
-                    <View className="bg-red-100 px-2 py-1 rounded-full">
-                      <Text className="text-xs font-semibold text-red-700">
-                        {alertResponder.alertStatus?.toUpperCase() || "CRITICAL"}
-                      </Text>
+                    {/* Action Buttons */}
+                    <View className="flex-row flex-wrap gap-2">
+                      <TouchableOpacity
+                        className="bg-red-600 rounded-lg px-3 py-2"
+                        onPress={() =>
+                          handleNavigateToUser(alertResponder.alertId)
+                        }
+                      >
+                        <View className="flex-row items-center">
+                          <MaterialIcons
+                            name="navigation"
+                            size={16}
+                            color="white"
+                          />
+                          <Text className="text-white font-semibold ml-1">
+                            Navigate
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        className="bg-amber-600 rounded-lg px-3 py-2"
+                        onPress={() =>
+                          handleUpdateReport(alertResponder.alertId)
+                        }
+                      >
+                        <View className="flex-row items-center">
+                          <MaterialIcons
+                            name="edit-note"
+                            size={16}
+                            color="white"
+                          />
+                          <Text className="text-white font-semibold ml-1">
+                            Report
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        className="bg-green-600 rounded-lg px-3 py-2"
+                        onPress={() => handleUpdateStatus(alertResponder)}
+                      >
+                        <View className="flex-row items-center">
+                          <MaterialIcons name="sync" size={16} color="white" />
+                          <Text className="text-white font-semibold ml-1">
+                            Status
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        className="bg-gray-600 rounded-lg px-3 py-2"
+                        onPress={() =>
+                          handleViewAlertDetails(
+                            alertResponder.alertId,
+                            alertResponder,
+                            true,
+                          )
+                        }
+                      >
+                        <View className="flex-row items-center">
+                          <MaterialIcons name="info" size={16} color="white" />
+                          <Text className="text-white font-semibold ml-1">
+                            Details
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
                     </View>
                   </View>
-
-                  {/* Alert Details */}
-                  <View className="mb-3">
-                    <Text className="text-gray-600 text-sm">
-                      Status: Critical emergency requiring immediate attention
-                    </Text>
-                    {alertResponder.eta && (
-                      <Text className="text-gray-600 text-sm">
-                        ETA: {alertResponder.eta}
-                      </Text>
-                    )}
-                  </View>
-
-                  {/* Action Buttons */}
-                  <View className="flex-row space-x-2">
-                    <TouchableOpacity
-                      className="bg-red-600 rounded-lg px-4 py-2 flex-1"
-                      onPress={() =>
-                        handleNavigateToUser(alertResponder.alertId)
-                      }
-                    >
-                      <View className="flex-row items-center justify-center">
-                        <MaterialIcons
-                          name="navigation"
-                          size={16}
-                          color="white"
-                        />
-                        <Text className="text-white font-semibold ml-1">
-                          Navigate
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      className="bg-orange-600 rounded-lg px-3 py-2"
-                      onPress={() => handleUpdateReport(alertResponder.alertId)}
-                    >
-                      <Text className="text-white font-semibold text-center">
-                        Update Report
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      className="bg-blue-600 rounded-lg px-3 py-2"
-                      onPress={() => handleUpdateStatus(alertResponder)}
-                    >
-                      <Text className="text-white font-semibold text-center">
-                        Status
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      className="bg-gray-100 rounded-lg px-3 py-2"
-                      onPress={() =>
-                        handleViewAlertDetails(alertResponder.alertId)
-                      }
-                    >
-                      <MaterialIcons name="info" size={20} color="#374151" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           )}
         </View>
@@ -1143,58 +1585,16 @@ export default function ResponderHomepage() {
         onClose={() => setShowNotifications(false)}
       />
 
-      {/* Forward Alert Modal */}
-      <Modal
+      {/* Forward Alert Modal - New searchable multi-select */}
+      <ForwardAlertModal
         visible={showForwardModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowForwardModal(false)}
-      >
-        <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
-          <View className="bg-white rounded-xl p-6 mx-4 w-80">
-            <Text className="text-lg font-bold text-gray-800 mb-4">
-              Forward Alert
-            </Text>
-
-            <Text className="text-gray-600 mb-2">
-              Enter the badge number of the responder you want to forward this
-              alert to:
-            </Text>
-
-            <TextInput
-              className="border border-gray-300 rounded-lg px-3 py-2 mb-4"
-              placeholder="Badge Number (e.g., P12345)"
-              value={badgeNumber}
-              onChangeText={setBadgeNumber}
-              autoCapitalize="characters"
-            />
-
-            <View className="flex-row space-x-3">
-              <TouchableOpacity
-                className="bg-gray-200 rounded-lg px-4 py-2 flex-1"
-                onPress={() => {
-                  setShowForwardModal(false);
-                  setBadgeNumber("");
-                  setSelectedAlertId("");
-                }}
-              >
-                <Text className="text-gray-700 font-semibold text-center">
-                  Cancel
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className="bg-blue-600 rounded-lg px-4 py-2 flex-1"
-                onPress={submitForwardAlert}
-              >
-                <Text className="text-white font-semibold text-center">
-                  Forward
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => {
+          setShowForwardModal(false);
+          setSelectedAlertId("");
+        }}
+        onForward={submitForwardAlert}
+        isLoading={loading}
+      />
 
       {/* Status Update Modal */}
       <Modal
@@ -1205,50 +1605,92 @@ export default function ResponderHomepage() {
       >
         <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
           <View className="bg-white rounded-xl p-6 mx-4 w-80">
-            <Text className="text-lg font-bold text-gray-800 mb-4">
-              Update Alert Status
+            <Text className="text-lg font-bold text-gray-800 mb-2">
+              Update Your Status
             </Text>
 
-            <Text className="text-gray-600 mb-4">
-              Select the new status for this alert:
-            </Text>
+            {selectedAcceptedAlert && (
+              <View className="mb-4 p-2 bg-gray-50 rounded-lg">
+                <Text className="text-gray-500 text-sm">
+                  Current:{" "}
+                  <Text className="font-medium text-gray-700">
+                    {selectedAcceptedAlert.responderStatus}
+                  </Text>
+                </Text>
+              </View>
+            )}
 
             <View className="space-y-3">
-              <TouchableOpacity
-                className="bg-green-600 rounded-lg px-4 py-3"
-                onPress={() => updateAlertStatus(AlertStatus.RESOLVED)}
-              >
-                <Text className="text-white font-semibold text-center">
-                  Mark as Resolved
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className="bg-red-600 rounded-lg px-4 py-3"
-                onPress={() => updateAlertStatus(AlertStatus.CRITICAL)}
-              >
-                <Text className="text-white font-semibold text-center">
-                  Escalate to Critical
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className="bg-yellow-500 rounded-lg px-4 py-3"
-                onPress={() => updateAlertStatus(AlertStatus.FALSE_ALARM)}
-              >
-                <Text className="text-white font-semibold text-center">
-                  Mark as False Alarm
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className="bg-red-500 rounded-lg px-4 py-3"
-                onPress={() => updateAlertStatus(AlertStatus.REJECTED)}
-              >
-                <Text className="text-white font-semibold text-center">
-                  Mark as Rejected
-                </Text>
-              </TouchableOpacity>
+              {/* Show all status options like AlertDetailsModal */}
+              {[
+                {
+                  status: ResponderStatus.ACCEPTED,
+                  label: "Accept Alert",
+                  bg: "bg-blue-600",
+                  icon: "check-circle",
+                },
+                {
+                  status: ResponderStatus.EN_ROUTE,
+                  label: "On My Way (En Route)",
+                  bg: "bg-cyan-600",
+                  icon: "directions-car",
+                },
+                {
+                  status: ResponderStatus.ARRIVED,
+                  label: "I've Arrived",
+                  bg: "bg-indigo-600",
+                  icon: "location-on",
+                },
+                {
+                  status: ResponderStatus.RESOLVED,
+                  label: "Mark as Resolved",
+                  bg: "bg-green-600",
+                  icon: "check-circle",
+                },
+                {
+                  status: ResponderStatus.REJECTED,
+                  label: "Reject Alert",
+                  bg: "bg-red-600",
+                  icon: "cancel",
+                },
+                {
+                  status: ResponderStatus.CANCELED,
+                  label: "Cancel My Response",
+                  bg: "bg-gray-600",
+                  icon: "close",
+                },
+              ].map((option) => {
+                const isCurrent =
+                  selectedAcceptedAlert?.responderStatus === option.status;
+                return (
+                  <TouchableOpacity
+                    key={option.status}
+                    className={`${option.bg} rounded-lg px-4 py-3 flex-row items-center justify-center ${
+                      isCurrent
+                        ? "ring-2 ring-offset-2 ring-gray-400 opacity-70"
+                        : ""
+                    }`}
+                    onPress={() => {
+                      if (option.status === ResponderStatus.CANCELED) {
+                        handleCancelAlert();
+                      } else {
+                        updateResponderStatusLocal(option.status);
+                      }
+                    }}
+                    disabled={isCurrent}
+                  >
+                    <MaterialIcons
+                      name={option.icon as any}
+                      size={20}
+                      color="white"
+                    />
+                    <Text className="text-white font-semibold text-center ml-2">
+                      {option.label}
+                      {isCurrent ? " (Current)" : ""}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             <TouchableOpacity
@@ -1259,7 +1701,7 @@ export default function ResponderHomepage() {
               }}
             >
               <Text className="text-gray-700 font-semibold text-center">
-                Cancel
+                Close
               </Text>
             </TouchableOpacity>
           </View>
@@ -1267,182 +1709,24 @@ export default function ResponderHomepage() {
       </Modal>
 
       {/* Alert Details Modal */}
-      <Modal
+      <AlertDetailsModal
         visible={showAlertDetailsModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowAlertDetailsModal(false)}
-      >
-        <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
-          <View className="bg-white rounded-xl p-6 mx-6 w-220 max-h-[80%]">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-lg font-bold text-gray-800">
-                Alert Details
-              </Text>
-              <TouchableOpacity onPress={() => setShowAlertDetailsModal(false)}>
-                <MaterialIcons name="close" size={24} color="#374151" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {selectedAlertForDetails && (
-                <View className="space-y-4">
-                  {/* Alert Info */}
-                  <View className="border-b border-gray-200 pb-4">
-                    <Text className="font-semibold text-gray-700 mb-2">
-                      Alert Information
-                    </Text>
-                    {alertDetailsData?.alert ? (
-                      <>
-                        <Text className="text-gray-600 mb-1">
-                          ID:{" "}
-                          {alertDetailsData.alert.id?.slice(-8).toUpperCase() ||
-                            "Unknown"}
-                        </Text>
-                        <Text className="text-gray-600 mb-1">
-                          Time:{" "}
-                          {alertDetailsData.alert.triggeredAt
-                            ? new Date(
-                                alertDetailsData.alert.triggeredAt
-                              ).toLocaleString()
-                            : "Unknown"}
-                        </Text>
-                        <Text className="text-gray-600 mb-1">
-                          Type:{" "}
-                          {alertDetailsData.alert.triggerMethod
-                            ?.charAt(0)
-                            .toUpperCase() +
-                            alertDetailsData.alert.triggerMethod?.slice(1) ||
-                            "Unknown"}
-                        </Text>
-                        {alertDetailsData.alert.alertMessage && (
-                          <Text className="text-gray-600 mb-1">
-                            Message: {alertDetailsData.alert.alertMessage}
-                          </Text>
-                        )}
-                      </>
-                    ) : (
-                      <Text className="text-gray-500">
-                        Loading alert information...
-                      </Text>
-                    )}
-                  </View>
-
-                  {/* Location Info */}
-                  <View className="border-b border-gray-200 pb-4">
-                    <Text className="font-semibold text-gray-700 mb-2">
-                      Location
-                    </Text>
-                    {alertDetailsData?.alert ? (
-                      <>
-                        <Text className="text-gray-600 mb-1">
-                          Address: {alertDetailsData.alert.address || "Unknown"}
-                        </Text>
-                        <Text className="text-gray-600 mb-1">
-                          Coordinates: {alertDetailsData.alert.latitude},{" "}
-                          {alertDetailsData.alert.longitude}
-                        </Text>
-                      </>
-                    ) : (
-                      <Text className="text-gray-500">
-                        Loading location information...
-                      </Text>
-                    )}
-                  </View>
-
-                  {/* User Details */}
-                  <View className="border-b border-gray-200 pb-4">
-                    <Text className="font-semibold text-gray-700 mb-2">
-                      User Information
-                    </Text>
-                    {loadingUserDetails ? (
-                      <Text className="text-gray-500">
-                        Loading user details...
-                      </Text>
-                    ) : alertDetailsData?.user ? (
-                      <View>
-                        <Text className="text-gray-600 mb-1">
-                          Name: {alertDetailsData.user.fullName || "Unknown"}
-                        </Text>
-                        <Text className="text-gray-600 mb-1">
-                          Email: {alertDetailsData.user.email || "Unknown"}
-                        </Text>
-                        <Text className="text-gray-600 mb-1">
-                          Phone:{" "}
-                          {alertDetailsData.user.phoneNumber || "Unknown"}
-                        </Text>
-                        <Text className="text-gray-600 mb-1">
-                          User ID: {alertDetailsData.user.userId}
-                        </Text>
-                      </View>
-                    ) : (
-                      <Text className="text-red-600">
-                        Could not load user details
-                      </Text>
-                    )}
-                  </View>
-
-                  {/* Response Details */}
-                  {alertDetailsData?.responder && (
-                    <View className="border-b border-gray-200 pb-4">
-                      <Text className="font-semibold text-gray-700 mb-2">
-                        Response Information
-                      </Text>
-                      <Text className="text-gray-600 mb-1">
-                        Status:{" "}
-                        {alertDetailsData.responder.status?.toUpperCase() ||
-                          "Unknown"}
-                      </Text>
-                      {alertDetailsData.responder.acceptedAt && (
-                        <Text className="text-gray-600 mb-1">
-                          Accepted:{" "}
-                          {new Date(
-                            alertDetailsData.responder.acceptedAt
-                          ).toLocaleString()}
-                        </Text>
-                      )}
-                      {alertDetailsData.responder.eta && (
-                        <Text className="text-gray-600 mb-1">
-                          ETA: {alertDetailsData.responder.eta}
-                        </Text>
-                      )}
-                      {alertDetailsData.responder.arrivalTime && (
-                        <Text className="text-gray-600 mb-1">
-                          Arrived:{" "}
-                          {new Date(
-                            alertDetailsData.responder.arrivalTime
-                          ).toLocaleString()}
-                        </Text>
-                      )}
-                    </View>
-                  )}
-
-                  {/* Additional Info */}
-                  {alertDetailsData?.alert?.notes && (
-                    <View className="pb-4">
-                      <Text className="font-semibold text-gray-700 mb-2">
-                        Notes
-                      </Text>
-                      <Text className="text-gray-600">
-                        {alertDetailsData.alert.notes}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
-            </ScrollView>
-
-            <TouchableOpacity
-              className="bg-[#67082F] rounded-lg px-4 py-3 mt-4"
-              onPress={() => setShowAlertDetailsModal(false)}
-            >
-              <Text className="text-white font-semibold text-center">
-                Close
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => {
+          setShowAlertDetailsModal(false);
+          setSelectedAlertForDetails(null);
+          setSelectedAlertObject(null);
+          setAlertDetailsData(null);
+          setCurrentResponderStatus(null);
+        }}
+        alert={selectedAlertObject}
+        alertDetails={alertDetailsData}
+        isResponder={true}
+        isAcceptedResponder={selectedAlertIsAccepted}
+        isVictim={false}
+        currentResponderStatus={currentResponderStatus || undefined}
+        onStatusUpdate={loadAlerts}
+        loadingDetails={loadingUserDetails}
+      />
     </View>
   );
 }

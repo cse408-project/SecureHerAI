@@ -42,7 +42,7 @@ interface NotificationContextType {
   markAllAsRead: () => Promise<boolean>;
   acceptEmergency: (request: AcceptEmergencyRequest) => Promise<boolean>;
   getAlertNotifications: (
-    alertId: string
+    alertId: string,
   ) => Promise<AlertNotificationsResponse | null>;
   clearError: () => void;
   addNotification: (notification: Notification) => void;
@@ -70,14 +70,14 @@ interface NotificationContextType {
   markAllAsRead: () => Promise<boolean>;
   acceptEmergency: (request: AcceptEmergencyRequest) => Promise<boolean>;
   getAlertNotifications: (
-    alertId: string
+    alertId: string,
   ) => Promise<AlertNotificationsResponse | null>;
   clearError: () => void;
   addNotification: (notification: Notification) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(
-  undefined
+  undefined,
 );
 
 interface NotificationProviderProps {
@@ -161,8 +161,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         // Update local state
         setNotifications((prev) =>
           prev.map((n) =>
-            n.id === notificationId ? { ...n, isRead: true } : n
-          )
+            n.id === notificationId ? { ...n, isRead: true } : n,
+          ),
         );
         setUnreadCount((prev) => Math.max(0, prev - 1));
         return true;
@@ -199,7 +199,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
   // Accept emergency response
   const acceptEmergency = async (
-    request: AcceptEmergencyRequest
+    request: AcceptEmergencyRequest,
   ): Promise<boolean> => {
     try {
       const response = await ApiService.acceptEmergencyResponse(request);
@@ -220,7 +220,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
   // Get notifications for a specific alert
   const getAlertNotifications = async (
-    alertId: string
+    alertId: string,
   ): Promise<AlertNotificationsResponse | null> => {
     try {
       const response = await ApiService.getNotificationsForAlert(alertId);
@@ -310,33 +310,43 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       pushNotificationService.showEmergencyNotification(
         "🚨 Emergency Alert!",
         `${alert.victimName} needs help! ${alert.distanceKm.toFixed(1)}km away`,
-        { alertId: alert.alertId, type: "EMERGENCY_ALERT" }
+        { alertId: alert.alertId, type: "EMERGENCY_ALERT" },
       );
     }
   };
 
-  // Handle WebSocket messages
+  // Handle WebSocket messages - OPTIMIZED FOR SPEED
   const handleWebSocketMessage = (message: NotificationMessage) => {
+    console.log("🚀 Processing WebSocket message type:", message.type);
+
     switch (message.type) {
       case "EMERGENCY_ALERT":
         handleEmergencyAlert(message.payload as EmergencyAlertMessage);
         break;
 
       case "ALERT_UPDATE":
-        // Update existing alert status
+      case "RESPONDER_UPDATE":
+      case "RESPONDER_LOCATION":
+      case "VICTIM_LOCATION":
+        // Update existing alert status IMMEDIATELY
         const update = message.payload;
-        setEmergencyAlerts((prev) =>
-          prev.map((alert) =>
-            alert.alertId === update.alertId ? { ...alert, ...update } : alert
-          )
-        );
+        setEmergencyAlerts((prev) => {
+          const updated = prev.map((alert) =>
+            alert.alertId === update.alertId
+              ? { ...alert, ...update, receivedAt: new Date() }
+              : alert,
+          );
+          console.log("⚡ Alert updated instantly:", update.alertId);
+          return updated;
+        });
         break;
 
       case "ALERT_CANCELLED":
-        // Remove cancelled alert
+        // Remove cancelled alert IMMEDIATELY
         setEmergencyAlerts((prev) =>
-          prev.filter((alert) => alert.alertId !== message.payload.alertId)
+          prev.filter((alert) => alert.alertId !== message.payload.alertId),
         );
+        console.log("⚡ Alert cancelled:", message.payload.alertId);
         break;
 
       case "SYSTEM":
@@ -378,8 +388,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     websocketService.acknowledgeAlert(alertId);
     setEmergencyAlerts((prev) =>
       prev.map((alert) =>
-        alert.alertId === alertId ? { ...alert, acknowledged: true } : alert
-      )
+        alert.alertId === alertId ? { ...alert, acknowledged: true } : alert,
+      ),
     );
   };
 
@@ -391,7 +401,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   // Clear a specific emergency alert
   const clearEmergencyAlert = (alertId: number) => {
     setEmergencyAlerts((prev) =>
-      prev.filter((alert) => alert.alertId !== alertId)
+      prev.filter((alert) => alert.alertId !== alertId),
     );
   };
 
@@ -412,7 +422,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
           refreshNotificationCount();
         }
         appState.current = nextAppState;
-      }
+      },
     );
 
     return () => {
@@ -467,7 +477,7 @@ export function useNotifications() {
   const context = useContext(NotificationContext);
   if (context === undefined) {
     throw new Error(
-      "useNotifications must be used within a NotificationProvider"
+      "useNotifications must be used within a NotificationProvider",
     );
   }
   return context;

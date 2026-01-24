@@ -30,10 +30,10 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 public class SOSController {
-    
+
     private final SOSService sosService;
     private final JwtService jwtService;
-    
+
     /**
      * Process voice command from URL and create an alert if keyword is detected
      * 
@@ -43,63 +43,59 @@ public class SOSController {
     public ResponseEntity<SOSAlertResponseDto> processVoiceCommand(
             @RequestHeader("Authorization") String authHeader,
             @RequestBody @Valid SOSVoiceUrlCommandRequestDto requestDto) {
-        
+
         try {
             // Extract token and validate
             String token = authHeader.replace("Bearer ", "");
             if (!jwtService.isTokenValid(token)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new SOSAlertResponseDto(false, "Authentication token is invalid or expired"));
+                        .body(new SOSAlertResponseDto(false, "Authentication token is invalid or expired"));
             }
-            
+
             // Extract user ID from token
             UUID userId = jwtService.extractUserId(token);
             log.info("Processing voice command from URL for user: {}", userId);
-            
+
             // Process the voice command
             Alert alert = sosService.processVoiceCommandFromUrl(
-                userId,
-                requestDto.getAudioUrl(),
-                requestDto.getLocation()
-            );
-            
+                    userId,
+                    requestDto.getAudioUrl(),
+                    requestDto.getLocation());
+
             // If no alert was created (no keywords detected), return appropriate response
             if (alert == null) {
                 return ResponseEntity.ok(new SOSAlertResponseDto(
-                    false, 
-                    "Alert not triggered. No emergency keywords detected in the audio."
-                ));
+                        false,
+                        "Alert not triggered. No emergency keywords detected in the audio."));
             }
-            
+
             // Return success response with the created alert including all fields
             return ResponseEntity.status(HttpStatus.CREATED).body(new SOSAlertResponseDto(
-                true,
-                "SOS Alert triggered successfully",
-                alert.getId(),
-                alert.getUserId(),
-                alert.getLatitude(),
-                alert.getLongitude(),
-                alert.getAddress(),
-                alert.getTriggerMethod(),
-                alert.getAlertMessage(),
-                alert.getAudioRecording(),
-                alert.getTriggeredAt(),
-                alert.getStatus().getValue(),
-                alert.getVerificationStatus(),
-                alert.getCanceledAt(),
-                alert.getResolvedAt()
-            ));
-            
+                    true,
+                    "SOS Alert triggered successfully",
+                    alert.getId(),
+                    alert.getUserId(),
+                    alert.getLatitude(),
+                    alert.getLongitude(),
+                    alert.getAddress(),
+                    alert.getTriggerMethod(),
+                    alert.getAlertMessage(),
+                    alert.getAudioRecording(),
+                    alert.getTriggeredAt(),
+                    alert.getStatus().getValue(),
+                    alert.getVerificationStatus(),
+                    alert.getCanceledAt(),
+                    alert.getResolvedAt()));
+
         } catch (Exception e) {
             log.error("Error processing voice command from URL", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new SOSAlertResponseDto(
-                    false, 
-                    "Error processing voice command: " + e.getMessage()
-                ));
+                    .body(new SOSAlertResponseDto(
+                            false,
+                            "Error processing voice command: " + e.getMessage()));
         }
     }
-    
+
     /**
      * Process text command and create an alert if keyword is detected
      * 
@@ -109,64 +105,61 @@ public class SOSController {
     public ResponseEntity<SOSAlertResponseDto> processTextCommand(
             @RequestHeader("Authorization") String authHeader,
             @RequestBody @Valid SOSTextCommandRequestDto requestDto) {
-        
+
         try {
             // Extract token and validate
             String token = authHeader.replace("Bearer ", "");
             if (!jwtService.isTokenValid(token)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new SOSAlertResponseDto(false, "Authentication token is invalid or expired"));
+                        .body(new SOSAlertResponseDto(false, "Authentication token is invalid or expired"));
             }
-            
+
             // Extract user ID from token
             UUID userId = jwtService.extractUserId(token);
             log.info("Processing text command for user: {}", userId);
-            
+
             // Process the text command
             Alert alert = sosService.processTextCommand(
-                userId,
-                requestDto.getMessage(),
-                requestDto.getKeyword(),
-                requestDto.getLocation()
-            );
-            
-            // If no alert was created (keyword doesn't match user's SOS keyword), return appropriate response
+                    userId,
+                    requestDto.getMessage(),
+                    requestDto.getKeyword(),
+                    requestDto.getLocation());
+
+            // If no alert was created (keyword doesn't match user's SOS keyword), return
+            // appropriate response
             if (alert == null) {
                 return ResponseEntity.ok(new SOSAlertResponseDto(
-                    false, 
-                    "Alert not triggered. Keyword does not match your configured SOS keyword."
-                ));
+                        false,
+                        "Alert not triggered. Keyword does not match your configured SOS keyword."));
             }
-            
+
             // Return success response with the created alert including all fields
             return ResponseEntity.status(HttpStatus.CREATED).body(new SOSAlertResponseDto(
-                true,
-                "SOS Alert triggered successfully",
-                alert.getId(),
-                alert.getUserId(),
-                alert.getLatitude(),
-                alert.getLongitude(),
-                alert.getAddress(),
-                alert.getTriggerMethod(),
-                alert.getAlertMessage(),
-                alert.getAudioRecording(),
-                alert.getTriggeredAt(),
-                alert.getStatus().getValue(),
-                alert.getVerificationStatus(),
-                alert.getCanceledAt(),
-                alert.getResolvedAt()
-            ));
-            
+                    true,
+                    "SOS Alert triggered successfully",
+                    alert.getId(),
+                    alert.getUserId(),
+                    alert.getLatitude(),
+                    alert.getLongitude(),
+                    alert.getAddress(),
+                    alert.getTriggerMethod(),
+                    alert.getAlertMessage(),
+                    alert.getAudioRecording(),
+                    alert.getTriggeredAt(),
+                    alert.getStatus().getValue(),
+                    alert.getVerificationStatus(),
+                    alert.getCanceledAt(),
+                    alert.getResolvedAt()));
+
         } catch (Exception e) {
             log.error("Error processing text command", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new SOSAlertResponseDto(
-                    false, 
-                    "Error processing text command: " + e.getMessage()
-                ));
+                    .body(new SOSAlertResponseDto(
+                            false,
+                            "Error processing text command: " + e.getMessage()));
         }
     }
-    
+
     /**
      * Get all alerts for the authenticated user
      * 
@@ -179,28 +172,27 @@ public class SOSController {
             String token = authHeader.replace("Bearer ", "");
             if (!jwtService.isTokenValid(token)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("success", false, "message", "Authentication token is invalid or expired"));
+                        .body(Map.of("success", false, "message", "Authentication token is invalid or expired"));
             }
-            
+
             // Extract user ID from token
             UUID userId = jwtService.extractUserId(token);
             log.info("Getting alerts for user: {}", userId);
-            
+
             // Get user alerts
             List<Alert> alerts = sosService.getUserAlerts(userId);
-            
+
             return ResponseEntity.ok(Map.of(
-                "success", true,
-                "alerts", alerts
-            ));
-            
+                    "success", true,
+                    "alerts", alerts));
+
         } catch (Exception e) {
             log.error("Error retrieving user alerts", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("success", false, "message", "Error retrieving alerts: " + e.getMessage()));
+                    .body(Map.of("success", false, "message", "Error retrieving alerts: " + e.getMessage()));
         }
     }
-    
+
     /**
      * Get all active alerts (only for responders)
      * 
@@ -213,35 +205,34 @@ public class SOSController {
             String token = authHeader.replace("Bearer ", "");
             if (!jwtService.isTokenValid(token)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("success", false, "message", "Authentication token is invalid or expired"));
+                        .body(Map.of("success", false, "message", "Authentication token is invalid or expired"));
             }
-            
+
             // Check if user is a responder
             String role = jwtService.extractRole(token);
             if (!"RESPONDER".equals(role)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("success", false, "message", "Only responders can access this endpoint"));
+                        .body(Map.of("success", false, "message", "Only responders can access this endpoint"));
             }
-            
+
             // Extract user ID from token (for logging)
             UUID userId = jwtService.extractUserId(token);
             log.info("Responder {} requesting all active alerts", userId);
-            
+
             // Get all active alerts
             List<Alert> activeAlerts = sosService.getAllAlerts();
-            
+
             return ResponseEntity.ok(Map.of(
-                "success", true,
-                "alerts", activeAlerts
-            ));
-            
+                    "success", true,
+                    "alerts", activeAlerts));
+
         } catch (Exception e) {
             log.error("Error retrieving active alerts", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("success", false, "message", "Error retrieving active alerts: " + e.getMessage()));
+                    .body(Map.of("success", false, "message", "Error retrieving active alerts: " + e.getMessage()));
         }
     }
-    
+
     /**
      * Cancel an alert
      * 
@@ -251,56 +242,54 @@ public class SOSController {
     public ResponseEntity<SOSAlertResponseDto> cancelAlert(
             @RequestHeader("Authorization") String authHeader,
             @RequestBody @Valid SOSCancelAlertRequestDto requestDto) {
-        
+
         try {
             // Extract token and validate
             String token = authHeader.replace("Bearer ", "");
             if (!jwtService.isTokenValid(token)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new SOSAlertResponseDto(false, "Authentication token is invalid or expired"));
+                        .body(new SOSAlertResponseDto(false, "Authentication token is invalid or expired"));
             }
-            
+
             // Extract user ID from token
             UUID userId = jwtService.extractUserId(token);
             log.info("User {} attempting to cancel alert {}", userId, requestDto.getAlertId());
-            
+
             // Cancel the alert
             Alert updatedAlert = sosService.cancelAlert(requestDto.getAlertId(), userId);
-            
+
             if (updatedAlert == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new SOSAlertResponseDto(false, "Alert not found or you are not authorized to cancel it"));
+                        .body(new SOSAlertResponseDto(false, "Alert not found or you are not authorized to cancel it"));
             }
-            
+
             // Return success response with the updated alert
             return ResponseEntity.ok(new SOSAlertResponseDto(
-                true,
-                "Alert canceled successfully",
-                updatedAlert.getId(),
-                updatedAlert.getUserId(),
-                updatedAlert.getLatitude(),
-                updatedAlert.getLongitude(),
-                updatedAlert.getAddress(),
-                updatedAlert.getTriggerMethod(),
-                updatedAlert.getAlertMessage(),
-                updatedAlert.getAudioRecording(),
-                updatedAlert.getTriggeredAt(),
-                updatedAlert.getStatus().getValue(),
-                updatedAlert.getVerificationStatus(),
-                updatedAlert.getCanceledAt(),
-                updatedAlert.getResolvedAt()
-            ));
-            
+                    true,
+                    "Alert canceled successfully",
+                    updatedAlert.getId(),
+                    updatedAlert.getUserId(),
+                    updatedAlert.getLatitude(),
+                    updatedAlert.getLongitude(),
+                    updatedAlert.getAddress(),
+                    updatedAlert.getTriggerMethod(),
+                    updatedAlert.getAlertMessage(),
+                    updatedAlert.getAudioRecording(),
+                    updatedAlert.getTriggeredAt(),
+                    updatedAlert.getStatus().getValue(),
+                    updatedAlert.getVerificationStatus(),
+                    updatedAlert.getCanceledAt(),
+                    updatedAlert.getResolvedAt()));
+
         } catch (Exception e) {
             log.error("Error canceling alert", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new SOSAlertResponseDto(
-                    false, 
-                    "Error canceling alert: " + e.getMessage()
-                ));
+                    .body(new SOSAlertResponseDto(
+                            false,
+                            "Error canceling alert: " + e.getMessage()));
         }
     }
-    
+
     /**
      * Get other participant's location for navigation
      * For Users: returns responder's location
@@ -312,43 +301,40 @@ public class SOSController {
     public ResponseEntity<Map<String, Object>> getParticipantLocation(
             @RequestHeader("Authorization") String authHeader,
             @PathVariable String alertId) {
-        
+
         try {
             // Extract token and validate
             String token = authHeader.replace("Bearer ", "");
             if (!jwtService.isTokenValid(token)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of(
-                        "success", false,
-                        "error", "Authentication token is invalid or expired"
-                    ));
+                        .body(Map.of(
+                                "success", false,
+                                "error", "Authentication token is invalid or expired"));
             }
-            
+
             // Get user ID from token
             UUID userId = jwtService.extractUserId(token);
-            
+
             // Get participant location from service
             Map<String, Object> result = sosService.getAlertParticipantLocation(UUID.fromString(alertId), userId);
-            
+
             return ResponseEntity.ok(result);
-            
+
         } catch (IllegalArgumentException e) {
             log.error("Invalid alert ID format: {}", alertId, e);
             return ResponseEntity.badRequest()
-                .body(Map.of(
-                    "success", false,
-                    "error", "Invalid alert ID format"
-                ));
+                    .body(Map.of(
+                            "success", false,
+                            "error", "Invalid alert ID format"));
         } catch (Exception e) {
             log.error("Error getting participant location for alert: {}", alertId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of(
-                    "success", false,
-                    "error", "Error getting participant location: " + e.getMessage()
-                ));
+                    .body(Map.of(
+                            "success", false,
+                            "error", "Error getting participant location: " + e.getMessage()));
         }
     }
-    
+
     /**
      * Update alert status (responders can mark as resolved, critical, false_alarm)
      * 
@@ -359,70 +345,66 @@ public class SOSController {
             @RequestHeader("Authorization") String authHeader,
             @PathVariable String alertId,
             @RequestBody Map<String, String> requestBody) {
-        
+
         try {
             // Extract token and validate
             String token = authHeader.replace("Bearer ", "");
             if (!jwtService.isTokenValid(token)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of(
-                        "success", false,
-                        "error", "Authentication token is invalid or expired"
-                    ));
+                        .body(Map.of(
+                                "success", false,
+                                "error", "Authentication token is invalid or expired"));
             }
-            
+
             // Get user ID from token
             UUID userId = jwtService.extractUserId(token);
-            
+
             // Extract new status and notes from request body
             String newStatus = requestBody.get("status");
             String notes = requestBody.get("notes");
-            
+
             if (newStatus == null || newStatus.trim().isEmpty()) {
                 return ResponseEntity.badRequest()
-                    .body(Map.of(
-                        "success", false,
-                        "error", "Status is required"
-                    ));
+                        .body(Map.of(
+                                "success", false,
+                                "error", "Status is required"));
             }
-            
+
             // Update alert status
             Alert updatedAlert = sosService.updateAlertStatus(UUID.fromString(alertId), userId, newStatus, notes);
-            
+
             if (updatedAlert == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of(
-                        "success", false,
-                        "error", "Alert not found or you are not authorized to update it"
-                    ));
+                        .body(Map.of(
+                                "success", false,
+                                "error", "Alert not found or you are not authorized to update it"));
             }
-            
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Alert status updated successfully");
             response.put("alertId", updatedAlert.getId().toString());
             response.put("status", updatedAlert.getStatus().getValue());
-            response.put("resolvedAt", updatedAlert.getResolvedAt() != null ? updatedAlert.getResolvedAt().toString() : null);
-            
+            response.put("resolvedAt",
+                    updatedAlert.getResolvedAt() != null ? updatedAlert.getResolvedAt().toString() : null);
+
             return ResponseEntity.ok(response);
-            
+
         } catch (IllegalArgumentException e) {
             log.error("Invalid input: {}", e.getMessage(), e);
             return ResponseEntity.badRequest()
-                .body(Map.of(
-                    "success", false,
-                    "error", e.getMessage()
-                ));
+                    .body(Map.of(
+                            "success", false,
+                            "error", e.getMessage()));
         } catch (Exception e) {
             log.error("Error updating alert status for alert: {}", alertId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of(
-                    "success", false,
-                    "error", "Error updating alert status: " + e.getMessage()
-                ));
+                    .body(Map.of(
+                            "success", false,
+                            "error", "Error updating alert status: " + e.getMessage()));
         }
     }
-    
+
     /**
      * Get detailed information about an alert including responder info if available
      * 
@@ -432,44 +414,172 @@ public class SOSController {
     public ResponseEntity<Map<String, Object>> getAlertDetails(
             @RequestHeader("Authorization") String authHeader,
             @PathVariable String alertId) {
-        
+
         try {
             // Extract token and validate
             String token = authHeader.replace("Bearer ", "");
             if (!jwtService.isTokenValid(token)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of(
-                        "success", false,
-                        "error", "Authentication token is invalid or expired"
-                    ));
+                        .body(Map.of(
+                                "success", false,
+                                "error", "Authentication token is invalid or expired"));
             }
-            
+
             // Get user ID from token
             UUID userId = jwtService.extractUserId(token);
-            
+
             // Get alert details from service
             Map<String, Object> result = sosService.getAlertDetails(UUID.fromString(alertId), userId);
-            
-            if (!(boolean)result.get("success")) {
+
+            if (!(boolean) result.get("success")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(result);
             }
-            
+
             return ResponseEntity.ok(result);
-            
+
         } catch (IllegalArgumentException e) {
             log.error("Invalid alert ID format: {}", alertId, e);
             return ResponseEntity.badRequest()
-                .body(Map.of(
-                    "success", false,
-                    "error", "Invalid alert ID format"
-                ));
+                    .body(Map.of(
+                            "success", false,
+                            "error", "Invalid alert ID format"));
         } catch (Exception e) {
             log.error("Error getting alert details for alert: {}", alertId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of(
-                    "success", false,
-                    "error", "Error getting alert details: " + e.getMessage()
-                ));
+                    .body(Map.of(
+                            "success", false,
+                            "error", "Error getting alert details: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Update alert severity (victim or assigned responder can change severity)
+     * 
+     * PUT /api/sos/alerts/{alertId}/severity
+     */
+    @PutMapping("/alerts/{alertId}/severity")
+    public ResponseEntity<Map<String, Object>> updateAlertSeverity(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String alertId,
+            @RequestBody Map<String, String> requestBody) {
+
+        try {
+            // Extract token and validate
+            String token = authHeader.replace("Bearer ", "");
+            if (!jwtService.isTokenValid(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of(
+                                "success", false,
+                                "error", "Authentication token is invalid or expired"));
+            }
+
+            // Get user ID from token
+            UUID userId = jwtService.extractUserId(token);
+
+            // Extract new severity from request body
+            String newSeverity = requestBody.get("severity");
+
+            if (newSeverity == null || newSeverity.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of(
+                                "success", false,
+                                "error", "Severity is required"));
+            }
+
+            // Validate severity value
+            String upperSeverity = newSeverity.toUpperCase().trim();
+            if (!upperSeverity.equals("CRITICAL") && !upperSeverity.equals("HIGH") &&
+                    !upperSeverity.equals("MEDIUM") && !upperSeverity.equals("LOW") &&
+                    !upperSeverity.equals("FALSE_ALARM")) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of(
+                                "success", false,
+                                "error",
+                                "Invalid severity value. Must be one of: CRITICAL, HIGH, MEDIUM, LOW, FALSE_ALARM"));
+            }
+
+            // Update alert severity
+            Alert updatedAlert = sosService.updateAlertSeverity(UUID.fromString(alertId), userId, upperSeverity);
+
+            if (updatedAlert == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of(
+                                "success", false,
+                                "error", "Alert not found or you are not authorized to update it"));
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Alert severity updated successfully");
+            response.put("alertId", updatedAlert.getId().toString());
+            response.put("severity", updatedAlert.getSeverity());
+
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid input: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(Map.of(
+                            "success", false,
+                            "error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error updating alert severity for alert: {}", alertId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "success", false,
+                            "error", "Error updating alert severity: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Poke alert - Send notification to more nearby responders
+     * Limited to MAX_RESPONDERS (2) pokes per alert
+     * 
+     * POST /api/sos/alerts/{alertId}/poke
+     */
+    @PostMapping("/alerts/{alertId}/poke")
+    public ResponseEntity<Map<String, Object>> pokeAlert(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String alertId) {
+
+        try {
+            // Extract token and validate
+            String token = authHeader.replace("Bearer ", "");
+            if (!jwtService.isTokenValid(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of(
+                                "success", false,
+                                "error", "Authentication token is invalid or expired"));
+            }
+
+            // Get user ID from token
+            UUID userId = jwtService.extractUserId(token);
+
+            // Poke the alert
+            Map<String, Object> result = sosService.pokeAlert(UUID.fromString(alertId), userId);
+
+            if (result.containsKey("error")) {
+                int statusCode = (int) result.getOrDefault("statusCode", 400);
+                return ResponseEntity.status(statusCode)
+                        .body(Map.of(
+                                "success", false,
+                                "error", result.get("error")));
+            }
+
+            return ResponseEntity.ok(result);
+
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid input: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(Map.of(
+                            "success", false,
+                            "error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error poking alert: {}", alertId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "success", false,
+                            "error", "Error poking alert: " + e.getMessage()));
         }
     }
 }

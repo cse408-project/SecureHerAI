@@ -13,37 +13,38 @@ import java.util.UUID;
 
 @Repository
 public interface ReportEvidenceRepository extends JpaRepository<ReportEvidence, UUID> {
-    
+
     /**
      * Find all evidence for a specific report
      */
     List<ReportEvidence> findByReportId(UUID reportId);
-    
+
     /**
      * Find all evidence for a specific report ordered by upload time
      */
     @Query("SELECT e FROM ReportEvidence e WHERE e.reportId = :reportId ORDER BY e.uploadedAt ASC")
     List<ReportEvidence> findByReportIdOrderByUploadedAt(@Param("reportId") UUID reportId);
-    
+
     /**
      * Count evidence files for a report
      */
     long countByReportId(UUID reportId);
-    
+
     /**
      * Find evidence by report ID and file URL
      */
     Optional<ReportEvidence> findByReportIdAndFileUrl(UUID reportId, String fileUrl);
-    
+
     /**
      * Delete evidence by report ID and file URL
      */
     void deleteByReportIdAndFileUrl(UUID reportId, String fileUrl);
-    
+
     /**
      * Delete all evidence for a specific report (for report deletion)
      */
     @Modifying
+    @org.springframework.transaction.annotation.Transactional
     @Query("DELETE FROM ReportEvidence e WHERE e.reportId = :reportId")
     void deleteByReportId(@Param("reportId") UUID reportId);
 }

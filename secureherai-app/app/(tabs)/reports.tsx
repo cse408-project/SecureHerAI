@@ -14,6 +14,7 @@ import { router, useFocusEffect } from "expo-router";
 import apiService from "../../services/api";
 import { ReportSummary } from "../../types/report";
 import Header from "../../components/Header";
+import PageControlBar from "../../components/PageControlBar";
 import DatePicker from "../../components/DatePicker";
 import { useAlert } from "../../context/AlertContext";
 import { useAuth } from "../../context/AuthContext";
@@ -131,7 +132,7 @@ const FilterModal = ({
                       {type}
                     </Text>
                   </TouchableOpacity>
-                )
+                ),
               )}
             </View>
 
@@ -311,6 +312,9 @@ export default function ReportsScreen() {
   // Notification modal state
   const [showNotifications, setShowNotifications] = useState(false);
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+
   // Reload reports when screen comes into focus
   useFocusEffect(
     useCallback(() => {
@@ -349,10 +353,10 @@ export default function ReportsScreen() {
                 setPublicReports(publicResponse.reports);
                 // Filter out duplicates (user's own reports that are also public)
                 const userReportIds = new Set(
-                  userResponse.reports?.map((r) => r.reportId) || []
+                  userResponse.reports?.map((r) => r.reportId) || [],
                 );
                 const uniquePublicReports = publicResponse.reports.filter(
-                  (report) => !userReportIds.has(report.reportId)
+                  (report) => !userReportIds.has(report.reportId),
                 );
                 combinedReports = [...combinedReports, ...uniquePublicReports];
               }
@@ -370,7 +374,7 @@ export default function ReportsScreen() {
                 showAlert(
                   "Warning",
                   "Could not load public reports, showing your reports only",
-                  "warning"
+                  "warning",
                 );
               } else {
                 throw new Error(userResponse.error || "Failed to load reports");
@@ -390,7 +394,7 @@ export default function ReportsScreen() {
       };
 
       loadReportsForFocus();
-    }, [viewMode, showAlert])
+    }, [viewMode, showAlert]),
   );
 
   const loadReports = async (mode: "user" | "all" = viewMode) => {
@@ -427,10 +431,10 @@ export default function ReportsScreen() {
             setPublicReports(publicResponse.reports);
             // Filter out duplicates (user's own reports that are also public)
             const userReportIds = new Set(
-              userResponse.reports?.map((r) => r.reportId) || []
+              userResponse.reports?.map((r) => r.reportId) || [],
             );
             const uniquePublicReports = publicResponse.reports.filter(
-              (report) => !userReportIds.has(report.reportId)
+              (report) => !userReportIds.has(report.reportId),
             );
             combinedReports = [...combinedReports, ...uniquePublicReports];
           }
@@ -448,7 +452,7 @@ export default function ReportsScreen() {
             showAlert(
               "Warning",
               "Could not load public reports, showing your reports only",
-              "warning"
+              "warning",
             );
           } else {
             throw new Error(userResponse.error || "Failed to load reports");
@@ -497,7 +501,7 @@ export default function ReportsScreen() {
         console.log("Using local filtering");
         console.log(
           "All reports status values:",
-          allReports.map((r) => r.status)
+          allReports.map((r) => r.status),
         );
         console.log("Filter status:", filters.status);
 
@@ -507,7 +511,7 @@ export default function ReportsScreen() {
           filteredReports = filteredReports.filter(
             (report) =>
               report.incidentType.toLowerCase() ===
-              filters.incidentType!.toLowerCase()
+              filters.incidentType!.toLowerCase(),
           );
         }
 
@@ -515,14 +519,14 @@ export default function ReportsScreen() {
           filteredReports = filteredReports.filter(
             (report) =>
               report.visibility.toLowerCase() ===
-              filters.visibility!.toLowerCase()
+              filters.visibility!.toLowerCase(),
           );
         }
 
         if (filters.status) {
           filteredReports = filteredReports.filter(
             (report) =>
-              report.status.toLowerCase() === filters.status!.toLowerCase()
+              report.status.toLowerCase() === filters.status!.toLowerCase(),
           );
           console.log("Filtered reports count:", filteredReports.length);
         }
@@ -564,7 +568,7 @@ export default function ReportsScreen() {
         showAlert(
           "Validation Error",
           response.error || "Failed to apply time filter",
-          "error"
+          "error",
         );
       }
     } catch (error) {
@@ -578,6 +582,20 @@ export default function ReportsScreen() {
   const clearFilters = () => {
     setActiveFilters({});
     setReports(allReports);
+  };
+
+  // Search filter function
+  const getFilteredReports = () => {
+    if (!searchQuery.trim()) return reports;
+    const query = searchQuery.toLowerCase();
+    return reports.filter(
+      (report) =>
+        report.incidentType.toLowerCase().includes(query) ||
+        report.description.toLowerCase().includes(query) ||
+        report.location.address?.toLowerCase().includes(query) ||
+        report.reportId.toLowerCase().includes(query) ||
+        report.status.toLowerCase().includes(query),
+    );
   };
 
   const getIncidentTypeIcon = (type: string) => {
@@ -764,6 +782,27 @@ export default function ReportsScreen() {
         showNotificationDot={false}
       />
 
+      {/* Standardized Control Bar */}
+      <PageControlBar
+        viewMode={viewMode === "user" ? "my" : "all"}
+        onViewModeChange={(mode) => {
+          const newMode = mode === "my" ? "user" : "all";
+          setViewMode(newMode as "user" | "all");
+          loadReports(newMode as "user" | "all");
+        }}
+        myLabel="My Reports"
+        allLabel="All Reports"
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search reports..."
+        onFilterPress={() => setShowFilterModal(true)}
+        filterLabel="Filter"
+        hasActiveFilter={Object.keys(activeFilters).length > 0}
+        onAddPress={!isResponder ? navigateToSubmit : undefined}
+        addLabel="New Report"
+        showAdd={!isResponder}
+      />
+
       {loading ? (
         <View className="flex-1 justify-center items-center py-20">
           <View className="bg-white rounded-lg p-8 shadow-sm items-center">
@@ -778,122 +817,26 @@ export default function ReportsScreen() {
         </View>
       ) : (
         <ScrollView
-          className="flex-1 p-4"
+          className="flex-1 px-4"
           contentContainerStyle={{ paddingBottom: 80 }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
           showsVerticalScrollIndicator={false}
         >
-          {/* Quick Actions */}
-          <View className="bg-white rounded-lg p-4 mb-4 shadow-sm">
-            <Text className="text-lg font-bold text-[#67082F] mb-4">
-              {isResponder ? "System Overview" : "Report Management"}
-            </Text>
-
-            {/* Primary Action */}
-            {!isResponder && (
-              <TouchableOpacity
-                className="flex-row items-center p-4 bg-[#67082F] rounded-lg mb-3 shadow-sm"
-                onPress={navigateToSubmit}
-              >
-                <View className="w-12 h-12 bg-white/20 rounded-full items-center justify-center mr-4">
-                  <MaterialIcons name="add-circle" size={24} color="white" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-white font-bold text-base">
-                    Submit New Report
-                  </Text>
-                  <Text className="text-white/90 text-sm mt-1">
-                    Report incidents, safety concerns, or suspicious activities
-                  </Text>
-                </View>
-                <MaterialIcons name="arrow-forward" size={20} color="white" />
-              </TouchableOpacity>
-            )}
-
-            {/* View Mode Toggle */}
-            <View className="flex-row bg-gray-100 rounded-lg p-1 mb-3">
-              <TouchableOpacity
-                className={`flex-1 py-2 px-4 rounded-md ${
-                  viewMode === "user"
-                    ? "bg-[#67082F] shadow-sm"
-                    : "bg-transparent"
-                }`}
-                onPress={() => {
-                  setViewMode("user");
-                  loadReports("user");
-                }}
-              >
-                <Text
-                  className={`text-center font-medium ${
-                    viewMode === "user" ? "text-white" : "text-gray-600"
-                  }`}
-                >
-                  My Reports
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className={`flex-1 py-2 px-4 rounded-md ${
-                  viewMode === "all"
-                    ? "bg-[#67082F] shadow-sm"
-                    : "bg-transparent"
-                }`}
-                onPress={() => {
-                  setViewMode("all");
-                  loadReports("all");
-                }}
-              >
-                <Text
-                  className={`text-center font-medium ${
-                    viewMode === "all" ? "text-white" : "text-gray-600"
-                  }`}
-                >
-                  All Reports
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Secondary Actions */}
-            <View className="flex-row justify-between">
-              <TouchableOpacity
-                className="flex-1 mr-2 p-3 bg-gray-50 rounded-lg border border-gray-200"
-                onPress={() => setShowFilterModal(true)}
-              >
-                <View className="items-center">
-                  <MaterialIcons name="filter-list" size={20} color="#67082F" />
-                  <Text className="text-[#67082F] text-xs font-medium mt-1">
-                    Filter
-                  </Text>
-                  {Object.keys(activeFilters).length > 0 && (
-                    <View className="w-2 h-2 bg-red-500 rounded-full absolute top-0 right-2" />
-                  )}
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className="flex-1 ml-2 p-3 bg-gray-50 rounded-lg border border-gray-200"
-                onPress={handleRefresh}
-              >
-                <View className="items-center">
-                  <MaterialIcons name="refresh" size={20} color="#67082F" />
-                  <Text className="text-[#67082F] text-xs font-medium mt-1">
-                    Refresh
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {reports.length === 0 ? (
+          {getFilteredReports().length === 0 ? (
             <>
-              {Object.keys(activeFilters).length > 0 ? (
-                // Filtered empty state
+              {Object.keys(activeFilters).length > 0 ||
+              searchQuery.length > 0 ? (
+                // Filtered or search empty state
                 <View className="bg-white rounded-lg p-8 shadow-sm items-center">
                   <View className="w-16 h-16 bg-gray-100 rounded-full items-center justify-center mb-4">
                     <MaterialIcons
-                      name="filter-list-off"
+                      name={
+                        searchQuery.length > 0
+                          ? "search-off"
+                          : "filter-list-off"
+                      }
                       size={32}
                       color="#6B7280"
                     />
@@ -902,12 +845,15 @@ export default function ReportsScreen() {
                     No Reports Found
                   </Text>
                   <Text className="text-gray-500 text-center leading-relaxed">
-                    No report of this type
+                    {searchQuery.length > 0
+                      ? "No reports match your search."
+                      : "No report of this type"}
                   </Text>
                   <TouchableOpacity
                     className="bg-gray-100 rounded-lg px-6 py-3 mt-4"
                     onPress={() => {
                       clearFilters();
+                      setSearchQuery("");
                     }}
                   >
                     <Text className="text-gray-700 font-medium">
@@ -929,10 +875,9 @@ export default function ReportsScreen() {
                     {isResponder ? "No Reports Available" : "No Reports Yet"}
                   </Text>
                   <Text className="text-gray-500 text-center mt-3 leading-relaxed">
-                    {isResponder 
+                    {isResponder
                       ? "No reports have been submitted to the system yet. Public and officials-only reports will appear here."
-                      : "You haven't submitted any incident reports. Your safety matters - start by creating your first report."
-                    }
+                      : "You haven't submitted any incident reports. Your safety matters - start by creating your first report."}
                   </Text>
 
                   {/* Feature highlights */}
@@ -995,11 +940,13 @@ export default function ReportsScreen() {
             <>
               {/* Reports List Header */}
               <Text className="text-lg font-bold text-[#67082F] mb-4">
-                {isResponder ? `All System Reports (${reports.length})` : `Your Reports (${reports.length})`}
+                {isResponder
+                  ? `All System Reports (${getFilteredReports().length})`
+                  : `Your Reports (${getFilteredReports().length})`}
               </Text>
 
               {/* Reports List */}
-              {reports.map(renderReportCard)}
+              {getFilteredReports().map(renderReportCard)}
             </>
           )}
         </ScrollView>

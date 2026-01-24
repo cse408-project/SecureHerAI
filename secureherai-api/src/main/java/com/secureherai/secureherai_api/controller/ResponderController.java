@@ -302,7 +302,67 @@ public class ResponderController {
     }
 
     /**
-     * Get pending alerts for the responder (alerts they haven't accepted yet)
+     * Search for responders by badge number, name, or branch.
+     * Used for the forward alert modal to select target responders.
+     */
+    @GetMapping("/search")
+    public ResponseEntity<Object> searchResponders(
+            @RequestHeader("Authorization") String authHeader,
+            @org.springframework.web.bind.annotation.RequestParam(required = false, defaultValue = "") String query) {
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            if (!jwtService.isTokenValid(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(createErrorResponse("Invalid token"));
+            }
+
+            UUID currentUserId = jwtService.extractUserId(token);
+
+            // Get responders matching the query, excluding current user
+            List<Responder> responders;
+            if (query == null || query.trim().isEmpty()) {
+                responders = responderRepository.findAllActiveExcept(currentUserId);
+            } else {
+                responders = responderRepository.searchResponders(query.trim(), currentUserId);
+            }
+
+            // Convert to response format with user details
+            List<Map<String, Object>> responderList = new java.util.ArrayList<>();
+            for (Responder responder : responders) {
+                Optional<User> userOpt = userRepository.findById(responder.getUserId());
+                if (userOpt.isEmpty())
+                    continue;
+
+                User user = userOpt.get();
+                Map<String, Object> data = new HashMap<>();
+                data.put("id", responder.getUserId());
+                data.put("badgeNumber", responder.getBadgeNumber());
+                data.put("fullName", user.getFullName());
+                data.put("email", user.getEmail());
+                data.put("branchName", responder.getBranchName());
+                data.put("status", responder.getStatus().name());
+                responderList.add(data);
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", responderList);
+            response.put("message", "Responders retrieved successfully");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(createErrorResponse("Internal server error"));
+        }
+    }
+
+    /**
+     * Get pending alerts for the responder (alerts they've been notified about or
+     * forwarded to them)
+     * Shows alerts where responder has PENDING or FORWARDED status in
+     * AlertResponder.
+     * This ensures batching works correctly - responders only see alerts they were
+     * notified for.
      */
     @GetMapping("/pending-alerts")
     public ResponseEntity<Object> getPendingAlerts(@RequestHeader("Authorization") String authHeader) {
@@ -326,118 +386,66 @@ public class ResponderController {
                         .body(createErrorResponse("Access denied. User is not a responder"));
             }
 
-            // Get all alerts that are pending for this responder
-            // This includes:
-            // 1. Active alerts with no AlertResponder record for this responder
-            // 2. Active alerts with AlertResponder record status "pending" (forwarded
-            // alerts)
-            // Exclude alerts that are "responded" (accepted by someone else)
-            List<Alert> activeAlerts = alertRepository.findActiveAlerts();
-            List<AlertResponder> responderAlerts = alertResponderRepository.findByResponderId(user.getId());
+            // Get pending and forwarded records for this responder (only for ACTIVE alerts)
+            List<AlertResponder> pendingRecords = alertResponderRepository.findPendingOrForwardedForResponder(
+                    user.getId());
 
-            // // DEBUG LOGGING
-            // System.out.println("DEBUG - findByResponderId query for user: " +
-            // user.getId());
-            // System.out.println("DEBUG - Found " + responderAlerts.size() + "
-            // AlertResponder records");
-            // for (AlertResponder ar : responderAlerts) {
-            // System.out.println(" Found: alertId=" + ar.getAlertId() + ", status=" +
-            // ar.getStatus() + ", notes=" + ar.getNotes());
-            // }
-            // System.out.println("DEBUG - Active alerts found: " + activeAlerts.size());
-            // for (Alert alert : activeAlerts) {
-            // System.out.println(" Active Alert: id=" + alert.getId() + ", status=" +
-            // alert.getStatus());
-            // }
+            // Convert to response format
+            List<Map<String, Object>> pendingAlerts = new java.util.ArrayList<>();
+            for (AlertResponder ar : pendingRecords) {
+                Optional<Alert> alertOpt = alertRepository.findById(ar.getAlertId());
+                if (alertOpt.isEmpty())
+                    continue;
 
-            // Create a map of alertId -> AlertResponder for this responder
-            Map<UUID, AlertResponder> alertResponderMap = responderAlerts.stream()
-                    .collect(Collectors.toMap(
-                            AlertResponder::getAlertId,
-                            ar -> ar));
+                Alert alert = alertOpt.get();
 
-            // DEBUG LOGGING - Remove after debugging
-            // System.out.println("DEBUG - getPendingAlerts for user: " + user.getId());
-            // System.out.println("DEBUG - Active alerts count: " + activeAlerts.size());
-            // System.out.println("DEBUG - Responder alerts count: " +
-            // responderAlerts.size());
-            // for (AlertResponder ar : responderAlerts) {
-            // System.out.println(" DEBUG - AlertResponder: alertId=" + ar.getAlertId() +
-            // ", status=" + ar.getStatus() + ", acceptedAt=" + ar.getAcceptedAt() +
-            // ", notes=" + ar.getNotes());
-            // }
+                // Create alert data with full details
+                Map<String, Object> alertData = new HashMap<>();
+                alertData.put("id", alert.getId());
+                alertData.put("userId", alert.getUserId());
+                alertData.put("latitude", alert.getLatitude());
+                alertData.put("longitude", alert.getLongitude());
+                alertData.put("address", alert.getAddress());
+                alertData.put("status", alert.getStatus().getValue());
+                alertData.put("alertMessage", alert.getAlertMessage());
+                alertData.put("triggerMethod", alert.getTriggerMethod());
+                alertData.put("triggeredAt", alert.getTriggeredAt());
 
-            // Filter alerts to show only pending ones for this responder:
-            // INCLUDE:
-            // 1. Active/Critical alerts with no AlertResponder record for this responder
-            // (new
-            // alerts)
-            // 2. Active/Critical alerts with AlertResponder status "pending" (includes
-            // forwarded
-            // alerts)
-            // EXCLUDE:
-            // 3. Alerts with AlertResponder status "accepted", "rejected", "forwarded" (by
-            // this responder)
-            // 4. Alerts with Alert.status "ACCEPTED" (fully accepted by a responder -
-            // different from CRITICAL)
-            List<Map<String, Object>> pendingAlerts = activeAlerts.stream()
-                    .filter(alert -> {
-                        // Skip alerts that have been fully accepted (status=ACCEPTED means responder
-                        // took it)
-                        // But DO NOT skip CRITICAL alerts - they need responders!
-                        if (AlertStatus.ACCEPTED.equals(alert.getStatus())) {
-                            // System.out.println(" DEBUG - Skipping alert " + alert.getId() + " - already
-                            // responded");
-                            return false;
-                        }
+                // Include severity for proper priority display (AI-analyzed)
+                alertData.put("severity", alert.getSeverity() != null ? alert.getSeverity() : "MEDIUM");
+                alertData.put("incidentType", alert.getIncidentType());
 
-                        AlertResponder alertResponder = alertResponderMap.get(alert.getId());
-                        if (alertResponder == null) {
-                            // No record for this responder - include it (new alert)
-                            // System.out.println(" DEBUG - Including alert " + alert.getId() + " - no
-                            // record for this responder");
-                            return true;
-                        }
+                // Responder-specific status (PENDING or FORWARDED)
+                alertData.put("responderStatus", ar.getStatus().getValue());
+                alertData.put("createdAt", ar.getCreatedAt());
 
-                        // Only include if status is "pending"
-                        boolean shouldInclude = AlertStatus.PENDING.equals(alertResponder.getStatus());
-                        // System.out.println(" DEBUG - Alert " + alert.getId() + ": responder status="
-                        // +
-                        // alertResponder.getStatus() + ", shouldInclude=" + shouldInclude);
-                        return shouldInclude;
-                    })
-                    .map(alert -> {
-                        // Create alert data with additional fields
-                        Map<String, Object> alertData = new HashMap<>();
-                        alertData.put("id", alert.getId());
-                        alertData.put("userId", alert.getUserId());
-                        alertData.put("latitude", alert.getLatitude());
-                        alertData.put("longitude", alert.getLongitude());
-                        alertData.put("address", alert.getAddress());
-                        alertData.put("status", alert.getStatus().getValue());
-                        alertData.put("alertMessage", alert.getAlertMessage());
-                        alertData.put("triggerMethod", alert.getTriggerMethod());
-                        alertData.put("triggeredAt", alert.getTriggeredAt());
-                        alertData.put("severity", alert.getSeverity());
-                        alertData.put("incidentType", alert.getIncidentType());
+                // Check if this alert was forwarded to this responder
+                boolean isForwarded = ar.isForwarded();
+                alertData.put("forwarded", isForwarded);
+                if (isForwarded && ar.getForwardedFromResponderId() != null) {
+                    // Get forwarder's name
+                    Optional<User> forwarderOpt = userRepository.findById(ar.getForwardedFromResponderId());
+                    if (forwarderOpt.isPresent()) {
+                        alertData.put("forwardedFrom", forwarderOpt.get().getFullName());
+                    }
+                    alertData.put("forwardedAt", ar.getForwardedAt());
+                }
 
-                        // Mark if this is a critical alert
-                        alertData.put("isCritical", AlertStatus.CRITICAL.equals(alert.getStatus()));
+                // Get victim's name
+                Optional<User> victimOpt = userRepository.findById(alert.getUserId());
+                if (victimOpt.isPresent()) {
+                    alertData.put("victimName", victimOpt.get().getFullName());
+                    alertData.put("victimPhone", victimOpt.get().getPhone());
+                }
 
-                        // Check if this alert was forwarded to this responder
-                        AlertResponder alertResponder = alertResponderMap.get(alert.getId());
-                        if (alertResponder != null && "forwarded".equals(alertResponder.getNotes())) {
-                            alertData.put("forwarded", true);
-                        } else {
-                            alertData.put("forwarded", false);
-                        }
+                // Include batch information for debugging
+                String notes = ar.getNotes();
+                if (notes != null && notes.startsWith("batch_")) {
+                    alertData.put("batchNumber", notes.replace("batch_", ""));
+                }
 
-                        return alertData;
-                    })
-                    .toList();
-
-            // System.out.println("DEBUG - Final pending alerts count: " +
-            // pendingAlerts.size());
+                pendingAlerts.add(alertData);
+            }
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -452,7 +460,8 @@ public class ResponderController {
     }
 
     /**
-     * Get accepted/assigned alerts for the responder
+     * Get accepted/active alerts for the responder (ACCEPTED, EN_ROUTE, ARRIVED
+     * status)
      */
     @GetMapping("/accepted-alerts")
     public ResponseEntity<Object> getAcceptedAlerts(@RequestHeader("Authorization") String authHeader) {
@@ -476,22 +485,18 @@ public class ResponderController {
                         .body(createErrorResponse("Access denied. User is not a responder"));
             }
 
-            // Get all alerts accepted by this responder
-            List<AlertResponder> acceptedAlerts = alertResponderRepository.findByResponderIdAndStatus(
-                    user.getId(), AlertStatus.ACCEPTED);
-            List<AlertResponder> criticalAlerts = alertResponderRepository.findByResponderIdAndStatus(
-                    user.getId(), AlertStatus.CRITICAL);
-            acceptedAlerts.addAll(criticalAlerts);
+            // Get all active responses for this responder (ACCEPTED, EN_ROUTE, ARRIVED)
+            List<AlertResponder> activeAlerts = alertResponderRepository.findActiveForResponder(user.getId());
 
             // Join with Alert entity to get full alert details
-            List<Map<String, Object>> alertsWithDetails = acceptedAlerts.stream()
+            List<Map<String, Object>> alertsWithDetails = activeAlerts.stream()
                     .map(ar -> createAlertResponderWithFullDetails(ar))
                     .toList();
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("data", alertsWithDetails);
-            response.put("message", "Accepted and Critical alerts retrieved successfully");
+            response.put("message", "Active alerts retrieved successfully");
 
             return ResponseEntity.ok(response);
 
@@ -611,20 +616,26 @@ public class ResponderController {
             UUID responderId = jwtService.extractUserId(token);
             UUID alertId = UUID.fromString(request.get("alertId"));
 
-            // Verify the alert exists and is active or critical (both can be accepted)
+            // Verify the alert exists and is waiting or active
             Optional<Alert> alertOpt = alertRepository.findById(alertId);
             if (alertOpt.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(createErrorResponse("Alert not found"));
             }
-            AlertStatus alertStatus = alertOpt.get().getStatus();
-            if (!AlertStatus.ACTIVE.equals(alertStatus) && !AlertStatus.CRITICAL.equals(alertStatus)) {
+            Alert alert = alertOpt.get();
+            AlertStatus alertStatus = alert.getStatus();
+
+            // Only WAITING or ACTIVE alerts can be accepted
+            // WAITING = no one accepted yet, ACTIVE = someone already accepted (allow
+            // multiple responders)
+            if (!AlertStatus.WAITING.equals(alertStatus) && !AlertStatus.ACTIVE.equals(alertStatus)) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(createErrorResponse(
-                                "Alert is not active or critical - current status: " + alertStatus.getValue()));
+                                "Alert cannot be accepted - current status: " + alertStatus.getValue()));
             }
 
-            Alert alert = alertOpt.get();
+            // Store severity for response
+            String severity = alert.getSeverity() != null ? alert.getSeverity() : "MEDIUM";
 
             // Check if AlertResponder record already exists
             Optional<AlertResponder> alertResponderOpt = alertResponderRepository.findByAlertIdAndResponderId(alertId,
@@ -633,6 +644,13 @@ public class ResponderController {
             if (alertResponderOpt.isPresent()) {
                 // Update existing record
                 AlertResponder alertResponder = alertResponderOpt.get();
+                // Only PENDING or FORWARDED can transition to ACCEPTED
+                if (!AlertStatus.PENDING.equals(alertResponder.getStatus()) &&
+                        !AlertStatus.FORWARDED.equals(alertResponder.getStatus())) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body(createErrorResponse("Cannot accept alert - current responder status: " +
+                                    alertResponder.getStatus().getValue()));
+                }
                 alertResponder.setStatus(AlertStatus.ACCEPTED);
                 alertResponder.setAcceptedAt(java.time.LocalDateTime.now());
                 alertResponderRepository.save(alertResponder);
@@ -643,11 +661,20 @@ public class ResponderController {
                 alertResponderRepository.save(newAlertResponder);
             }
 
-            // Update the alert status to "responded" so other responders won't see it
-            alert.setStatus(AlertStatus.ACCEPTED);
-            alertRepository.save(alert);
+            // Delete all other PENDING AlertResponder records for this alert
+            // This removes the alert from other responders' pending lists
+            alertResponderRepository.deleteOtherPendingByAlertId(alertId, responderId);
 
-            return ResponseEntity.ok(Map.of("success", true, "message", "Alert accepted successfully"));
+            // Set alert status to ACTIVE when someone accepts (if it was WAITING)
+            if (AlertStatus.WAITING.equals(alertStatus)) {
+                alert.setStatus(AlertStatus.ACTIVE);
+                alertRepository.save(alert);
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Alert accepted successfully",
+                    "severity", severity));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(createErrorResponse("Unexpected error occurred"));
@@ -667,38 +694,41 @@ public class ResponderController {
             UUID responderId = jwtService.extractUserId(token);
             UUID alertId = UUID.fromString(request.get("alertId"));
 
-            // Check if AlertResponder record already exists
+            // First verify the alert exists and is ongoing (WAITING or ACTIVE)
+            Optional<Alert> alertOpt = alertRepository.findById(alertId);
+            if (alertOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(createErrorResponse("Alert not found"));
+            }
+            AlertStatus alertStatus = alertOpt.get().getStatus();
+            if (!alertStatus.isAlertOngoing()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(createErrorResponse(
+                                "Alert is not active - current status: " + alertStatus.getValue()));
+            }
+
+            // Check if AlertResponder record exists
             Optional<AlertResponder> alertResponderOpt = alertResponderRepository.findByAlertIdAndResponderId(alertId,
                     responderId);
 
             if (alertResponderOpt.isPresent()) {
-                // Update existing record
                 AlertResponder alertResponder = alertResponderOpt.get();
+                // Only PENDING or FORWARDED can be rejected
+                if (!AlertStatus.PENDING.equals(alertResponder.getStatus()) &&
+                        !AlertStatus.FORWARDED.equals(alertResponder.getStatus())) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body(createErrorResponse("Cannot reject alert - current responder status: " +
+                                    alertResponder.getStatus().getValue()));
+                }
                 alertResponder.setStatus(AlertStatus.REJECTED);
                 alertResponderRepository.save(alertResponder);
             } else {
                 // Create new AlertResponder record with rejected status
-                // First verify the alert exists and is active or critical
-                Optional<Alert> alertOpt = alertRepository.findById(alertId);
-                if (alertOpt.isEmpty()) {
-                    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                            .body(createErrorResponse("Alert not found"));
-                }
-                AlertStatus alertStatus = alertOpt.get().getStatus();
-                if (!AlertStatus.ACTIVE.equals(alertStatus) && !AlertStatus.CRITICAL.equals(alertStatus)) {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                            .body(createErrorResponse(
-                                    "Alert is not active or critical - current status: " + alertStatus.getValue()));
-                }
-
                 AlertResponder newAlertResponder = new AlertResponder(alertId, responderId, AlertStatus.REJECTED);
                 alertResponderRepository.save(newAlertResponder);
-
-                Alert alert = alertOpt.get();
-                alert.setStatus(AlertStatus.REJECTED);
-                alertRepository.save(alert);
-
             }
+
+            // Alert status does not change - it stays WAITING/ACTIVE for other responders
 
             return ResponseEntity.ok(Map.of("success", true, "message", "Alert rejected successfully"));
         } catch (Exception e) {
@@ -707,9 +737,19 @@ public class ResponderController {
         }
     }
 
+    /**
+     * Forward an alert to one or more responders.
+     * The forwarder's record is updated to FORWARDED status.
+     * New PENDING records are created for target responders with
+     * forwardedFromResponderId set.
+     * 
+     * Request body can contain either:
+     * - "responderIds": array of responder user IDs (preferred)
+     * - "badgeNumber": single badge number (legacy support)
+     */
     @PutMapping("/forward-alert")
     public ResponseEntity<Object> forwardAlert(
-            @RequestBody Map<String, String> request,
+            @RequestBody Map<String, Object> request,
             @RequestHeader("Authorization") String authHeader) {
         try {
             String token = authHeader.replace("Bearer ", "");
@@ -718,97 +758,284 @@ public class ResponderController {
             }
 
             UUID currentResponderId = jwtService.extractUserId(token);
-            UUID alertId = UUID.fromString(request.get("alertId"));
-            String targetBadgeNumber = request.get("badgeNumber");
+            UUID alertId = UUID.fromString((String) request.get("alertId"));
 
-            if (targetBadgeNumber == null || targetBadgeNumber.trim().isEmpty()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(createErrorResponse("Badge number is required"));
-            }
-
-            // Find target responder by badge number
-            Optional<Responder> targetResponderOpt = responderRepository.findByBadgeNumber(targetBadgeNumber);
-            if (targetResponderOpt.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(createErrorResponse("Responder with badge number not found"));
-            }
-
-            UUID targetResponderId = targetResponderOpt.get().getUserId();
-
-            // Verify the alert exists and is active
+            // Verify the alert exists and is ongoing (WAITING or ACTIVE)
             Optional<Alert> alertOpt = alertRepository.findById(alertId);
-            if (alertOpt.isEmpty() || !alertOpt.get().getStatus().equals(AlertStatus.ACTIVE)) {
+            if (alertOpt.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(createErrorResponse("Alert not found or not active"));
+                        .body(createErrorResponse("Alert not found"));
+            }
+            AlertStatus alertStatus = alertOpt.get().getStatus();
+            if (!alertStatus.isAlertOngoing()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(createErrorResponse(
+                                "Alert is not active - current status: " + alertStatus.getValue()));
             }
 
-            // Mark current responder's alert as forwarded (create record if doesn't exist)
+            // Verify the current responder has PENDING status for this alert
             Optional<AlertResponder> currentAlertResponderOpt = alertResponderRepository
                     .findByAlertIdAndResponderId(alertId, currentResponderId);
 
-            // Always update the current responder's record to "forwarded" status (or create
-            // one if it doesn't exist)
-            if (currentAlertResponderOpt.isPresent()) {
-                AlertResponder currentAlertResponder = currentAlertResponderOpt.get();
-                currentAlertResponder.setStatus(AlertStatus.FORWARDED);
-                alertResponderRepository.save(currentAlertResponder);
-                // System.out.println("DEBUG - Forward: Updated existing AlertResponder record
-                // to forwarded for current responder " + currentResponderId);
-            } else {
-                // Create new record for current responder with forwarded status
-                AlertResponder newCurrentAlertResponder = new AlertResponder(alertId, currentResponderId,
-                        AlertStatus.FORWARDED);
-                alertResponderRepository.save(newCurrentAlertResponder);
-                // System.out.println("DEBUG - Forward: Created new AlertResponder record with
-                // forwarded status for current responder " + currentResponderId);
+            if (currentAlertResponderOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(createErrorResponse("You don't have this alert assigned"));
             }
 
-            // Create or update AlertResponder record for target responder
-            Optional<AlertResponder> targetAlertResponderOpt = alertResponderRepository
-                    .findByAlertIdAndResponderId(alertId, targetResponderId);
-
-            // For target responder: always create a pending record if none exists, or
-            // update to pending if exists
-            if (targetAlertResponderOpt.isEmpty()) {
-                // No previous record, create new with forwarded=true flag
-                AlertResponder newTargetAlertResponder = new AlertResponder(alertId, targetResponderId,
-                        AlertStatus.PENDING);
-                newTargetAlertResponder.setNotes("forwarded"); // Use notes field to indicate it was forwarded
-                alertResponderRepository.save(newTargetAlertResponder);
-                // System.out.println("DEBUG - Forward: Created new AlertResponder with pending
-                // status for target " + targetResponderId);
-            } else {
-                // Already has record in any status, update to pending with forwarded flag
-                AlertResponder targetAlertResponder = targetAlertResponderOpt.get();
-                targetAlertResponder.setStatus(AlertStatus.PENDING);
-                targetAlertResponder.setNotes("forwarded"); // Use notes field to indicate it was forwarded
-                alertResponderRepository.save(targetAlertResponder);
-                // System.out.println("DEBUG - Forward: Updated existing AlertResponder to
-                // pending status for target " + targetResponderId);
+            AlertResponder currentAlertResponder = currentAlertResponderOpt.get();
+            if (!AlertStatus.PENDING.equals(currentAlertResponder.getStatus()) &&
+                    !AlertStatus.FORWARDED.equals(currentAlertResponder.getStatus())) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(createErrorResponse("Cannot forward alert - current responder status: " +
+                                currentAlertResponder.getStatus().getValue()));
             }
 
-            // Verify the target record was actually saved with correct data
-            Optional<AlertResponder> verifyRecord = alertResponderRepository.findByAlertIdAndResponderId(alertId,
-                    targetResponderId);
-            if (verifyRecord.isPresent()) {
-                // System.out.println("DEBUG - Forward: Verification successful - Found saved
-                // record with status: " +
-                // verifyRecord.get().getStatus() + ", notes: " +
-                // verifyRecord.get().getNotes());
-                return ResponseEntity.ok(Map.of(
-                        "success", true,
-                        "message", "Alert forwarded successfully to responder with badge " + targetBadgeNumber));
+            // Get target responder IDs - either from array or single badge number
+            java.util.List<UUID> targetResponderIds = new java.util.ArrayList<>();
+
+            @SuppressWarnings("unchecked")
+            java.util.List<String> responderIdStrings = (java.util.List<String>) request.get("responderIds");
+            if (responderIdStrings != null && !responderIdStrings.isEmpty()) {
+                // New format: array of responder IDs
+                for (String idStr : responderIdStrings) {
+                    targetResponderIds.add(UUID.fromString(idStr));
+                }
             } else {
-                // System.out.println("DEBUG - Forward: ERROR - Record not found after save
-                // operation!");
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(createErrorResponse("Failed to save the forwarded alert record"));
+                // Legacy format: single badge number
+                String targetBadgeNumber = (String) request.get("badgeNumber");
+                if (targetBadgeNumber == null || targetBadgeNumber.trim().isEmpty()) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body(createErrorResponse("Either responderIds or badgeNumber is required"));
+                }
+                Optional<Responder> targetResponderOpt = responderRepository.findByBadgeNumber(targetBadgeNumber);
+                if (targetResponderOpt.isEmpty()) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                            .body(createErrorResponse("Responder with badge number not found"));
+                }
+                targetResponderIds.add(targetResponderOpt.get().getUserId());
             }
+
+            // Validate all target responders exist and are not the current responder
+            for (UUID targetId : targetResponderIds) {
+                if (targetId.equals(currentResponderId)) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body(createErrorResponse("Cannot forward to yourself"));
+                }
+            }
+
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            int forwardedCount = 0;
+
+            // Create PENDING records for each target responder with forward tracking
+            for (UUID targetResponderId : targetResponderIds) {
+                Optional<AlertResponder> targetAlertResponderOpt = alertResponderRepository
+                        .findByAlertIdAndResponderId(alertId, targetResponderId);
+
+                if (targetAlertResponderOpt.isEmpty()) {
+                    // Create new record with forwarding info
+                    AlertResponder newTargetAlertResponder = new AlertResponder(alertId, targetResponderId,
+                            AlertStatus.PENDING);
+                    newTargetAlertResponder.setForwardedFromResponderId(currentResponderId);
+                    newTargetAlertResponder.setForwardedAt(now);
+                    newTargetAlertResponder.setNotes("forwarded");
+                    alertResponderRepository.save(newTargetAlertResponder);
+                    forwardedCount++;
+                } else {
+                    AlertResponder targetAlertResponder = targetAlertResponderOpt.get();
+                    // Only update if not already accepted/resolved
+                    if (AlertStatus.REJECTED.equals(targetAlertResponder.getStatus()) ||
+                            AlertStatus.CANCELED.equals(targetAlertResponder.getStatus())) {
+                        // Re-assign to pending with forward info
+                        targetAlertResponder.setStatus(AlertStatus.PENDING);
+                        targetAlertResponder.setForwardedFromResponderId(currentResponderId);
+                        targetAlertResponder.setForwardedAt(now);
+                        targetAlertResponder.setNotes("forwarded");
+                        alertResponderRepository.save(targetAlertResponder);
+                        forwardedCount++;
+                    }
+                    // Skip if already PENDING, ACCEPTED, EN_ROUTE, ARRIVED, or RESOLVED
+                }
+            }
+
+            // Update forwarder's record to FORWARDED status
+            currentAlertResponder.setStatus(AlertStatus.FORWARDED);
+            alertResponderRepository.save(currentAlertResponder);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Alert forwarded successfully to " + forwardedCount + " responder(s)",
+                    "forwardedCount", forwardedCount));
         } catch (Exception e) {
-            // System.out.println("DEBUG - Forward: Exception occurred: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(createErrorResponse("Unexpected error occurred: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Cancel an accepted alert - responder can no longer respond.
+     * Only ACCEPTED, EN_ROUTE, or ARRIVED statuses can be canceled.
+     */
+    @PutMapping("/cancel-alert")
+    public ResponseEntity<Object> cancelAlert(
+            @RequestBody Map<String, String> request,
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            if (!jwtService.isTokenValid(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(createErrorResponse("Invalid token"));
+            }
+
+            UUID responderId = jwtService.extractUserId(token);
+            UUID alertId = UUID.fromString(request.get("alertId"));
+            String reason = request.get("reason");
+
+            // Verify the alert exists
+            Optional<Alert> alertOpt = alertRepository.findById(alertId);
+            if (alertOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(createErrorResponse("Alert not found"));
+            }
+
+            // Find the AlertResponder record
+            Optional<AlertResponder> alertResponderOpt = alertResponderRepository.findByAlertIdAndResponderId(alertId,
+                    responderId);
+
+            if (alertResponderOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(createErrorResponse("Alert not assigned to you"));
+            }
+
+            AlertResponder alertResponder = alertResponderOpt.get();
+            AlertStatus currentStatus = alertResponder.getStatus();
+
+            // Only ACCEPTED, EN_ROUTE, or ARRIVED can be canceled
+            if (!AlertStatus.ACCEPTED.equals(currentStatus) &&
+                    !AlertStatus.EN_ROUTE.equals(currentStatus) &&
+                    !AlertStatus.ARRIVED.equals(currentStatus)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(createErrorResponse("Cannot cancel alert - current status: " + currentStatus.getValue()));
+            }
+
+            // Update to CANCELED status
+            alertResponder.setStatus(AlertStatus.CANCELED);
+            if (reason != null && !reason.trim().isEmpty()) {
+                alertResponder.setNotes("canceled: " + reason);
+            }
+            alertResponderRepository.save(alertResponder);
+
+            return ResponseEntity.ok(Map.of("success", true, "message", "Alert canceled successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(createErrorResponse("Unexpected error occurred"));
+        }
+    }
+
+    /**
+     * Update responder status for an alert (EN_ROUTE, ARRIVED, RESOLVED).
+     * Responder can only update their own AlertResponder status.
+     */
+    @PutMapping("/update-status")
+    public ResponseEntity<Object> updateAlertResponderStatus(
+            @RequestBody Map<String, String> request,
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            if (!jwtService.isTokenValid(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(createErrorResponse("Invalid token"));
+            }
+
+            UUID responderId = jwtService.extractUserId(token);
+            UUID alertId = UUID.fromString(request.get("alertId"));
+            String newStatusStr = request.get("status");
+
+            if (newStatusStr == null || newStatusStr.trim().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(createErrorResponse("Status is required"));
+            }
+
+            // Parse the new status
+            AlertStatus newStatus;
+            try {
+                newStatus = AlertStatus.fromString(newStatusStr);
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(createErrorResponse("Invalid status: " + newStatusStr));
+            }
+
+            // Only EN_ROUTE, ARRIVED, RESOLVED are valid transitions
+            if (!AlertStatus.EN_ROUTE.equals(newStatus) &&
+                    !AlertStatus.ARRIVED.equals(newStatus) &&
+                    !AlertStatus.RESOLVED.equals(newStatus)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(createErrorResponse("Invalid status. Must be EN_ROUTE, ARRIVED, or RESOLVED"));
+            }
+
+            // Verify the alert exists
+            Optional<Alert> alertOpt = alertRepository.findById(alertId);
+            if (alertOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(createErrorResponse("Alert not found"));
+            }
+
+            // Find the AlertResponder record
+            Optional<AlertResponder> alertResponderOpt = alertResponderRepository.findByAlertIdAndResponderId(alertId,
+                    responderId);
+
+            if (alertResponderOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(createErrorResponse("Alert not assigned to you"));
+            }
+
+            AlertResponder alertResponder = alertResponderOpt.get();
+            AlertStatus currentStatus = alertResponder.getStatus();
+
+            // Validate status transition
+            if (!currentStatus.canTransitionTo(newStatus)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(createErrorResponse("Cannot transition from " + currentStatus.getValue() +
+                                " to " + newStatus.getValue()));
+            }
+
+            // Update status
+            alertResponder.setStatus(newStatus);
+
+            // Set timestamps based on status
+            if (AlertStatus.ARRIVED.equals(newStatus)) {
+                alertResponder.setArrivalTime(java.time.LocalDateTime.now());
+            }
+
+            // Handle ETA if provided
+            String etaStr = request.get("eta");
+            if (etaStr != null && !etaStr.trim().isEmpty()) {
+                alertResponder.setEta(etaStr.trim());
+            }
+
+            alertResponderRepository.save(alertResponder);
+
+            // If status is RESOLVED, check if all responders are done and update alert
+            if (AlertStatus.RESOLVED.equals(newStatus)) {
+                Alert alert = alertOpt.get();
+                // Count if any active responders remain
+                long activeCount = alertResponderRepository.countAssignedByAlertId(alertId);
+                // Active count after this resolved = current active - 1 (the one just resolved)
+                // But we already saved with RESOLVED status, so countAssigned won't include
+                // this
+                // So if activeCount == 0, all responders have finished
+                if (activeCount == 0) {
+                    alert.setStatus(AlertStatus.FINISHED);
+                    alert.setResolvedAt(java.time.LocalDateTime.now());
+                    alertRepository.save(alert);
+                }
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Status updated to " + newStatus.getValue(),
+                    "newStatus", newStatus.getValue()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(createErrorResponse("Unexpected error occurred"));
         }
     }
 
@@ -890,6 +1117,7 @@ public class ResponderController {
 
     /**
      * Create alert responder data with full alert and user details
+     * Includes severity information and forwarding details
      */
     private Map<String, Object> createAlertResponderWithFullDetails(AlertResponder alertResponder) {
         Map<String, Object> data = new HashMap<>();
@@ -900,7 +1128,24 @@ public class ResponderController {
         data.put("responderStatus", alertResponder.getStatus().getValue());
         data.put("acceptedAt", alertResponder.getAcceptedAt());
         data.put("arrivalTime", alertResponder.getArrivalTime());
+        data.put("eta", alertResponder.getEta());
         data.put("notes", alertResponder.getNotes());
+        data.put("createdAt", alertResponder.getCreatedAt());
+
+        // Include forwarding info if applicable
+        if (alertResponder.isForwarded()) {
+            data.put("forwarded", true);
+            data.put("forwardedAt", alertResponder.getForwardedAt());
+            if (alertResponder.getForwardedFromResponderId() != null) {
+                Optional<User> forwarderOpt = userRepository.findById(alertResponder.getForwardedFromResponderId());
+                if (forwarderOpt.isPresent()) {
+                    data.put("forwardedFrom", forwarderOpt.get().getFullName());
+                    data.put("forwardedFromId", alertResponder.getForwardedFromResponderId());
+                }
+            }
+        } else {
+            data.put("forwarded", false);
+        }
 
         // Fetch and include full alert details
         Optional<Alert> alertOpt = alertRepository.findById(alertResponder.getAlertId());
@@ -914,6 +1159,10 @@ public class ResponderController {
             data.put("triggerMethod", alert.getTriggerMethod());
             data.put("triggeredAt", alert.getTriggeredAt());
             data.put("resolvedAt", alert.getResolvedAt());
+
+            // Include severity information
+            data.put("severity", alert.getSeverity() != null ? alert.getSeverity() : "MEDIUM");
+            data.put("incidentType", alert.getIncidentType());
 
             // Fetch victim user details
             Optional<User> victimOpt = userRepository.findById(alert.getUserId());

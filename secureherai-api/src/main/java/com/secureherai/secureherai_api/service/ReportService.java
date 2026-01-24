@@ -15,9 +15,12 @@ import org.springframework.transaction.annotation.Transactional;
 import com.secureherai.secureherai_api.dto.report.ReportRequest;
 import com.secureherai.secureherai_api.dto.report.ReportResponse;
 import com.secureherai.secureherai_api.entity.Alert;
+import com.secureherai.secureherai_api.entity.AlertResponder;
 import com.secureherai.secureherai_api.entity.IncidentReport;
 import com.secureherai.secureherai_api.entity.User;
 import com.secureherai.secureherai_api.entity.ReportEvidence;
+import com.secureherai.secureherai_api.enums.AlertStatus;
+import com.secureherai.secureherai_api.repository.AlertResponderRepository;
 import com.secureherai.secureherai_api.repository.IncidentReportRepository;
 import com.secureherai.secureherai_api.repository.UserRepository;
 import com.secureherai.secureherai_api.repository.ReportEvidenceRepository;
@@ -37,6 +40,9 @@ public class ReportService {
 
     @Autowired
     private ReportEvidenceRepository evidenceRepository;
+
+    @Autowired
+    private AlertResponderRepository alertResponderRepository;
 
     /**
      * Auto-generate incident report from SOS alert
@@ -403,8 +409,18 @@ public class ReportService {
 
     /**
      * Get detailed information for a specific report with access control
-     * - Regular users: Can view their own reports or public reports
-     * - Admin/Responder: Can view all reports regardless of visibility
+     * 
+     * Permission Matrix:
+     * - Report Owner: Full access, can view all evidence, can edit
+     * - Accepted Responder (who accepted the alert linked to report): Full access,
+     * can view all evidence, can edit
+     * - Other Responders: Can view officials_only + public evidence, cannot edit
+     * - Regular Users: Can view public evidence only, cannot edit
+     * - Admin: Full access
+     * 
+     * Response includes:
+     * - canEdit: boolean indicating if user can edit this report
+     * - evidenceVisibility: what level of evidence the user can see
      */
     public ReportResponse.ReportDetailsResponse getReportDetails(UUID reportId, UUID userId, String userRole) {
         try {
@@ -420,26 +436,76 @@ public class ReportService {
 
             IncidentReport report = reportOpt.get();
 
-            // Check access permissions
+            // Determine access permissions
             boolean isOwner = report.getUserId().equals(userId);
-            boolean isAdminOrResponder = "ADMIN".equals(userRole) || "RESPONDER".equals(userRole);
+            boolean isAdmin = "ADMIN".equals(userRole);
+            boolean isResponder = "RESPONDER".equals(userRole);
             boolean isPublicReport = "public".equals(report.getVisibility());
+            boolean isOfficialsOnly = "officials_only".equals(report.getVisibility());
+
+            // Check if this responder accepted the alert linked to this report
+            boolean isAcceptedResponder = false;
+            if (isResponder && report.getAlertId() != null) {
+                Optional<AlertResponder> alertResponderOpt = alertResponderRepository
+                        .findByAlertIdAndResponderId(report.getAlertId(), userId);
+                if (alertResponderOpt.isPresent()) {
+                    AlertStatus responderStatus = alertResponderOpt.get().getStatus();
+                    // Check if responder has accepted or progressed beyond accepted
+                    // (ACCEPTED, EN_ROUTE, ARRIVED, RESOLVED all mean they accepted the alert)
+                    isAcceptedResponder = responderStatus == AlertStatus.ACCEPTED ||
+                            responderStatus == AlertStatus.EN_ROUTE ||
+                            responderStatus == AlertStatus.ARRIVED ||
+                            responderStatus == AlertStatus.RESOLVED;
+                    if (isAcceptedResponder) {
+                        logger.debug("User {} is an accepted responder (status: {}) for alert {} linked to report {}",
+                                userId, responderStatus, report.getAlertId(), reportId);
+                    }
+                }
+            }
 
             // Access control logic:
-            // 1. Admin/Responder can view any report
-            // 2. Regular users can view their own reports
-            // 3. Regular users can view public reports from others
-            if (!isAdminOrResponder && !isOwner && !isPublicReport) {
+            // 1. Admin can view any report
+            // 2. Report owner can view their own reports
+            // 3. Accepted responder can view the report they responded to
+            // 4. Other responders can view officials_only and public reports
+            // 5. Regular users can only view public reports
+            boolean canView = isAdmin || isOwner || isAcceptedResponder;
+            if (!canView) {
+                if (isResponder && (isPublicReport || isOfficialsOnly)) {
+                    canView = true;
+                } else if (!isResponder && isPublicReport) {
+                    canView = true;
+                }
+            }
+
+            if (!canView) {
                 logger.warn("Access denied for report details - Report: {}, User: {}, Role: {}, Visibility: {}",
                         reportId, userId, userRole, report.getVisibility());
                 return new ReportResponse.ReportDetailsResponse(false, null,
-                        "Access denied. You can only view your own reports or public reports.");
+                        "Access denied. You don't have permission to view this report.");
             }
 
-            ReportResponse.ReportDetails reportDetails = convertToReportDetails(report);
+            // Determine edit permissions:
+            // - Only report owner and accepted responder can edit
+            // - Admin can also edit
+            boolean canEdit = isOwner || isAcceptedResponder || isAdmin;
 
-            logger.debug("Successfully retrieved report details for: {} by user: {} (role: {})",
-                    reportId, userId, userRole);
+            // Determine evidence visibility level
+            String evidenceVisibilityLevel;
+            if (isOwner || isAcceptedResponder || isAdmin) {
+                evidenceVisibilityLevel = "private"; // Can see all evidence including private
+            } else if (isResponder) {
+                evidenceVisibilityLevel = "officials_only"; // Can see officials_only and public
+            } else {
+                evidenceVisibilityLevel = "public"; // Can only see public evidence
+            }
+
+            ReportResponse.ReportDetails reportDetails = convertToReportDetailsWithPermissions(
+                    report, canEdit, evidenceVisibilityLevel);
+
+            logger.debug(
+                    "Successfully retrieved report details for: {} by user: {} (role: {}, canEdit: {}, evidenceLevel: {})",
+                    reportId, userId, userRole, canEdit, evidenceVisibilityLevel);
             return new ReportResponse.ReportDetailsResponse(true, reportDetails, null);
 
         } catch (Exception e) {
@@ -450,18 +516,47 @@ public class ReportService {
     }
 
     /**
-     * Upload evidence for a report
+     * Upload evidence for a report.
+     * Allowed users: Report owner OR the responder who accepted the alert
      */
     public ReportResponse.GenericResponse uploadEvidence(UUID userId, ReportRequest.UploadEvidence request) {
         try {
             logger.debug("Uploading evidence for report: {} by user: {}", request.getReportId(), userId);
 
-            // Verify report exists and user owns it
-            Optional<IncidentReport> reportOpt = reportRepository.findByIdAndUserId(request.getReportId(), userId);
+            // First, try to find the report
+            Optional<IncidentReport> reportOpt = reportRepository.findById(request.getReportId());
             if (reportOpt.isEmpty()) {
-                logger.warn("Report not found or access denied for evidence upload - Report: {}, User: {}",
+                logger.warn("Report not found for evidence upload - Report: {}", request.getReportId());
+                return new ReportResponse.GenericResponse(false, null, "Report not found");
+            }
+
+            IncidentReport report = reportOpt.get();
+
+            // Check if user is authorized to upload evidence
+            // User must be either the report owner OR the accepted responder for the alert
+            boolean isOwner = userId.equals(report.getUserId());
+            boolean isAcceptedResponder = false;
+
+            if (report.getAlertId() != null && !isOwner) {
+                // Check if user is an accepted responder for this alert
+                // (includes ACCEPTED, EN_ROUTE, ARRIVED, RESOLVED statuses)
+                Optional<AlertResponder> alertResponderOpt = alertResponderRepository.findByAlertIdAndResponderId(
+                        report.getAlertId(), userId);
+                if (alertResponderOpt.isPresent()) {
+                    AlertStatus responderStatus = alertResponderOpt.get().getStatus();
+                    isAcceptedResponder = responderStatus == AlertStatus.ACCEPTED ||
+                            responderStatus == AlertStatus.EN_ROUTE ||
+                            responderStatus == AlertStatus.ARRIVED ||
+                            responderStatus == AlertStatus.RESOLVED;
+                }
+            }
+
+            if (!isOwner && !isAcceptedResponder) {
+                logger.warn(
+                        "Access denied for evidence upload - Report: {}, User: {} (not owner or accepted responder)",
                         request.getReportId(), userId);
-                return new ReportResponse.GenericResponse(false, null, "Report not found or access denied");
+                return new ReportResponse.GenericResponse(false, null,
+                        "Access denied: Only the report owner or accepted responder can upload evidence");
             }
 
             // Implement evidence upload logic
@@ -507,18 +602,47 @@ public class ReportService {
     }
 
     /**
-     * Delete evidence from a report
+     * Delete evidence from a report.
+     * Allowed users: Report owner OR the responder who accepted the alert
      */
     public ReportResponse.GenericResponse deleteEvidence(UUID userId, ReportRequest.DeleteEvidence request) {
         try {
             logger.debug("Deleting evidence from report: {} by user: {}", request.getReportId(), userId);
 
-            // Verify report exists and user owns it
-            Optional<IncidentReport> reportOpt = reportRepository.findByIdAndUserId(request.getReportId(), userId);
+            // First, try to find the report
+            Optional<IncidentReport> reportOpt = reportRepository.findById(request.getReportId());
             if (reportOpt.isEmpty()) {
-                logger.warn("Report not found or access denied for evidence deletion - Report: {}, User: {}",
+                logger.warn("Report not found for evidence deletion - Report: {}", request.getReportId());
+                return new ReportResponse.GenericResponse(false, null, "Report not found");
+            }
+
+            IncidentReport report = reportOpt.get();
+
+            // Check if user is authorized to delete evidence
+            // User must be either the report owner OR the accepted responder for the alert
+            boolean isOwner = userId.equals(report.getUserId());
+            boolean isAcceptedResponder = false;
+
+            if (report.getAlertId() != null && !isOwner) {
+                // Check if user is an accepted responder for this alert
+                // (includes ACCEPTED, EN_ROUTE, ARRIVED, RESOLVED statuses)
+                Optional<AlertResponder> alertResponderOpt = alertResponderRepository.findByAlertIdAndResponderId(
+                        report.getAlertId(), userId);
+                if (alertResponderOpt.isPresent()) {
+                    AlertStatus responderStatus = alertResponderOpt.get().getStatus();
+                    isAcceptedResponder = responderStatus == AlertStatus.ACCEPTED ||
+                            responderStatus == AlertStatus.EN_ROUTE ||
+                            responderStatus == AlertStatus.ARRIVED ||
+                            responderStatus == AlertStatus.RESOLVED;
+                }
+            }
+
+            if (!isOwner && !isAcceptedResponder) {
+                logger.warn(
+                        "Access denied for evidence deletion - Report: {}, User: {} (not owner or accepted responder)",
                         request.getReportId(), userId);
-                return new ReportResponse.GenericResponse(false, null, "Report not found or access denied");
+                return new ReportResponse.GenericResponse(false, null,
+                        "Access denied: Only the report owner or accepted responder can delete evidence");
             }
 
             // Check if evidence exists
@@ -545,15 +669,18 @@ public class ReportService {
     }
 
     /**
-     * Update report (comprehensive update for all fields)
+     * Update report (comprehensive update for all fields).
+     * Permission rules:
+     * - Report owner: Can edit all fields
+     * - Accepted responder: Can edit all fields
+     * - Other responders/admin: Can only update status
      */
     public ReportResponse.GenericResponse updateReport(UUID userId, String userRole,
             ReportRequest.UpdateReport request) {
         try {
             logger.debug("Updating report: {} by user: {} with role: {}", request.getReportId(), userId, userRole);
 
-            // Verify report exists and user owns it (or user is a responder for status
-            // updates)
+            // Verify report exists
             Optional<IncidentReport> reportOpt = reportRepository.findById(request.getReportId());
             if (reportOpt.isEmpty()) {
                 logger.warn("Report not found - Report: {}", request.getReportId());
@@ -562,12 +689,30 @@ public class ReportService {
 
             IncidentReport report = reportOpt.get();
 
-            // Check if user can modify this report
+            // Check user's relationship to this report
             boolean isOwner = report.getUserId().equals(userId);
             boolean isResponder = "RESPONDER".equals(userRole) || "ADMIN".equals(userRole);
+            boolean isAcceptedResponder = false;
 
-            // Regular users can only modify their own reports
-            // Responders can modify status of any report
+            // Check if user is an accepted responder for this alert
+            // (includes ACCEPTED, EN_ROUTE, ARRIVED, RESOLVED statuses)
+            if (report.getAlertId() != null && !isOwner) {
+                Optional<AlertResponder> alertResponderOpt = alertResponderRepository.findByAlertIdAndResponderId(
+                        report.getAlertId(), userId);
+                if (alertResponderOpt.isPresent()) {
+                    AlertStatus responderStatus = alertResponderOpt.get().getStatus();
+                    isAcceptedResponder = responderStatus == AlertStatus.ACCEPTED ||
+                            responderStatus == AlertStatus.EN_ROUTE ||
+                            responderStatus == AlertStatus.ARRIVED ||
+                            responderStatus == AlertStatus.RESOLVED;
+                }
+            }
+
+            // Determine if user can edit full report (owner or accepted responder)
+            boolean canEditFull = isOwner || isAcceptedResponder;
+
+            // Access control: Regular users can only modify their own reports
+            // Responders can modify status of any report OR full edit if they accepted
             if (!isOwner && !isResponder) {
                 logger.warn("Access denied for report update - Report: {}, User: {}, Role: {}", request.getReportId(),
                         userId, userRole);
@@ -584,21 +729,22 @@ public class ReportService {
                 }
             }
 
-            // For non-owners (responders), only allow status updates
-            if (!isOwner && isResponder) {
+            // For responders who are NOT the accepted responder, only allow status updates
+            if (!canEditFull && isResponder) {
                 if (request.getStatus() == null || request.getStatus().trim().isEmpty()) {
-                    logger.warn("Responders can only update status - User: {}, Report: {}", userId,
+                    logger.warn("Non-accepted responders can only update status - User: {}, Report: {}", userId,
                             request.getReportId());
-                    return new ReportResponse.GenericResponse(false, null, "Responders can only update report status");
+                    return new ReportResponse.GenericResponse(false, null,
+                            "Only the report owner or accepted responder can fully edit this report. Other responders can only update status.");
                 }
-                // Only update status for responders
+                // Only update status for non-accepted responders
                 report.setStatus(request.getStatus().trim());
                 reportRepository.save(report);
                 logger.info("Report status updated by responder: {} to {}", userId, request.getStatus());
                 return new ReportResponse.GenericResponse(true, "Report status updated successfully", null);
             }
 
-            // Update fields if they are provided (for report owners)
+            // Update fields if they are provided (for report owner or accepted responder)
             if (request.getDescription() != null && !request.getDescription().trim().isEmpty()) {
                 report.setDescription(request.getDescription().trim());
             }
@@ -746,6 +892,84 @@ public class ReportService {
         List<String> evidenceUrls = evidenceList.stream()
                 .map(ReportEvidence::getFileUrl)
                 .collect(Collectors.toList());
+        details.setEvidence(evidenceUrls);
+
+        return details;
+    }
+
+    /**
+     * Convert IncidentReport entity to ReportDetails DTO with permissions
+     * Permission levels for evidence visibility:
+     * - "private": Only owner and accepted responder can see all evidence (canEdit
+     * = true)
+     * - "officials_only": Other responders can see evidence (canEdit = false)
+     * - "public": Normal users can see evidence (canEdit = false)
+     * 
+     * @param report                  The incident report
+     * @param canEdit                 Whether the user can edit this report
+     * @param evidenceVisibilityLevel The visibility level the user has access to
+     * @return ReportDetails with appropriate evidence filtering
+     */
+    private ReportResponse.ReportDetails convertToReportDetailsWithPermissions(
+            IncidentReport report, boolean canEdit, String evidenceVisibilityLevel) {
+        ReportResponse.ReportDetails details = new ReportResponse.ReportDetails();
+
+        details.setReportId(report.getId());
+        details.setUserId(report.getUserId());
+        details.setAlertId(report.getAlertId());
+        details.setIncidentType(report.getIncidentType());
+        details.setDescription(report.getDescription());
+
+        ReportResponse.LocationInfo location = new ReportResponse.LocationInfo(
+                report.getLatitude(),
+                report.getLongitude(),
+                report.getAddress());
+        details.setLocation(location);
+
+        details.setAddress(report.getAddress());
+        details.setIncidentTime(report.getIncidentTime());
+        details.setStatus(report.getStatus());
+        details.setVisibility(report.getVisibility());
+        details.setAnonymous(report.getAnonymous());
+        details.setActionTaken(report.getActionTaken());
+        details.setInvolvedParties(report.getInvolvedParties());
+        details.setCreatedAt(report.getCreatedAt());
+        details.setUpdatedAt(report.getUpdatedAt());
+        details.setCanEdit(canEdit);
+
+        // Load and filter evidence based on visibility level
+        // "private" level can see all evidence
+        // "officials_only" level can see evidence if report visibility allows
+        // "public" level can only see evidence if report is public
+        List<ReportEvidence> evidenceList = evidenceRepository.findByReportIdOrderByUploadedAt(report.getId());
+        List<String> evidenceUrls;
+
+        String reportVisibility = report.getVisibility();
+        if ("private".equals(evidenceVisibilityLevel)) {
+            // Owner or accepted responder - can see all evidence
+            evidenceUrls = evidenceList.stream()
+                    .map(ReportEvidence::getFileUrl)
+                    .collect(Collectors.toList());
+        } else if ("officials_only".equals(evidenceVisibilityLevel)) {
+            // Other responders - can see evidence if report is officials_only or public
+            if ("public".equals(reportVisibility) || "officials_only".equals(reportVisibility)) {
+                evidenceUrls = evidenceList.stream()
+                        .map(ReportEvidence::getFileUrl)
+                        .collect(Collectors.toList());
+            } else {
+                evidenceUrls = new ArrayList<>();
+            }
+        } else {
+            // Normal users - can only see evidence if report is public
+            if ("public".equals(reportVisibility)) {
+                evidenceUrls = evidenceList.stream()
+                        .map(ReportEvidence::getFileUrl)
+                        .collect(Collectors.toList());
+            } else {
+                evidenceUrls = new ArrayList<>();
+            }
+        }
+
         details.setEvidence(evidenceUrls);
 
         return details;

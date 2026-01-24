@@ -57,14 +57,24 @@ public class Alert {
     @Column(name = "emotion_detected")
     private String emotionDetected; // happy, sad, angry, neutral, fearful, anxious
 
-    @Column(name = "ai_summary")
-    private String aiSummary; // AI-generated summary of the situation
+    @Column(name = "ai_summary", columnDefinition = "TEXT")
+    private String aiSummary; // AI-generated summary of the situation (max 200 chars from AI)
+
+    // Poke feature fields
+    @Column(name = "poke_count")
+    private Integer pokeCount = 0; // Number of times alert has been poked
+
+    @Column(name = "last_poked_at")
+    private LocalDateTime lastPokedAt; // When alert was last poked
 
     @Column(name = "canceled_at")
     private LocalDateTime canceledAt;
 
     @Column(name = "resolved_at")
     private LocalDateTime resolvedAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
@@ -196,6 +206,14 @@ public class Alert {
         this.resolvedAt = resolvedAt;
     }
 
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
@@ -235,5 +253,21 @@ public class Alert {
 
     public void setAiSummary(String aiSummary) {
         this.aiSummary = aiSummary;
+    }
+
+    public Integer getPokeCount() {
+        return pokeCount;
+    }
+
+    public void setPokeCount(Integer pokeCount) {
+        this.pokeCount = pokeCount;
+    }
+
+    public LocalDateTime getLastPokedAt() {
+        return lastPokedAt;
+    }
+
+    public void setLastPokedAt(LocalDateTime lastPokedAt) {
+        this.lastPokedAt = lastPokedAt;
     }
 }

@@ -39,21 +39,25 @@ class ApiService {
       console.log("API: Already handling 401, skipping duplicate");
       return;
     }
-    
+
     // Check if there's actually a token stored - if not, user isn't logged in yet
     // This prevents logout during OAuth flow before token is saved
     const token = await AsyncStorage.getItem("auth_token");
     if (!token) {
-      console.log(`API: 401 from ${endpoint} but no token stored - user not logged in, skipping logout`);
+      console.log(
+        `API: 401 from ${endpoint} but no token stored - user not logged in, skipping logout`,
+      );
       return;
     }
-    
+
     this.isHandling401 = true;
-    console.log(`API: 401 Unauthorized received from ${endpoint}, triggering logout`);
-    
+    console.log(
+      `API: 401 Unauthorized received from ${endpoint}, triggering logout`,
+    );
+
     // Emit unauthorized event for AuthContext to handle
     authEvents.emit(AUTH_EVENTS.UNAUTHORIZED, { endpoint });
-    
+
     // Reset the flag after a short delay to allow re-triggering if needed
     setTimeout(() => {
       this.isHandling401 = false;
@@ -64,7 +68,7 @@ class ApiService {
   private async handleResponse<T>(
     response: Response,
     endpoint: string,
-    skipAuthCheck: boolean = false
+    skipAuthCheck: boolean = false,
   ): Promise<{ ok: boolean; data?: T; status: number }> {
     if (response.status === 401 && !skipAuthCheck) {
       await this.handle401Response(endpoint);
@@ -74,7 +78,7 @@ class ApiService {
   }
 
   private async getHeaders(
-    includeAuth: boolean = false
+    includeAuth: boolean = false,
   ): Promise<Record<string, string>> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -94,7 +98,7 @@ class ApiService {
   private async authenticatedFetch(
     url: string,
     options: RequestInit = {},
-    endpoint: string
+    endpoint: string,
   ): Promise<Response> {
     const response = await fetch(url, {
       ...options,
@@ -126,12 +130,12 @@ class ApiService {
           method: "POST",
           headers: await this.getHeaders(),
           body: JSON.stringify({ token }),
-        }
+        },
       );
 
       console.log(
         "API: Google token validation response status:",
-        response.status
+        response.status,
       );
 
       const data = await response.json();
@@ -151,7 +155,7 @@ class ApiService {
     } catch (error) {
       console.error(
         "API: Network error during Google auth token validation:",
-        error
+        error,
       );
       return {
         success: false,
@@ -202,7 +206,7 @@ class ApiService {
         "API: Verifying login code for:",
         email,
         "with code:",
-        loginCode
+        loginCode,
       );
 
       const controller = new AbortController();
@@ -310,7 +314,7 @@ class ApiService {
         {
           method: "GET",
           headers: await this.getHeaders(true),
-        }
+        },
       );
 
       const data = await response.json();
@@ -387,7 +391,7 @@ class ApiService {
       } else {
         console.warn(
           "📍 Server rejected location update:",
-          result.error || "Unknown error"
+          result.error || "Unknown error",
         );
         return {
           success: false,
@@ -411,7 +415,7 @@ class ApiService {
         {
           method: "GET",
           headers: await this.getHeaders(true),
-        }
+        },
       );
 
       const result = await response.json();
@@ -543,7 +547,7 @@ class ApiService {
       relationship: string;
       email?: string;
       shareLocation?: boolean;
-    }
+    },
   ) {
     try {
       const response = await fetch(`${API_BASE_URL}/contacts/update`, {
@@ -606,7 +610,7 @@ class ApiService {
         {
           method: "GET",
           headers: await this.getHeaders(true),
-        }
+        },
       );
 
       const data = await response.json();
@@ -851,7 +855,7 @@ class ApiService {
 
   // Report API Methods
   async submitReport(
-    reportData: SubmitReportRequest
+    reportData: SubmitReportRequest,
   ): Promise<GenericReportResponse> {
     try {
       console.log("API: Submitting report:", reportData);
@@ -905,7 +909,7 @@ class ApiService {
 
   async getUserReportsByTime(
     start: string,
-    end: string
+    end: string,
   ): Promise<UserReportsResponse> {
     try {
       console.log("API: Fetching user reports");
@@ -939,7 +943,7 @@ class ApiService {
         {
           method: "GET",
           headers: await this.getHeaders(true),
-        }
+        },
       );
 
       const data = await response.json();
@@ -963,7 +967,7 @@ class ApiService {
         {
           method: "GET",
           headers: await this.getHeaders(true),
-        }
+        },
       );
 
       const data = await response.json();
@@ -980,7 +984,7 @@ class ApiService {
   }
 
   async uploadEvidence(
-    evidenceData: UploadEvidenceRequest
+    evidenceData: UploadEvidenceRequest,
   ): Promise<GenericReportResponse> {
     try {
       console.log("API: Uploading evidence for report:", evidenceData.reportId);
@@ -1005,14 +1009,14 @@ class ApiService {
 
   async deleteEvidence(
     reportId: string,
-    evidenceUrl: string
+    evidenceUrl: string,
   ): Promise<GenericReportResponse> {
     try {
       console.log(
         "API: Deleting evidence from report:",
         reportId,
         "URL:",
-        evidenceUrl
+        evidenceUrl,
       );
       const response = await fetch(`${API_BASE_URL}/report/delete-evidence`, {
         method: "POST",
@@ -1037,7 +1041,7 @@ class ApiService {
   }
 
   async updateReport(
-    updateData: UpdateReportRequest
+    updateData: UpdateReportRequest,
   ): Promise<GenericReportResponse> {
     try {
       console.log("API: Updating report:", updateData.reportId);
@@ -1116,7 +1120,7 @@ class ApiService {
   async searchReports(
     query: string,
     page = 0,
-    size = 50
+    size = 50,
   ): Promise<UserReportsResponse> {
     try {
       console.log("API: Searching reports with query:", query);
@@ -1313,7 +1317,7 @@ class ApiService {
   // SOS Alert Methods
   async submitSOSVoiceCommand(
     audioUrl: string,
-    location: { latitude: number; longitude: number; address: string }
+    location: { latitude: number; longitude: number; address: string },
   ) {
     try {
       console.log("API: Submitting SOS voice command");
@@ -1342,7 +1346,7 @@ class ApiService {
   async submitSOSTextCommand(
     message: string,
     keyword: string,
-    location: { latitude: number; longitude: number; address: string }
+    location: { latitude: number; longitude: number; address: string },
   ) {
     try {
       console.log("API: Submitting SOS text command");
@@ -1401,7 +1405,7 @@ class ApiService {
         {
           method: "GET",
           headers: await this.getHeaders(true),
-        }
+        },
       );
 
       console.log("API: Alert details response status:", response.status);
@@ -1480,7 +1484,7 @@ class ApiService {
         {
           method: "GET",
           headers: await this.getHeaders(true),
-        }
+        },
       );
 
       console.log("API: Accepted alerts response status:", response.status);
@@ -1548,6 +1552,79 @@ class ApiService {
       return {
         success: false,
         error: "Network error occurred while canceling alert",
+      };
+    }
+  }
+
+  /**
+   * Poke an alert to notify more nearby responders
+   * Limited to MAX_POKES (2) per alert
+   */
+  async pokeAlert(alertId: string) {
+    try {
+      console.log("API: Poking alert:", alertId);
+      const response = await fetch(
+        `${API_BASE_URL}/sos/alerts/${alertId}/poke`,
+        {
+          method: "POST",
+          headers: await this.getHeaders(true),
+        },
+      );
+
+      console.log("API: Poke alert response status:", response.status);
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to poke alert",
+          ...data,
+        };
+      }
+
+      return data;
+    } catch (error) {
+      console.error("API: Poke alert error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while poking alert",
+      };
+    }
+  }
+
+  /**
+   * Update alert severity
+   * @param alertId The alert ID
+   * @param severity The new severity (CRITICAL, HIGH, MEDIUM, LOW, FALSE_ALARM)
+   */
+  async updateAlertSeverity(alertId: string, severity: string) {
+    try {
+      console.log("API: Updating alert severity:", alertId, "to", severity);
+      const response = await fetch(
+        `${API_BASE_URL}/sos/alerts/${alertId}/severity`,
+        {
+          method: "PUT",
+          headers: await this.getHeaders(true),
+          body: JSON.stringify({ severity }),
+        },
+      );
+
+      console.log("API: Update severity response status:", response.status);
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || data.message || "Failed to update severity",
+        };
+      }
+
+      return data;
+    } catch (error) {
+      console.error("API: Update severity error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while updating severity",
       };
     }
   }
@@ -1697,7 +1774,7 @@ class ApiService {
         {
           method: "POST",
           headers: await this.getHeaders(true),
-        }
+        },
       );
 
       const data = await response.json();
@@ -1738,7 +1815,7 @@ class ApiService {
           method: "POST",
           headers: await this.getHeaders(true),
           body: JSON.stringify(requestData),
-        }
+        },
       );
 
       const data = await response.json();
@@ -1771,7 +1848,7 @@ class ApiService {
         {
           method: "GET",
           headers: await this.getHeaders(true),
-        }
+        },
       );
 
       const data = await response.json();
@@ -1891,18 +1968,61 @@ class ApiService {
   }
 
   /**
-   * Forward an alert to another responder (for responders)
+   * Search for responders by badge number, name, or branch (for forward modal)
    */
-  async forwardAlert(alertId: string, badgeNumber: string) {
+  async searchResponders(query: string = "") {
     try {
-      console.log("API: Forwarding alert:", alertId, "to badge:", badgeNumber);
+      const queryParam = query ? `?query=${encodeURIComponent(query)}` : "";
+      const response = await fetch(
+        `${API_BASE_URL}/responder/search${queryParam}`,
+        {
+          method: "GET",
+          headers: await this.getHeaders(true),
+        },
+      );
+
+      if (response.status === 401) {
+        await this.handle401Response("/responder/search");
+        return { success: false, error: "User not authenticated" };
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("API: Search responders error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while searching responders",
+      };
+    }
+  }
+
+  /**
+   * Forward an alert to one or more responders
+   * @param alertId The alert to forward
+   * @param responderIds Array of responder user IDs to forward to
+   * @param badgeNumber (legacy) Single badge number to forward to
+   */
+  async forwardAlert(alertId: string, responderIdsOrBadge: string[] | string) {
+    try {
+      const isArray = Array.isArray(responderIdsOrBadge);
+      console.log(
+        "API: Forwarding alert:",
+        alertId,
+        "to:",
+        isArray
+          ? `${responderIdsOrBadge.length} responders`
+          : responderIdsOrBadge,
+      );
+
+      const body = isArray
+        ? { alertId, responderIds: responderIdsOrBadge }
+        : { alertId, badgeNumber: responderIdsOrBadge };
+
       const response = await fetch(`${API_BASE_URL}/responder/forward-alert`, {
         method: "PUT",
         headers: await this.getHeaders(true),
-        body: JSON.stringify({
-          alertId,
-          badgeNumber,
-        }),
+        body: JSON.stringify(body),
       });
 
       console.log("API: Forward alert response status:", response.status);
@@ -1914,6 +2034,53 @@ class ApiService {
       return {
         success: false,
         error: "Network error occurred while forwarding alert",
+      };
+    }
+  }
+
+  /**
+   * Cancel responder's response to an alert (responder can no longer respond)
+   * This updates AlertResponder status to CANCELED
+   */
+  async cancelResponderResponse(alertId: string, reason?: string) {
+    try {
+      console.log("API: Canceling responder response to alert:", alertId);
+      const response = await fetch(`${API_BASE_URL}/responder/cancel-alert`, {
+        method: "PUT",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({ alertId, reason }),
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("API: Cancel responder response error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while canceling response",
+      };
+    }
+  }
+
+  /**
+   * Update responder status for an alert (EN_ROUTE, ARRIVED, RESOLVED)
+   */
+  async updateResponderStatus(alertId: string, status: string, eta?: number) {
+    try {
+      console.log("API: Updating responder status:", alertId, "to:", status);
+      const response = await fetch(`${API_BASE_URL}/responder/update-status`, {
+        method: "PUT",
+        headers: await this.getHeaders(true),
+        body: JSON.stringify({ alertId, status, eta }),
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("API: Update responder status error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while updating status",
       };
     }
   }
@@ -1933,7 +2100,7 @@ class ApiService {
             status,
             notes: notes || "",
           }),
-        }
+        },
       );
 
       console.log("API: Update alert status response status:", response.status);
@@ -1945,6 +2112,44 @@ class ApiService {
       return {
         success: false,
         error: "Network error occurred while updating alert status",
+      };
+    }
+  }
+
+  /**
+   * Update alert severity (for victim or assigned responder)
+   */
+  async updateAlertSeverity(alertId: string, severity: string) {
+    try {
+      console.log(
+        "API: Updating alert severity:",
+        alertId,
+        "to severity:",
+        severity,
+      );
+      const response = await fetch(
+        `${API_BASE_URL}/sos/alerts/${alertId}/severity`,
+        {
+          method: "PUT",
+          headers: await this.getHeaders(true),
+          body: JSON.stringify({
+            severity,
+          }),
+        },
+      );
+
+      console.log(
+        "API: Update alert severity response status:",
+        response.status,
+      );
+      const data = await response.json();
+
+      return data;
+    } catch (error) {
+      console.error("API: Update alert severity error:", error);
+      return {
+        success: false,
+        error: "Network error occurred while updating alert severity",
       };
     }
   }
@@ -2093,7 +2298,7 @@ class ApiService {
   // Emergency Services API Methods
   async getEmergencyServices(
     location: { latitude: number; longitude: number },
-    radius: number = 5000
+    radius: number = 5000,
   ) {
     try {
       const params = new URLSearchParams({
@@ -2107,7 +2312,7 @@ class ApiService {
         {
           method: "GET",
           headers: await this.getHeaders(true),
-        }
+        },
       );
 
       const data = await response.json();
@@ -2132,7 +2337,7 @@ class ApiService {
 
   async getPoliceStations(
     location: { latitude: number; longitude: number },
-    radius: number = 5000
+    radius: number = 5000,
   ) {
     try {
       const params = new URLSearchParams({
@@ -2146,7 +2351,7 @@ class ApiService {
         {
           method: "GET",
           headers: await this.getHeaders(true),
-        }
+        },
       );
 
       const data = await response.json();
@@ -2171,7 +2376,7 @@ class ApiService {
 
   async getHospitals(
     location: { latitude: number; longitude: number },
-    radius: number = 5000
+    radius: number = 5000,
   ) {
     try {
       const params = new URLSearchParams({
@@ -2185,7 +2390,7 @@ class ApiService {
         {
           method: "GET",
           headers: await this.getHeaders(true),
-        }
+        },
       );
 
       const data = await response.json();
@@ -2209,7 +2414,7 @@ class ApiService {
 
   async getFireStations(
     location: { latitude: number; longitude: number },
-    radius: number = 5000
+    radius: number = 5000,
   ) {
     try {
       const params = new URLSearchParams({
@@ -2223,7 +2428,7 @@ class ApiService {
         {
           method: "GET",
           headers: await this.getHeaders(true),
-        }
+        },
       );
 
       const data = await response.json();
@@ -2291,12 +2496,12 @@ class ApiService {
       console.log("API: Deactivating device token");
       const response = await fetch(
         `${API_BASE_URL}/device-tokens/deactivate?token=${encodeURIComponent(
-          token
+          token,
         )}`,
         {
           method: "DELETE",
           headers: await this.getHeaders(true),
-        }
+        },
       );
 
       if (!response.ok) {

@@ -35,7 +35,7 @@ import LocationSelectionModal, {
 } from "../../components/LocationSelectionModal";
 
 export default function ReportDetailsScreen() {
-  const params = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string; mode?: string }>();
   const { user } = useAuth();
   const { showAlert, showConfirmAlert } = useAlert();
   const [report, setReport] = useState<ReportDetails | null>(null);
@@ -55,13 +55,17 @@ export default function ReportDetailsScreen() {
   const [showIncidentTypeModal, setShowIncidentTypeModal] = useState(false);
   const videoRef = useRef<Video>(null);
 
-  // Extract ID from params, handle both single string and array cases
+  // Extract ID and mode from params, handle both single string and array cases
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const mode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
+
+  // Check if this is view-only mode (no editing allowed)
+  const isViewMode = mode === "view";
 
   // Debug log the ID parameter
   console.log("Report Details Screen - Raw params:", params);
   console.log("Report Details Screen - Extracted ID:", id);
-  console.log("Report Details Screen - ID type:", typeof id);
+  console.log("Report Details Screen - Mode:", mode, "isViewMode:", isViewMode);
 
   useEffect(() => {
     if (id && id.trim()) {
@@ -97,7 +101,7 @@ export default function ReportDetailsScreen() {
           "Error",
           response.error || "Failed to load report details",
           "error",
-          [{ text: "OK", onPress: () => router.back() }]
+          [{ text: "OK", onPress: () => router.back() }],
         );
       }
     } catch (error) {
@@ -115,7 +119,7 @@ export default function ReportDetailsScreen() {
           [
             { text: "Retry", onPress: () => loadReportDetails() },
             { text: "Go Back", onPress: () => router.back() },
-          ]
+          ],
         );
       } else {
         showAlert(
@@ -125,7 +129,7 @@ export default function ReportDetailsScreen() {
           [
             { text: "Retry", onPress: () => loadReportDetails() },
             { text: "Go Back", onPress: () => router.back() },
-          ]
+          ],
         );
       }
     } finally {
@@ -133,17 +137,25 @@ export default function ReportDetailsScreen() {
     }
   };
 
-  // Check if current user can edit this report
+  // Check if current user can edit this report (uses backend permission)
+  // Also respects view mode - when in view mode, editing is disabled
   const canEditReport = (): boolean => {
-    if (!report || !user) return false;
+    // If in view mode, no editing allowed
+    if (isViewMode) return false;
 
-    // For now, we'll determine ownership by checking if the report is accessible
-    // In the future, the API should include ownership information
-    // User can edit if they are a responder
+    if (!report) return false;
+
+    // Use the canEdit flag from the backend if available
+    // Backend determines edit permission based on:
+    // - User owns the report, OR
+    // - User is the responder who accepted the alert
+    if (report.canEdit !== undefined) {
+      return report.canEdit;
+    }
+
+    // Fallback to legacy logic if backend doesn't provide canEdit (backward compatibility)
+    if (!user) return false;
     if (user.role === "RESPONDER") return true;
-
-    // For USER role, we need to assume they can only edit their own reports
-    // Since the report details are accessible, we assume they own it if they're a USER
     if (user.role === "USER" && report.userId === user.userId) return true;
 
     return false;
@@ -209,7 +221,7 @@ export default function ReportDetailsScreen() {
         showAlert(
           "Error",
           response.error || "Failed to update location",
-          "error"
+          "error",
         );
       }
     } catch (error) {
@@ -219,7 +231,7 @@ export default function ReportDetailsScreen() {
   };
 
   const handleIncidentTypeUpdate = async (
-    newIncidentType: "harassment" | "theft" | "assault" | "emergency" | "other"
+    newIncidentType: "harassment" | "theft" | "assault" | "emergency" | "other",
   ) => {
     if (!report) return;
 
@@ -241,7 +253,7 @@ export default function ReportDetailsScreen() {
         showAlert(
           "Error",
           response.error || "Failed to update incident type",
-          "error"
+          "error",
         );
       }
     } catch (error) {
@@ -275,7 +287,7 @@ export default function ReportDetailsScreen() {
           showAlert(
             "Error",
             "Please enter location in format: latitude,longitude",
-            "error"
+            "error",
           );
           return;
         }
@@ -332,7 +344,7 @@ export default function ReportDetailsScreen() {
         showAlert(
           "Error",
           response.error || "Failed to update report",
-          "error"
+          "error",
         );
       }
     } catch (error) {
@@ -342,13 +354,13 @@ export default function ReportDetailsScreen() {
   };
 
   const handleChangeVisibility = (
-    newVisibility: "public" | "officials_only" | "private"
+    newVisibility: "public" | "officials_only" | "private",
   ) => {
     showConfirmAlert(
       "Change Visibility",
       `Are you sure you want to change visibility to ${newVisibility.replace(
         "_",
-        " "
+        " ",
       )}?`,
       async () => {
         if (!report) return;
@@ -367,7 +379,7 @@ export default function ReportDetailsScreen() {
             showAlert(
               "Error",
               response.error || "Failed to update visibility",
-              "error"
+              "error",
             );
           }
         } catch (error) {
@@ -376,7 +388,7 @@ export default function ReportDetailsScreen() {
         }
       },
       undefined,
-      "warning"
+      "warning",
     );
   };
 
@@ -402,7 +414,7 @@ export default function ReportDetailsScreen() {
             showAlert(
               "Error",
               response.error || "Failed to delete report",
-              "error"
+              "error",
             );
           }
         } catch (error) {
@@ -413,18 +425,18 @@ export default function ReportDetailsScreen() {
       () => {
         console.log("🗑️ User cancelled deletion");
       },
-      "error"
+      "error",
     );
   };
 
   const handleChangeStatus = (
-    newStatus: "submitted" | "under_review" | "resolved"
+    newStatus: "submitted" | "under_review" | "resolved",
   ) => {
     showConfirmAlert(
       "Change Report Status",
       `Are you sure you want to change the status to "${newStatus.replace(
         "_",
-        " "
+        " ",
       )}"?`,
       async () => {
         if (!report) return;
@@ -441,13 +453,13 @@ export default function ReportDetailsScreen() {
             showAlert(
               "Success",
               "Report status updated successfully",
-              "success"
+              "success",
             );
           } else {
             showAlert(
               "Error",
               response.error || "Failed to update status",
-              "error"
+              "error",
             );
           }
         } catch (error) {
@@ -456,7 +468,7 @@ export default function ReportDetailsScreen() {
         }
       },
       undefined,
-      "warning"
+      "warning",
     );
   };
 
@@ -475,21 +487,20 @@ export default function ReportDetailsScreen() {
         try {
           console.log(
             "🗑️ Starting evidence deletion process for URL:",
-            evidenceUrl
+            evidenceUrl,
           );
 
           // First, try to delete from Cloudinary
           console.log("🗑️ Step 1: Deleting from Cloudinary...");
-          const cloudinaryResult = await cloudinaryService.deleteFileByUrl(
-            evidenceUrl
-          );
+          const cloudinaryResult =
+            await cloudinaryService.deleteFileByUrl(evidenceUrl);
 
           if (cloudinaryResult.success) {
             console.log("✅ Successfully deleted from Cloudinary");
           } else {
             console.warn(
               "⚠️ Failed to delete from Cloudinary:",
-              cloudinaryResult.error
+              cloudinaryResult.error,
             );
             // Continue with database deletion even if Cloudinary deletion fails
             // This prevents orphaned database records
@@ -499,7 +510,7 @@ export default function ReportDetailsScreen() {
           console.log("🗑️ Step 2: Deleting from database...");
           const response = await apiService.deleteEvidence(
             report.reportId,
-            evidenceUrl
+            evidenceUrl,
           );
 
           if (response.success) {
@@ -507,7 +518,7 @@ export default function ReportDetailsScreen() {
 
             // Remove evidence from local state
             const updatedEvidence = report.evidence.filter(
-              (_, index) => index !== selectedEvidenceIndex
+              (_, index) => index !== selectedEvidenceIndex,
             );
             setReport({
               ...report,
@@ -535,7 +546,7 @@ export default function ReportDetailsScreen() {
             showAlert(
               "Error",
               response.error || "Failed to delete evidence from database",
-              "error"
+              "error",
             );
           }
         } catch (error) {
@@ -543,14 +554,14 @@ export default function ReportDetailsScreen() {
           showAlert(
             "Error",
             "An unexpected error occurred during deletion",
-            "error"
+            "error",
           );
         } finally {
           setIsDeletingEvidence(false);
         }
       },
       undefined,
-      "error"
+      "error",
     );
   };
 
@@ -592,7 +603,7 @@ export default function ReportDetailsScreen() {
       // Video files
       else if (
         ["mp4", "avi", "mov", "wmv", "flv", "webm", "mkv", "3gp"].includes(
-          extension
+          extension,
         )
       ) {
         return "video";
@@ -685,7 +696,7 @@ export default function ReportDetailsScreen() {
       showAlert(
         "Error",
         "Failed to load media. Please try opening in browser instead.",
-        "error"
+        "error",
       );
       return;
     }
@@ -747,7 +758,7 @@ export default function ReportDetailsScreen() {
         // Reload the video
         await videoRef.current.loadAsync(
           { uri: report.evidence[selectedEvidenceIndex] },
-          { shouldPlay: false }
+          { shouldPlay: false },
         );
         showAlert("Info", "Retrying media playback...", "info");
       } catch (error) {
@@ -756,7 +767,7 @@ export default function ReportDetailsScreen() {
         showAlert(
           "Error",
           "Failed to reload media. Please try opening in browser.",
-          "error"
+          "error",
         );
       }
     }
@@ -811,7 +822,7 @@ export default function ReportDetailsScreen() {
                 className="w-12 h-12 rounded-full items-center justify-center mr-3 shadow-sm"
                 style={{
                   backgroundColor: `${getIncidentTypeColor(
-                    report.incidentType
+                    report.incidentType,
                   )}15`,
                 }}
               >
@@ -910,69 +921,71 @@ export default function ReportDetailsScreen() {
           </View>
         </View>
 
-        {/* Visibility Settings */}
-        <View className="bg-white rounded-lg p-4 mb-4 shadow-sm">
-          <Text className="text-base font-semibold text-gray-800 mb-3">
-            Visibility
-          </Text>
-          <View className="space-y-2">
-            {visibilityOptions.map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                className={`flex-row items-center p-3 rounded-lg ${
-                  report.visibility === option.value
-                    ? "bg-[#67082F]/10 border border-[#67082F]"
-                    : "bg-gray-50 border border-transparent"
-                }`}
-                onPress={() => {
-                  if (report.visibility !== option.value) {
-                    handleChangeVisibility(option.value);
-                  }
-                }}
-              >
-                <MaterialIcons
-                  name={option.icon as any}
-                  size={20}
-                  color={
-                    report.visibility === option.value ? "#67082F" : "#6B7280"
-                  }
-                />
-                <Text
-                  className={`ml-3 text-sm font-medium ${
+        {/* Visibility Settings - Hidden in view mode */}
+        {!isViewMode && (
+          <View className="bg-white rounded-lg p-4 mb-4 shadow-sm">
+            <Text className="text-base font-semibold text-gray-800 mb-3">
+              Visibility
+            </Text>
+            <View className="space-y-2">
+              {visibilityOptions.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  className={`flex-row items-center p-3 rounded-lg ${
                     report.visibility === option.value
-                      ? "text-[#67082F]"
-                      : "text-gray-700"
+                      ? "bg-[#67082F]/10 border border-[#67082F]"
+                      : "bg-gray-50 border border-transparent"
                   }`}
+                  onPress={() => {
+                    if (report.visibility !== option.value) {
+                      handleChangeVisibility(option.value);
+                    }
+                  }}
                 >
-                  {option.label}
-                </Text>
-                {report.visibility === option.value && (
                   <MaterialIcons
-                    name="check"
-                    size={16}
-                    color="#67082F"
-                    style={{ marginLeft: "auto" }}
+                    name={option.icon as any}
+                    size={20}
+                    color={
+                      report.visibility === option.value ? "#67082F" : "#6B7280"
+                    }
                   />
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {report.anonymous && (
-            <View className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-              <View className="flex-row items-center">
-                <MaterialIcons
-                  name="visibility-off"
-                  size={16}
-                  color="#F59E0B"
-                />
-                <Text className="text-yellow-700 text-sm font-medium ml-2">
-                  Anonymous Report
-                </Text>
-              </View>
+                  <Text
+                    className={`ml-3 text-sm font-medium ${
+                      report.visibility === option.value
+                        ? "text-[#67082F]"
+                        : "text-gray-700"
+                    }`}
+                  >
+                    {option.label}
+                  </Text>
+                  {report.visibility === option.value && (
+                    <MaterialIcons
+                      name="check"
+                      size={16}
+                      color="#67082F"
+                      style={{ marginLeft: "auto" }}
+                    />
+                  )}
+                </TouchableOpacity>
+              ))}
             </View>
-          )}
-        </View>
+
+            {report.anonymous && (
+              <View className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                <View className="flex-row items-center">
+                  <MaterialIcons
+                    name="visibility-off"
+                    size={16}
+                    color="#F59E0B"
+                  />
+                  <Text className="text-yellow-700 text-sm font-medium ml-2">
+                    Anonymous Report
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Action Taken */}
         {report.actionTaken && (
@@ -1077,26 +1090,32 @@ export default function ReportDetailsScreen() {
           ) : (
             <View className="p-4 bg-gray-50 rounded-lg items-center">
               <MaterialIcons
-                name="add-photo-alternate"
+                name={isViewMode ? "attachment" : "add-photo-alternate"}
                 size={40}
                 color="#9CA3AF"
               />
               <Text className="text-gray-600 text-center mt-2">
                 No evidence attached
               </Text>
-              <Text className="text-gray-500 text-sm text-center mt-1">
-                Add photos, videos or documents as evidence
-              </Text>
-              <TouchableOpacity
-                className="mt-4 bg-[#67082F] rounded-lg px-4 py-2"
-                onPress={() =>
-                  router.push(
-                    `/reports/evidence?reportId=${report.reportId}` as any
-                  )
-                }
-              >
-                <Text className="text-white font-medium">Upload Evidence</Text>
-              </TouchableOpacity>
+              {!isViewMode && (
+                <>
+                  <Text className="text-gray-500 text-sm text-center mt-1">
+                    Add photos, videos or documents as evidence
+                  </Text>
+                  <TouchableOpacity
+                    className="mt-4 bg-[#67082F] rounded-lg px-4 py-2"
+                    onPress={() =>
+                      router.push(
+                        `/reports/evidence?reportId=${report.reportId}` as any,
+                      )
+                    }
+                  >
+                    <Text className="text-white font-medium">
+                      Upload Evidence
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           )}
         </View>
@@ -1122,34 +1141,36 @@ export default function ReportDetailsScreen() {
           </View>
         </View>
 
-        {/* Actions */}
-        <View className="bg-white rounded-lg p-4 mb-8 shadow-sm">
-          <Text className="text-base font-semibold text-gray-800 mb-3">
-            Actions
-          </Text>
-
-          <TouchableOpacity
-            className="flex-row items-center p-3 bg-[#67082F] rounded-lg mb-3"
-            onPress={() =>
-              router.push(
-                `/reports/evidence?reportId=${report.reportId}` as any
-              )
-            }
-          >
-            <MaterialIcons name="cloud-upload" size={20} color="white" />
-            <Text className="text-white font-medium ml-2">
-              {report.evidence && report.evidence.length > 0
-                ? "Add More Evidence"
-                : "Upload Evidence"}
+        {/* Actions - Hidden in view mode */}
+        {!isViewMode && (
+          <View className="bg-white rounded-lg p-4 mb-8 shadow-sm">
+            <Text className="text-base font-semibold text-gray-800 mb-3">
+              Actions
             </Text>
-            <MaterialIcons
-              name="arrow-forward"
-              size={16}
-              color="white"
-              style={{ marginLeft: "auto" }}
-            />
-          </TouchableOpacity>
-        </View>
+
+            <TouchableOpacity
+              className="flex-row items-center p-3 bg-[#67082F] rounded-lg mb-3"
+              onPress={() =>
+                router.push(
+                  `/reports/evidence?reportId=${report.reportId}` as any,
+                )
+              }
+            >
+              <MaterialIcons name="cloud-upload" size={20} color="white" />
+              <Text className="text-white font-medium ml-2">
+                {report.evidence && report.evidence.length > 0
+                  ? "Add More Evidence"
+                  : "Upload Evidence"}
+              </Text>
+              <MaterialIcons
+                name="arrow-forward"
+                size={16}
+                color="white"
+                style={{ marginLeft: "auto" }}
+              />
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
 
       {/* Edit Modal */}
@@ -1230,7 +1251,7 @@ export default function ReportDetailsScreen() {
               report.evidence[selectedEvidenceIndex] && (
                 <>
                   {getFileTypeFromUrl(
-                    report.evidence[selectedEvidenceIndex]
+                    report.evidence[selectedEvidenceIndex],
                   ) === "image" ? (
                     <View
                       className="bg-gray-800 rounded-lg p-4 items-center justify-center"
@@ -1253,7 +1274,7 @@ export default function ReportDetailsScreen() {
                       />
                     </View>
                   ) : getFileTypeFromUrl(
-                      report.evidence[selectedEvidenceIndex]
+                      report.evidence[selectedEvidenceIndex],
                     ) === "video" ? (
                     <View className="items-center">
                       <View
@@ -1296,7 +1317,7 @@ export default function ReportDetailsScreen() {
                                 className="bg-[#3B82F6] px-4 py-2 rounded-lg flex-row items-center"
                                 onPress={() =>
                                   Linking.openURL(
-                                    report.evidence[selectedEvidenceIndex]
+                                    report.evidence[selectedEvidenceIndex],
                                   )
                                 }
                               >
@@ -1329,7 +1350,7 @@ export default function ReportDetailsScreen() {
                             isLooping={false}
                             onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
                             onFullscreenUpdate={(
-                              event: VideoFullscreenUpdateEvent
+                              event: VideoFullscreenUpdateEvent,
                             ) => {
                               // Update fullscreen state when user uses native controls
                               if (
@@ -1404,7 +1425,7 @@ export default function ReportDetailsScreen() {
                           className="mt-4 bg-[#3B82F6] px-4 py-2 rounded-lg flex-row items-center"
                           onPress={() =>
                             Linking.openURL(
-                              report.evidence[selectedEvidenceIndex]
+                              report.evidence[selectedEvidenceIndex],
                             )
                           }
                         >
@@ -1421,7 +1442,7 @@ export default function ReportDetailsScreen() {
                       </View>
                     </View>
                   ) : getFileTypeFromUrl(
-                      report.evidence[selectedEvidenceIndex]
+                      report.evidence[selectedEvidenceIndex],
                     ) === "audio" ? (
                     <View className="items-center">
                       <View
@@ -1464,7 +1485,7 @@ export default function ReportDetailsScreen() {
                                 className="bg-[#6366F1] px-4 py-2 rounded-lg flex-row items-center"
                                 onPress={() =>
                                   Linking.openURL(
-                                    report.evidence[selectedEvidenceIndex]
+                                    report.evidence[selectedEvidenceIndex],
                                   )
                                 }
                               >
@@ -1547,7 +1568,7 @@ export default function ReportDetailsScreen() {
                           className="mt-4 bg-[#6366F1] px-4 py-2 rounded-lg flex-row items-center"
                           onPress={() =>
                             Linking.openURL(
-                              report.evidence[selectedEvidenceIndex]
+                              report.evidence[selectedEvidenceIndex],
                             )
                           }
                         >
@@ -1578,15 +1599,15 @@ export default function ReportDetailsScreen() {
                           name={
                             getFileIcon(
                               getFileTypeFromUrl(
-                                report.evidence[selectedEvidenceIndex]
-                              )
+                                report.evidence[selectedEvidenceIndex],
+                              ),
                             ) as any
                           }
                           size={60}
                           color={getFileIconColor(
                             getFileTypeFromUrl(
-                              report.evidence[selectedEvidenceIndex]
-                            )
+                              report.evidence[selectedEvidenceIndex],
+                            ),
                           )}
                         />
                         <Text className="text-white mt-4 text-center font-medium">
@@ -1601,7 +1622,7 @@ export default function ReportDetailsScreen() {
                           className="mt-6 bg-[#67082F] px-6 py-3 rounded-lg flex-row items-center"
                           onPress={() =>
                             Linking.openURL(
-                              report.evidence[selectedEvidenceIndex]
+                              report.evidence[selectedEvidenceIndex],
                             )
                           }
                         >
@@ -1746,7 +1767,7 @@ export default function ReportDetailsScreen() {
                         | "theft"
                         | "assault"
                         | "emergency"
-                        | "other"
+                        | "other",
                     )
                   }
                 >

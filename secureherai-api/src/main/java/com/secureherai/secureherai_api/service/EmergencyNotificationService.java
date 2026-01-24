@@ -349,15 +349,18 @@ public class EmergencyNotificationService {
 
         Alert alert = alertOpt.get();
 
-        // Check if alert is still active
-        if (alert.getStatus() != AlertStatus.ACTIVE) {
-            log.info("Alert {} is no longer active, skipping escalation", alert.getId());
+        // Check if alert is still waiting for responders (WAITING status)
+        // ACTIVE means someone already accepted, so no need to escalate
+        if (alert.getStatus() != AlertStatus.WAITING) {
+            log.info("Alert {} is no longer waiting (status: {}), skipping escalation", alert.getId(),
+                    alert.getStatus());
             job.setStatus(JobStatus.CANCELLED);
             return;
         }
 
-        // Check if any responder has already accepted
-        List<AlertResponder> acceptedResponders = alertResponderRepository.findAcceptedByAlertId(alert.getId());
+        // Double-check: if any responder has already accepted, skip escalation
+        List<AlertResponder> acceptedResponders = alertResponderRepository.findAcceptedByAlertId(alert.getId(),
+                AlertStatus.ACCEPTED);
         if (!acceptedResponders.isEmpty()) {
             log.info("Alert {} already accepted by responder, skipping escalation", alert.getId());
             job.setStatus(JobStatus.CANCELLED);
@@ -425,7 +428,8 @@ public class EmergencyNotificationService {
             return;
 
         Alert alert = alertOpt.get();
-        if (alert.getStatus() != AlertStatus.ACTIVE)
+        // Send follow-up if alert is still ongoing (WAITING or ACTIVE)
+        if (!alert.getStatus().isAlertOngoing())
             return;
 
         Optional<User> userOpt = userRepository.findById(alert.getUserId());
@@ -604,11 +608,9 @@ public class EmergencyNotificationService {
         Alert alert = alertOpt.get();
 
         if (accepted) {
-            // Update alert status
-            if (alert.getStatus() == AlertStatus.ACTIVE) {
-                alert.setStatus(AlertStatus.ACCEPTED);
-                alertRepository.save(alert);
-            }
+            // Note: Alert.status stays ACTIVE even when a responder accepts
+            // Only AlertResponder.status changes to ACCEPTED
+            // Alert.status becomes FINISHED only when responder marks RESOLVED
 
             // Create or update AlertResponder entry
             Optional<AlertResponder> existing = alertResponderRepository.findByAlertIdAndResponderId(alertUuid,
@@ -692,7 +694,8 @@ public class EmergencyNotificationService {
 
         // Find all accepted responders for this alert and send them the victim's
         // location
-        List<AlertResponder> acceptedResponders = alertResponderRepository.findAcceptedByAlertId(alertUuid);
+        List<AlertResponder> acceptedResponders = alertResponderRepository.findAcceptedByAlertId(alertUuid,
+                AlertStatus.ACCEPTED);
 
         for (AlertResponder ar : acceptedResponders) {
             String destination = "/user/" + ar.getResponderId() + "/queue/emergency-updates";

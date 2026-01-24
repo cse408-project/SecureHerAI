@@ -13,22 +13,23 @@ import java.util.UUID;
 
 @Repository
 public interface TrustedContactRepository extends JpaRepository<TrustedContact, UUID> {
-    
+
     List<TrustedContact> findByUserIdOrderByCreatedAtDesc(UUID userId);
-    
+
     List<TrustedContact> findByUserId(UUID userId);
-    
+
     Optional<TrustedContact> findByIdAndUserId(UUID id, UUID userId);
-    
+
     Optional<TrustedContact> findByUserIdAndPhone(UUID userId, String phone);
-    
+
     boolean existsByUserIdAndPhone(UUID userId, String phone);
-    
+
     void deleteByIdAndUserId(UUID id, UUID userId);
-    
+
     @Modifying
+    @org.springframework.transaction.annotation.Transactional
     @Query("DELETE FROM TrustedContact tc WHERE tc.userId = :userId")
     void deleteByUserId(@Param("userId") UUID userId);
-    
+
     long countByUserId(UUID userId);
 }

@@ -1,8 +1,16 @@
-import { View, Text, TouchableOpacity, Image, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  Platform,
+} from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNotifications } from "../context/NotificationContext";
 import { useLocation } from "../context/LocationContext";
 import { useAlert } from "../context/AlertContext";
+import { useEffect } from "react";
 
 interface HeaderProps {
   title: string;
@@ -22,8 +30,16 @@ export default function Header({
   showLocationReload = true,
 }: HeaderProps) {
   const { unreadCount } = useNotifications();
-  const { manualLocationReload, isManuallyUpdating, isLocationTrackingActive } = useLocation();
+  const { manualLocationReload, isManuallyUpdating, isLocationTrackingActive } =
+    useLocation();
   const { showAlert } = useAlert();
+
+  // Update browser tab title on web
+  useEffect(() => {
+    if (Platform.OS === "web" && typeof document !== "undefined") {
+      document.title = `SecureHerAI`;
+    }
+  }, []);
 
   // Use real notification count if enabled, otherwise fall back to prop
   const shouldShowDot = useRealNotificationCount
@@ -34,10 +50,10 @@ export default function Header({
   const handleLocationReload = async () => {
     try {
       await manualLocationReload();
-      showAlert('Location updated successfully!', 'success');
+      showAlert("Location updated successfully!", "success");
     } catch (error) {
-      console.error('Failed to update location:', error);
-      showAlert('Failed to update location', 'error');
+      console.error("Failed to update location:", error);
+      showAlert("Failed to update location", "error");
     }
   };
 
@@ -78,7 +94,7 @@ export default function Header({
             )}
           </TouchableOpacity>
         )}
-        
+
         <TouchableOpacity
           className="w-10 h-10 bg-red-700/30 rounded-full items-center justify-center relative"
           onPress={onNotificationPress}

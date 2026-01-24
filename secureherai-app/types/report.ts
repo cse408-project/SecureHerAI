@@ -51,6 +51,7 @@ export interface ReportDetails {
   evidence: string[];
   createdAt: string;
   updatedAt: string;
+  canEdit?: boolean; // Whether the current user can edit this report
 }
 
 export interface GenericReportResponse {

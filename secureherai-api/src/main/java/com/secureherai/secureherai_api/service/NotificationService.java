@@ -412,6 +412,7 @@ public class NotificationService {
 
     /**
      * Send emergency notifications to a batch of responders with TTL
+     * Also creates AlertResponder records with PENDING status for proper tracking
      */
     @Transactional
     public void sendEmergencyBatch(Alert alert, List<ResponderWithDistance> allResponders, int batchNumber) {
@@ -439,6 +440,19 @@ public class NotificationService {
 
         for (ResponderWithDistance responderWithDistance : batchResponders) {
             Responder responder = responderWithDistance.getResponder();
+
+            // Create AlertResponder record with PENDING status (if not already exists)
+            // This is crucial for tracking which responders have been notified
+            if (!alertResponderRepository.existsByAlertIdAndResponderId(alert.getId(), responder.getUserId())) {
+                AlertResponder alertResponder = new AlertResponder(
+                        alert.getId(),
+                        responder.getUserId(),
+                        AlertStatus.PENDING);
+                alertResponder.setNotes("batch_" + batchNumber); // Track which batch this responder was notified in
+                alertResponderRepository.save(alertResponder);
+                log.info("Created PENDING AlertResponder record for responder: {} alert: {} batch: {}",
+                        responder.getUserId(), alert.getId(), batchNumber);
+            }
 
             // Create notification payload
             Map<String, Object> payload = createAlertPayload(alert);
@@ -587,15 +601,15 @@ public class NotificationService {
 
     /**
      * Check if alert is resolved based on the alert's status
+     * Alert statuses: ACTIVE, FINISHED, DELETED, EXPIRED
+     * Only ACTIVE alerts should receive notifications
      */
     private boolean isAlertResolved(UUID alertId) {
         return alertRepository.findById(alertId)
                 .map(alert -> {
                     AlertStatus status = alert.getStatus();
-                    return status == AlertStatus.RESOLVED ||
-                            status == AlertStatus.CANCELED ||
-                            status == AlertStatus.EXPIRED ||
-                            status == AlertStatus.FALSE_ALARM;
+                    // Alert is "resolved" (no more notifications) if status is not ACTIVE
+                    return status != AlertStatus.ACTIVE;
                 })
                 .orElse(true); // If alert not found, treat as resolved (don't send notifications)
     }
@@ -868,9 +882,15 @@ public class NotificationService {
                 message = String.format("Your emergency alert has been resolved by %s. Stay safe!", responderName);
                 notificationType = Notification.NotificationType.SYSTEM_NOTIFICATION;
                 break;
-            case "CRITICAL":
-                title = "🚨 Alert escalated";
-                message = "Your emergency alert has been marked as critical. Additional help is being notified.";
+            case "CANCELED":
+                title = "🔴 Response canceled";
+                message = String.format("%s has canceled their response. We are finding another responder.",
+                        responderName);
+                notificationType = Notification.NotificationType.SYSTEM_NOTIFICATION;
+                break;
+            case "FORWARDED":
+                title = "➡️ Alert forwarded";
+                message = String.format("%s has forwarded your alert to additional responders.", responderName);
                 notificationType = Notification.NotificationType.SYSTEM_NOTIFICATION;
                 break;
             default:
@@ -904,5 +924,101 @@ public class NotificationService {
         sendWebSocketNotification(userId, "ALERT_STATUS_UPDATE", payload);
 
         log.info("Alert status update notification sent successfully for alert {}", alertId);
+    }
+
+    /**
+     * Poke alert - Send notification to additional nearby responders
+     * Used when victim wants to notify more responders for their active alert
+     * 
+     * @param alert      The alert to poke
+     * @param victim     The victim user
+     * @param excludeIds List of responder IDs already notified (to exclude)
+     * @return Number of new responders notified
+     */
+    @Transactional
+    public int pokeAlertToNewResponders(Alert alert, User victim, List<UUID> excludeIds) {
+        log.info("Poking alert {} - finding new responders (excluding {} already notified)",
+                alert.getId(), excludeIds.size());
+
+        // Get active responders excluding already notified ones
+        List<Responder> activeResponders = responderRepository.findByStatusAndIsActiveTrue(Responder.Status.AVAILABLE)
+                .stream()
+                .filter(r -> !excludeIds.contains(r.getUserId()))
+                .filter(r -> r.getUser() != null)
+                .toList();
+
+        if (activeResponders.isEmpty()) {
+            log.warn("No new active responders available for alert: {}", alert.getId());
+            return 0;
+        }
+
+        // Calculate distance and sort by nearest
+        List<ResponderWithDistance> sortedResponders = activeResponders.stream()
+                .map(responder -> new ResponderWithDistance(responder,
+                        calculateDistance(alert.getLatitude(), alert.getLongitude(),
+                                responder.getUser().getCurrentLatitude(), responder.getUser().getCurrentLongitude())))
+                .sorted(Comparator.comparingDouble(ResponderWithDistance::getDistance))
+                .limit(BATCH_SIZE) // Send to BATCH_SIZE new responders per poke
+                .collect(Collectors.toList());
+
+        if (sortedResponders.isEmpty()) {
+            log.warn("No new responders found within range for poke alert: {}", alert.getId());
+            return 0;
+        }
+
+        int notifiedCount = 0;
+        int pokeNumber = (alert.getPokeCount() != null ? alert.getPokeCount() : 0) + 1;
+
+        for (ResponderWithDistance responderWithDistance : sortedResponders) {
+            Responder responder = responderWithDistance.getResponder();
+
+            // Create AlertResponder record with PENDING status
+            if (!alertResponderRepository.existsByAlertIdAndResponderId(alert.getId(), responder.getUserId())) {
+                AlertResponder alertResponder = new AlertResponder(
+                        alert.getId(),
+                        responder.getUserId(),
+                        AlertStatus.PENDING);
+                alertResponder.setNotes("poke_" + pokeNumber);
+                alertResponderRepository.save(alertResponder);
+                log.info("Created PENDING AlertResponder record for responder: {} alert: {} (poke {})",
+                        responder.getUserId(), alert.getId(), pokeNumber);
+            }
+
+            // Create notification payload
+            Map<String, Object> payload = createAlertPayload(alert);
+            payload.put("distance", responderWithDistance.getDistance());
+            payload.put("responderType", responder.getResponderType());
+            payload.put("pokeNumber", pokeNumber);
+            payload.put("expiresAt", LocalDateTime.now().plus(EMERGENCY_TTL));
+            payload.put("isPoke", true);
+
+            String title = "🚨 Urgent! Emergency Alert - Additional Help Needed";
+            String message = String.format(
+                    "Emergency alert %.2fkm away needs additional help! Location: %s. " +
+                            "This is poke #%d - please respond urgently if available.",
+                    responderWithDistance.getDistance(),
+                    alert.getAddress() != null ? alert.getAddress() : "Location not available",
+                    pokeNumber);
+
+            // Create and save notification with TTL
+            createNotificationWithTTL(
+                    responder.getUserId(),
+                    Notification.NotificationType.EMERGENCY_NEARBY,
+                    Notification.NotificationChannel.BOTH,
+                    title,
+                    message,
+                    payload,
+                    15, // High priority for emergency
+                    alert.getId(),
+                    pokeNumber);
+
+            log.info("Poke notification sent to responder: {} for alert: {} (poke {})",
+                    responder.getUserId(), alert.getId(), pokeNumber);
+
+            notifiedCount++;
+        }
+
+        log.info("Poke alert {} complete - notified {} new responders", alert.getId(), notifiedCount);
+        return notifiedCount;
     }
 }

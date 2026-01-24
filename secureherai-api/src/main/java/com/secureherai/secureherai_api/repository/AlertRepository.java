@@ -38,13 +38,12 @@ public interface AlertRepository extends JpaRepository<Alert, UUID> {
     @Query("SELECT a FROM Alert a WHERE a.userId = :userId AND a.triggeredAt >= :since ORDER BY a.triggeredAt DESC")
     List<Alert> findRecentAlertsByUser(@Param("userId") UUID userId, @Param("since") LocalDateTime since);
 
-    // Find active alerts for all users (for responders) - includes ACTIVE and
-    // CRITICAL
-    @Query("SELECT a FROM Alert a WHERE a.status IN ('ACTIVE', 'CRITICAL') ORDER BY a.triggeredAt DESC")
+    // Find active alerts for all users (for responders) - only ACTIVE status
+    @Query(value = "SELECT * FROM alerts WHERE status = 'ACTIVE' ORDER BY triggered_at DESC", nativeQuery = true)
     List<Alert> findActiveAlerts();
 
-    // Find only CRITICAL alerts (high priority)
-    @Query("SELECT a FROM Alert a WHERE a.status = 'CRITICAL' ORDER BY a.triggeredAt DESC")
+    // Find only alerts with high severity (for priority)
+    @Query(value = "SELECT * FROM alerts WHERE status = 'ACTIVE' AND severity = 'CRITICAL' ORDER BY triggered_at DESC", nativeQuery = true)
     List<Alert> findCriticalAlerts();
 
     // Find all alerts for all users (for responders)
@@ -62,6 +61,7 @@ public interface AlertRepository extends JpaRepository<Alert, UUID> {
 
     // Delete all alerts by user ID (for account deletion)
     @Modifying
+    @org.springframework.transaction.annotation.Transactional
     @Query("DELETE FROM Alert a WHERE a.userId = :userId")
     void deleteByUserId(@Param("userId") UUID userId);
 }
